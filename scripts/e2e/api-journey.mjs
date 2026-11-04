@@ -84,6 +84,7 @@ check('etki analizi kalemleri var', (det2.body?.impact?.items?.length ?? 0) > 0,
 const root = groups.find((g) => !g.dependsOn?.length);
 const dependent = groups.find((g) => g.dependsOn?.includes(root?.id));
 check('bağımlılığı olan ve olmayan gruplar var', !!root && !!dependent, groups);
+if (!root || !dependent) fatal('kısmi kabul sınanamıyor: öneride bağımlı grup yok', groups);
 const alone = await call('POST', `/api/projects/${pid}/proposals/${job2.proposalId}/accept`, { token, body: { groupIds: [dependent.id] } });
 check('bağımlı grup kökü olmadan tek başına kabul edilemez (422 invalid_selection)',
   alone.status === 422 && alone.body?.code === 'invalid_selection' && alone.body.details?.length > 0, alone);
