@@ -98,6 +98,7 @@ api_extras() {
   step "Roller ve yetkiler" node scripts/e2e/api-roles.mjs
   step "Eşzamanlılık (paralel kabul, çakışan düzenleme)" node scripts/e2e/api-concurrency.mjs
   step "Yaşam döngüsü (düzenleme, yama, açık soru, denetim, silme)" node scripts/e2e/api-lifecycle.mjs
+  step "Uç durumlar (kimlik, doğrulama, güvenlik, sürüm, dışa aktarma, öneri durumları)" node scripts/e2e/api-edge.mjs
 }
 
 if [ "$MODE" = local ]; then
