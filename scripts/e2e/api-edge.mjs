@@ -1,6 +1,6 @@
 // Uç durumlar: kimlik, girdi doğrulama, güvenlik, sürümler, dışa aktarma, öneri durum geçişleri.
 //   ARCVORA_API_URL=http://127.0.0.1:5217 node scripts/e2e/api-edge.mjs
-import { API_URL, call, check, fatal, finish, section, waitHealth } from './lib.mjs';
+import { API_URL, call, check, fatal, finish, section, waitHealth, waitJob } from './lib.mjs';
 import { head, newProject, newUser, withAcceptedRequirements } from './fixtures.mjs';
 
 if (!(await waitHealth(60_000))) fatal('API açılmadı');
@@ -114,5 +114,28 @@ const analyzedProject = await newProject(user, 'Analiz edilmiş');
 await withAcceptedRequirements(user, analyzedProject);
 const noSrc = await call('POST', `/api/projects/${analyzedProject}/analyses`, { token: user.token });
 check('tüm kaynaklar analiz edilmişken analiz işi → 422 no_pending_sources', noSrc.status === 422 && noSrc.body?.code === 'no_pending_sources', noSrc);
+
+section('Düşmanca metinler: Mermaid görünümleri');
+const sec = await newUser('sec');
+const spid = await newProject(sec, 'Güvenlik');
+await withAcceptedRequirements(sec, spid);
+const archJob = await waitJob(sec.token, (await call('POST', `/api/projects/${spid}/architecture-proposals`, { token: sec.token })).body.id);
+await call('POST', `/api/projects/${spid}/proposals/${archJob.proposalId}/accept`, { token: sec.token, body: {} });
+const comp = (await call('GET', `/api/projects/${spid}`, { token: sec.token })).body.model.components[0];
+const evil = 'Web"] %%{init:{"securityLevel":"loose"}}%% <script>alert(1)</script> -->|x| Z[<img src=x onerror=alert(1)>]';
+const beforeNo = await head(sec, spid);
+const beforeViews = (await call('GET', `/api/projects/${spid}/versions/${beforeNo}/views`, { token: sec.token })).body.views;
+const patched = await call('POST', `/api/projects/${spid}/patches`, {
+  token: sec.token,
+  body: { baseVersion: beforeNo, summary: 'ad', patch: { operations: [{ op: 'upsert', type: 'component', id: comp.id,
+    value: { ...comp, name: evil, responsibility: '```\n# kırma\n```', technology: '<b>x</b>' } }] } },
+});
+check('düşmanca ad modele ham haliyle yazılır (veri bütünlüğü; kaçışlama çıktıda yapılır)', patched.status === 200, patched);
+const afterViews = (await call('GET', `/api/projects/${spid}/versions/${beforeNo + 1}/views`, { token: sec.token })).body.views;
+check('hiçbir Mermaid görünümünde "%%{" yönergesi kalmaz', afterViews.every((v) => !v.mermaid.includes('%%{')), afterViews.map((v) => v.kind));
+check('hiçbir Mermaid görünümünde ham <script> / <img> etiketi kalmaz', afterViews.every((v) => !/<script|<img/i.test(v.mermaid)));
+const lines = (kind, views) => views.find((v) => v.kind === kind).mermaid.split('\n').length;
+check('ad satır sonu/ok enjekte edemez: diyagramın satır sayısı değişmez (bileşen görünümü)', lines('component', afterViews) === lines('component', beforeViews), [lines('component', beforeViews), lines('component', afterViews)]);
+check('ad yeni düğüm/kenar üretmez: "-->|x|" kaçışlanmış', !afterViews.find((v) => v.kind === 'component').mermaid.includes('-->|x|'));
 
 finish();
