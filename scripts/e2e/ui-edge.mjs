@@ -202,6 +202,53 @@ try {
   check('role="img" olan SVG\'lerin aria-label değeri var', noName === 0, noName);
   await shot('edge-03-klavye');
 
+  section('Ekran boyutları ve tema kalıcılığı');
+  const vpUser = await newUser('vp');
+  const vpPid = await newProject(vpUser, 'Ekran boyutu testi');
+  await withAcceptedRequirements(vpUser, vpPid);
+  const vpJob = await waitJob(vpUser.token, (await call('POST', `/api/projects/${vpPid}/architecture-proposals`, { token: vpUser.token })).body.id);
+  await call('POST', `/api/projects/${vpPid}/proposals/${vpJob.proposalId}/accept`, { token: vpUser.token, body: {} });
+  await context.addInitScript((t) => localStorage.setItem('arcvora.token', t), vpUser.token);
+  const overflowOf = () => page.evaluate(() => ({
+    page: document.documentElement.scrollWidth - window.innerWidth,
+    clipped: [...document.querySelectorAll('h1, .ws-head select, .ws-head .btn, .proj-card, .btn.primary')]
+      .filter((el) => el.offsetParent !== null).filter((el) => el.getBoundingClientRect().right > window.innerWidth + 1)
+      .map((el) => `${el.tagName}.${el.className}`.slice(0, 40)),
+  }));
+  for (const [label, width, height] of [['320 px (küçük telefon)', 320, 640], ['390 px (telefon)', 390, 844], ['768 px (tablet)', 768, 1024], ['1920 px (geniş masaüstü)', 1920, 1080]]) {
+    await page.setViewportSize({ width, height });
+    await page.goto(WEB);
+    await visible(page.getByRole('heading', { name: 'Projeler' }));
+    const listOverflow = await overflowOf();
+    check(`${label}: proje listesi yatay taşmaz`, listOverflow.page <= 1 && listOverflow.clipped.length === 0, listOverflow);
+    await page.locator('button.proj-card', { hasText: 'Ekran boyutu testi' }).first().click();
+    await visible(page.locator('svg.canvas g[data-node-id]'), 30_000);
+    await page.waitForTimeout(400);
+    const wsOverflow = await overflowOf();
+    check(`${label}: çalışma alanı yatay taşmaz`, wsOverflow.page <= 1 && wsOverflow.clipped.length === 0, wsOverflow);
+    if (width <= 390) await shot(`edge-04-${width}`);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(WEB);
+  await visible(page.getByRole('heading', { name: 'Projeler' }));
+  const hamburger = page.getByRole('button', { name: /Menü|menü/ }).first();
+  check('dar ekranda menü düğmesi görünür', await visible(hamburger, 5000));
+  await hamburger.click();
+  check('menü düğmesi çekmeceyi açar (gezinme öğeleri erişilebilir olur)', await visible(page.locator('.sb-item', { hasText: 'Tüm projeler' }).or(page.locator('.sb-item', { hasText: 'İlk mimarini oluştur' })), 5000));
+  await page.setViewportSize({ width: 1360, height: 860 });
+  await page.goto(WEB);
+  await visible(page.getByRole('heading', { name: 'Projeler' }));
+  const themeSwitch = page.getByRole('switch', { name: /Koyu tema/ });
+  await themeSwitch.click();
+  check('koyu tema açıldı', (await themeSwitch.getAttribute('aria-checked')) === 'true');
+  await page.reload();
+  await visible(page.getByRole('heading', { name: 'Projeler' }));
+  check('koyu tema yenilemeden sonra da korunur', (await page.getByRole('switch', { name: /Koyu tema/ }).getAttribute('aria-checked')) === 'true');
+  await page.getByRole('switch', { name: /Koyu tema/ }).click();
+  await page.reload();
+  await visible(page.getByRole('heading', { name: 'Projeler' }));
+  check('açık tema da yenilemeden sonra korunur', (await page.getByRole('switch', { name: /Koyu tema/ }).getAttribute('aria-checked')) === 'false');
+
   section('Sonuç');
   const unexpected = problems.filter((p, i) => !(i >= faultFrom && i < faultTo) && !/status of 4\d\d/.test(p));
   check('beklenmeyen sayfa/konsol hatası yok (bilerek enjekte edilen hatalar ve beklenen 4xx hariç)', unexpected.length === 0, unexpected.slice(0, 5));
