@@ -16,6 +16,7 @@ Fikrini anlat · Kararlarını netleştir · Mimariyi birlikte geliştir
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
 ![PostgreSQL 16](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
 ![Durum: MVP](https://img.shields.io/badge/durum-MVP-8b6cf6)
+[![Lisans: MIT](https://img.shields.io/badge/lisans-MIT-22c55e)](LICENSE)
 
 [Hızlı başlangıç](#hızlı-başlangıç) · [Kullanım rehberi](docs/KULLANIM.md) · [Ücretsiz dağıtım](docs/DEPLOY.md) · [Mimari](docs/ARCHITECTURE.md) · [Yol haritası](docs/ROADMAP.md)
 
