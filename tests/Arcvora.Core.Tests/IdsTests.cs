@@ -119,3 +119,25 @@ public class IdsTests
         Assert.Equal("REQ-010", Ids.Next("REQ", ["REQ-009"]));
     }
 }
+
+public class ProfileCatalogTests
+{
+    [Theory]
+    [InlineData("aspnetcore")]
+    [InlineData("ASPNETCORE")]
+    [InlineData("AspNetCore")]
+    public void Find_is_case_insensitive(string id) => Assert.Same(ProfileCatalog.AspNetCore, ProfileCatalog.Find(id));
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("yok-boyle-profil")]
+    public void Find_returns_null_for_unknown_or_missing_ids(string? id) => Assert.Null(ProfileCatalog.Find(id));
+
+    [Fact]
+    public void Profile_ids_are_unique_and_every_listed_profile_is_findable()
+    {
+        Assert.Equal(ProfileCatalog.All.Count, ProfileCatalog.All.Select(p => p.Id.ToLowerInvariant()).Distinct().Count());
+        Assert.All(ProfileCatalog.All, p => Assert.Same(p, ProfileCatalog.Find(p.Id)));
+    }
+}
