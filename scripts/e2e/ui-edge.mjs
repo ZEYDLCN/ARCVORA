@@ -149,6 +149,58 @@ try {
   await page.unroute('**/api/projects');
   const faultTo = problems.length;
 
+  section('Klavye ve arama paleti');
+  const kbUser = await newUser('kb');
+  const kbPid = await newProject(kbUser, 'Klavye projesi');
+  await withAcceptedRequirements(kbUser, kbPid);
+  const kbJob = await waitJob(kbUser.token, (await call('POST', `/api/projects/${kbPid}/architecture-proposals`, { token: kbUser.token })).body.id);
+  await call('POST', `/api/projects/${kbPid}/proposals/${kbJob.proposalId}/accept`, { token: kbUser.token, body: {} });
+  await context.addInitScript((t) => localStorage.setItem('arcvora.token', t), kbUser.token);
+  await page.goto(WEB);
+  await page.locator('button.proj-card', { hasText: 'Klavye projesi' }).first().click();
+  await visible(page.locator('svg.canvas g[data-node-id]'), 30_000);
+  const palette = page.getByRole('dialog', { name: 'Ara' });
+  const box = palette.getByRole('combobox');
+  await page.keyboard.press('Control+k');
+  check('Ctrl+K paleti açar ve odak arama kutusundadır', await visible(box, 5000) && await box.evaluate((el) => el === document.activeElement));
+  await page.keyboard.press('Escape');
+  check('Escape paleti kapatır', await gone(palette, 3000) || (await palette.count()) === 0);
+  await page.keyboard.press('Meta+k');
+  check('⌘K (Meta+K) da paleti açar', await visible(box, 5000));
+  await box.fill('zzzzzz-yok-boyle-bir-sey');
+  check('eşleşme yoksa "Sonuç yok" gösterilir', await visible(palette.getByText('Sonuç yok'), 3000));
+  await page.keyboard.press('Enter');
+  check('sonuçsuz Enter hata vermez, palet açık kalır', (await palette.count()) === 1);
+  await box.fill('uygulama');
+  await page.waitForTimeout(300);
+  const optionCount = await palette.getByRole('option').count();
+  check('"uygulama" aramasında birden çok sonuç listelenir', optionCount >= 2, optionCount);
+  const firstSelected = await palette.getByRole('option').first().getAttribute('aria-selected');
+  await page.keyboard.press('ArrowDown');
+  const secondSelected = await palette.getByRole('option').nth(1).getAttribute('aria-selected');
+  check('ArrowDown seçimi bir sonraki sonuca taşır (aria-selected)', firstSelected === 'true' && secondSelected === 'true', [firstSelected, secondSelected]);
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  check('ArrowUp ilk sonucun üstüne çıkmaz (sınırda kalır)', (await palette.getByRole('option').first().getAttribute('aria-selected')) === 'true');
+  await page.keyboard.press('Enter');
+  check('Enter seçilen sonuca gider ve paleti kapatır', await gone(palette, 3000) || (await palette.count()) === 0);
+  // Odak yönetimi: palet, kendisini açan düğmeye odağı geri vermeli (WAI-ARIA dialog deseni)
+  const trigger = page.locator('button.sb-search');
+  await trigger.focus();
+  await page.keyboard.press('Enter');
+  check('arama düğmesi klavye (Enter) ile paleti açar', await visible(box, 5000));
+  await page.keyboard.press('Escape');
+  await gone(palette, 3000);
+  check('Escape sonrası odak, paleti açan düğmeye döner (body\'ye düşmez)', await trigger.evaluate((el) => el === document.activeElement), await page.evaluate(() => document.activeElement?.tagName));
+  const unlabeled = await page.evaluate(() => [...document.querySelectorAll('button, [role="tab"], [role="switch"], input, select, textarea')]
+    .filter((el) => el.offsetParent !== null)
+    .filter((el) => !(el.getAttribute('aria-label') || el.getAttribute('title') || el.innerText?.trim() || (el.labels && el.labels.length) || el.getAttribute('aria-labelledby') || el.getAttribute('placeholder')))
+    .map((el) => el.outerHTML.slice(0, 80)));
+  check('görünür tüm düğme/alanların erişilebilir bir adı var', unlabeled.length === 0, unlabeled.slice(0, 4));
+  const noName = await page.locator('svg[role="img"]:not([aria-label])').count();
+  check('role="img" olan SVG\'lerin aria-label değeri var', noName === 0, noName);
+  await shot('edge-03-klavye');
+
   section('Sonuç');
   const unexpected = problems.filter((p, i) => !(i >= faultFrom && i < faultTo) && !/status of 4\d\d/.test(p));
   check('beklenmeyen sayfa/konsol hatası yok (bilerek enjekte edilen hatalar ve beklenen 4xx hariç)', unexpected.length === 0, unexpected.slice(0, 5));
