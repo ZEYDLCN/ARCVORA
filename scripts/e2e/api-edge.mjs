@@ -106,4 +106,13 @@ const tooLong = await chg('a'.repeat(8001));
 check('8001 karakterlik talep → 422 request_too_long', tooLong.status === 422 && tooLong.body?.code === 'request_too_long', tooLong);
 check('tam 8000 karakterlik talep kabul edilir (202)', (await chg('b'.repeat(8000))).status === 202);
 
+section('İş ön koşulları');
+const emptyProject = await newProject(user, 'Boş proje');
+const noReq = await call('POST', `/api/projects/${emptyProject}/architecture-proposals`, { token: user.token });
+check('gereksinimsiz projede mimari işi → 422 no_requirements', noReq.status === 422 && noReq.body?.code === 'no_requirements', noReq);
+const analyzedProject = await newProject(user, 'Analiz edilmiş');
+await withAcceptedRequirements(user, analyzedProject);
+const noSrc = await call('POST', `/api/projects/${analyzedProject}/analyses`, { token: user.token });
+check('tüm kaynaklar analiz edilmişken analiz işi → 422 no_pending_sources', noSrc.status === 422 && noSrc.body?.code === 'no_pending_sources', noSrc);
+
 finish();
