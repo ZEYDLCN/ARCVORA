@@ -143,7 +143,7 @@ section('Düşmanca metinler: Markdown dışa aktarma ve dosya adı');
 const exp = await call('POST', `/api/projects/${spid}/exports`, { token: sec.token, body: { format: 'markdown' } });
 const dl = await call('GET', `/api/projects/${spid}/exports/${exp.body.id}/download`, { token: sec.token, raw: true });
 check('indirilen Markdown ham <script> içermez (HTML kaçışlanır)', dl.status === 200 && !dl.body.includes('<script') && dl.body.includes('&lt;script&gt;'));
-const row = dl.body.split('\n').find((l) => l.includes(`\`${comp.id}\``) && l.startsWith('|'));
+const row = dl.body.split('\n').find((l) => l.startsWith(`| \`${comp.id}\` |`));
 check('bileşen satırı tablo olarak bozulmadan tek satırda kalır (| kaçışlı, satır sonu yok)', !!row && row.trimEnd().endsWith('|') && row.includes('\\|x\\|'), row);
 const sneaky = await newProject(sec, '../../etc/passwd"\r\nSet-Cookie: a=b; x.md');
 await withAcceptedRequirements(sec, sneaky);
