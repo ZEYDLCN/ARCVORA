@@ -25,24 +25,89 @@ gereksinimler, kararlar, bileşenler ve bunların birbirleriyle ilişkileridir.
 | İş kuyruğu | PostgreSQL üzerinde dayanıklı işler: `SKIP LOCKED` claim, lease + kalp atışı, worker çökmesi kurtarma, yeniden deneme, iptal, `Idempotency-Key`. |
 | Erişim | JWT, çalışma alanı üyeliği, roller (yönetici/düzenleyici/okuyucu) + ayrı kabul yetkisi. Başka çalışma alanındaki proje için `404`. |
 | Çıktı | Tek dosya Markdown veya paket (zip); her çıktı model sürümü, profil sürümü, üretici sürümü ve hash ile kaydedilir. |
-| Web | React + TypeScript çalışma alanı: taneli renkli zemin üzerinde yüzen kenar çubuğu (daraltılabilir, ⌘K / Ctrl+K arama), **logolu mimari tuvali** (noktalı akış çizgileri, teknoloji yığını), Mermaid görünümleri, gerekçe ve ilişki zinciri, değişiklik incelemesi, mobilde çekmece menü, koyu/açık tema. |
+| Web | React + TypeScript çalışma alanı: taneli renkli zemin üzerinde yüzen kenar çubuğu (daraltılabilir, ⌘K / Ctrl+K arama), **logolu mimari tuvali** (noktalı akış çizgileri, teknoloji yığını), buzlu cam (glassmorphism) görünümü, Mermaid görünümleri, gerekçe ve ilişki zinciri, değişiklik incelemesi, mobilde çekmece menü, koyu/açık tema. |
 
-## Hızlı başlangıç
+## Yerelde çalıştırma (adım adım)
 
-Gereksinimler: .NET 8 SDK, Node 22, PostgreSQL 16 (ya da Docker).
+### 0) Bir kez kurulacaklar
+
+| Araç | Sürüm | Not |
+|---|---|---|
+| .NET SDK | 8.x | `dotnet --version` → `8.…` |
+| Node.js | 20 veya üzeri | `node --version` |
+| PostgreSQL | 16 | **Ya** Docker Desktop (önerilen, tek komut) **ya da** PostgreSQL'i doğrudan kurun |
+| Git | — | |
+
+### 1) Kodu alın
 
 ```bash
-docker compose -f docker-compose.dev.yml up -d       # yalnızca PostgreSQL
-
-cd src/Arcvora.Api && dotnet run                      # Development: otomatik migrasyon, worker API içinde çalışır
-# başka bir terminalde:
-cd web && npm ci && npm run dev                       # http://localhost:5173  (/api istekleri API'ye yönlenir)
+git clone https://github.com/ZEYDLCN/ARCVORA.git
+cd ARCVORA
+git checkout feat/arcvora-mvp        # çalışma bu dalda; main'e birleştirilene kadar
 ```
 
-Kayıt olun ve **“Örnek projeyi incele”** deyin: elle hazırlanmış bir masraf yönetimi modeli ve bekleyen “iki aşamalı onay”
-değişikliği gelir. Kendi fikrinizle denemek için **“İlk mimarini oluştur”**.
+### 2a) Tek komutla (macOS / Linux / WSL / Windows'ta Git Bash)
 
-### Tek süreçten sunum
+```bash
+scripts/dev.sh
+```
+
+PostgreSQL'i (Docker ile) başlatır, hazır olmasını bekler, `web` bağımlılıklarını kurar, API'yi ve web arayüzünü birlikte çalıştırır. `Ctrl+C` hepsini kapatır.
+PostgreSQL'i kendiniz yönetiyorsanız: `ARCVORA_SKIP_DB=1 scripts/dev.sh`.
+
+### 2b) Elle (Windows PowerShell dahil — üç terminal)
+
+**Terminal 1 — veritabanı** (Docker yoksa kendi PostgreSQL'inizi kullanın, bkz. aşağıdaki not):
+
+```powershell
+docker compose -f docker-compose.dev.yml up -d
+```
+
+**Terminal 2 — API** (migrasyon otomatik uygulanır, işleyici API içinde çalışır):
+
+```powershell
+cd src/Arcvora.Api
+dotnet run
+```
+
+`Now listening on: http://localhost:5217` satırını görün.
+
+**Terminal 3 — web arayüzü:**
+
+```powershell
+cd web
+npm ci
+npm run dev
+```
+
+### 3) Açın
+
+Tarayıcıda **http://localhost:5173** → **Kayıt ol** → **“Örnek projeyi incele”**. Elle hazırlanmış masraf yönetimi modeli, mimari tuval ve bekleyen “iki aşamalı onay” değişikliği gelir.
+Kendi fikrinizle: **“İlk mimarini oluştur”**. API anahtarı olmadan çalışan buluşsal sağlayıcı bir *iskelet* üretir (arayüzde “AI değil” etiketli); gerçek model için bkz. [`docs/LOCAL_LLM.md`](docs/LOCAL_LLM.md) veya `Ai__Provider=anthropic`.
+
+> **Kendi PostgreSQL'iniz varsa** (Docker yok): kullanıcı/parola `postgres`/`postgres` değilse bağlantıyı verin ve veritabanı adı olarak yeni bir ad kullanın — ARCVORA veritabanını ve tabloları kendisi oluşturur.
+> PowerShell: `$env:ConnectionStrings__Arcvora="Host=localhost;Database=arcvora;Username=KULLANICI;Password=PAROLA"` · bash: `export ConnectionStrings__Arcvora="Host=localhost;Database=arcvora;Username=…;Password=…"` (API'yi başlatmadan önce, aynı terminalde).
+
+### Sık karşılaşılan sorunlar
+
+| Belirti | Çözüm |
+|---|---|
+| API açılırken `Failed to connect to 127.0.0.1:5432` / `Connection refused` | PostgreSQL çalışmıyor. `docker compose -f docker-compose.dev.yml up -d` veya yerel PostgreSQL servisini başlatın. |
+| `password authentication failed` | Parola farklı: yukarıdaki `ConnectionStrings__Arcvora` ile kendi bilgilerinizi verin. |
+| Web açılıyor ama giriş/kayıt “Bağlantı kurulamadı” | API çalışmıyor ya da farklı portta. Web'i `VITE_API_TARGET=http://localhost:PORT npm run dev` ile başlatın (PowerShell: `$env:VITE_API_TARGET="http://localhost:PORT"`). |
+| `5217` / `5173` portu dolu | Başka bir süreç kullanıyor; kapatın ya da `ASPNETCORE_URLS` ve `VITE_API_TARGET` ile port değiştirin. |
+| `Jwt:Key en az 32 karakter olmalı` | Yalnızca Development dışında görülür: `Jwt__Key` verin. `dotnet run` varsayılan olarak Development kullanır; farklı bir ortam değişkeni (`ASPNETCORE_ENVIRONMENT`) tanımlıysa kaldırın. |
+| `npm ci` hata veriyor | Node 20+ olduğundan emin olun; `web/node_modules` klasörünü silip yeniden deneyin. |
+| İş “Kuyrukta” kalıyor | Worker API içinde çalışır (`Worker:InProcess`, Development'ta açık). Ayrı worker'ı yalnızca üretimde kullanırsınız. |
+
+### Testleri çalıştırmak
+
+```bash
+dotnet test                         # entegrasyon testleri çalışan bir PostgreSQL ister (ARCVORA_TEST_PG)
+cd web && npm test
+```
+
+### Tek süreçten sunum (üretim benzeri)
 
 ```bash
 cd web && npm ci && npm run build

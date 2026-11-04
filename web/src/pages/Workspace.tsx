@@ -4,7 +4,7 @@ import { ArchCanvas } from '../components/ArchCanvas';
 import { Badge } from '../components/Badge';
 import type { PaletteItem } from '../components/CommandPalette';
 import {
-  IconChecklist, IconDecision, IconDiagram, IconDownload, IconFile, IconFolder, IconHelp, IconInbox, IconPlus, IconShield,
+  IconChecklist, IconDecision, IconDiagram, IconDownload, IconFile, IconFolder, IconHelp, IconInbox, IconPlus, IconRefresh, IconShield, IconSparkle,
 } from '../components/icons';
 import { MermaidView } from '../components/MermaidView';
 import { FindingList, ObjectDetail } from '../components/ObjectDetail';
@@ -225,7 +225,7 @@ export function Workspace({ projectId, user, onBack, onLogout, dark, onTheme }: 
             {drafting
               ? <span className="badge info" title="Bekleyen öneriler kabul edilmeden model değişmez">◔ Taslak: {pendingProposals.length} bekleyen öneri</span>
               : <span className="badge ok">✓ Kabul edilmiş sürüm</span>}
-            <span className="muted mono">özet {currentHash}</span>
+            <span className="muted">Özet <span className="mono">{currentHash}</span></span>
           </div>
         </div>
         <div className="row">
@@ -306,7 +306,7 @@ export function Workspace({ projectId, user, onBack, onLogout, dark, onTheme }: 
                 <span className="spacer" />
                 {canEdit && (
                   <button className="btn" disabled={busy || !hasReq} title={hasReq ? '' : 'Önce gereksinim gerekli'}
-                    onClick={() => startJob((k) => api.proposeArchitecture(projectId, k))}>{hasArch ? 'Mimari taslağı yenile' : 'Mimari taslak oluştur'}</button>
+                    onClick={() => startJob((k) => api.proposeArchitecture(projectId, k))}>{hasArch ? <IconRefresh size={16} /> : <IconSparkle size={16} />} {hasArch ? 'Mimari taslağı yenile' : 'Mimari taslak oluştur'}</button>
                 )}
               </div>
 

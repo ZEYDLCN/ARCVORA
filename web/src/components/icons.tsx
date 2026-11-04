@@ -34,6 +34,8 @@ export const IconPackage = (p: P) => <Icon {...p}><path d="M12 3 4 7v10l8 4 8-4V
 export const IconSparkle = (p: P) => <Icon {...p}><path d="m12 3 1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" /><path d="m19 16 .7 1.8 1.8.7-1.8.7L19 21l-.7-1.8-1.8-.7 1.8-.7z" /></Icon>;
 export const IconClose = (p: P) => <Icon {...p}><path d="M6 6l12 12M18 6 6 18" /></Icon>;
 export const IconBack = (p: P) => <Icon {...p}><path d="m14.5 6-6 6 6 6" /></Icon>;
+export const IconRefresh = (p: P) => <Icon {...p}><path d="M20 11a8 8 0 0 0-14.3-4.6L4 8.5M4 4v4.5h4.5M4 13a8 8 0 0 0 14.3 4.6L20 15.5M20 20v-4.5h-4.5" /></Icon>;
+export const IconInfo = (p: P) => <Icon {...p}><circle cx="12" cy="12" r="9" /><path d="M12 11v5" /><circle cx="12" cy="7.8" r=".6" fill="currentColor" /></Icon>;
 export const IconCommand = (p: P) => <Icon {...p}><path d="M9 6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3z" /></Icon>;
 
 // Bileşen türü simgeleri (tuvalde marka logosu bulunamayınca kullanılır)
