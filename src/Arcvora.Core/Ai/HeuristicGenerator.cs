@@ -83,6 +83,12 @@ public sealed partial class HeuristicGenerator : IArchitectureGenerator
 
     public Task<GeneratorOutput> ProposeArchitectureAsync(GenerationContext ctx, CancellationToken ct)
     {
+        // Kural tabanlı üretici her çağrıda aynı iskeleti YENİ kimliklerle üretir; kabul edilmiş bir mimari varken bu,
+        // bileşenleri ve kararları ikiye katlar. Mevcut mimariye ekleme yapmak için "Yeni talep ekle" (değişiklik analizi) kullanılır.
+        if (ctx.Model.Components.Count > 0)
+            return Task.FromResult(new GeneratorOutput(new ModelPatch(), [], 0, 0, Label,
+                "Modelde zaten kabul edilmiş bir mimari var; kural tabanlı üretici onu yeniden önermez. Yeni bir istek için “Yeni talep ekle” ile etki analizi başlatın."));
+
         var reqs = ctx.Model.Requirements.Where(r => r.ReviewStatus != ReviewStatus.Rejected).ToList();
         var ops = new List<PatchOperation>();
         var groups = new List<PatchGroup>();
