@@ -88,4 +88,38 @@ describe('CommandPalette', () => {
     expect(onClose).not.toHaveBeenCalled();
     expect(picked).toEqual([]);
   });
+
+  it('Escape closes it even when focus is NOT inside the dialog', () => {
+    const onClose = vi.fn();
+    render(true, onClose);
+    (document.activeElement as HTMLElement | null)?.blur();
+    key(document.body, 'Escape');
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('moves focus to the search box shortly after opening', () => {
+    render(true);
+    act(() => { vi.advanceTimersByTime(5); });
+    expect(document.activeElement).toBe(input());
+  });
+
+  it('gives focus back to the element that opened it when closed', () => {
+    const opener = document.createElement('button');
+    document.body.appendChild(opener);
+    opener.focus();
+    render(true);
+    act(() => { vi.advanceTimersByTime(5); });
+    expect(document.activeElement).toBe(input());
+    render(false);
+    expect(document.activeElement).toBe(opener);
+    opener.remove();
+  });
+
+  it('stops listening for Escape after it closed', () => {
+    const onClose = vi.fn();
+    render(true, onClose);
+    render(false, onClose);
+    key(document.body, 'Escape');
+    expect(onClose).not.toHaveBeenCalled();
+  });
 });
