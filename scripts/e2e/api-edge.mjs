@@ -138,4 +138,19 @@ const lines = (kind, views) => views.find((v) => v.kind === kind).mermaid.split(
 check('ad satır sonu/ok enjekte edemez: diyagramın satır sayısı değişmez (bileşen görünümü)', lines('component', afterViews) === lines('component', beforeViews), [lines('component', beforeViews), lines('component', afterViews)]);
 check('ad yeni düğüm/kenar üretmez: "-->|x|" kaçışlanmış', !afterViews.find((v) => v.kind === 'component').mermaid.includes('-->|x|'));
 
+section('Düşmanca metinler: Markdown dışa aktarma ve dosya adı');
+const exp = await call('POST', `/api/projects/${spid}/exports`, { token: sec.token, body: { format: 'markdown' } });
+const dl = await call('GET', `/api/projects/${spid}/exports/${exp.body.id}/download`, { token: sec.token, raw: true });
+check('indirilen Markdown ham <script> içermez (HTML kaçışlanır)', dl.status === 200 && !dl.body.includes('<script') && dl.body.includes('&lt;script&gt;'));
+const row = dl.body.split('\n').find((l) => l.includes(`\`${comp.id}\``) && l.startsWith('|'));
+check('bileşen satırı tablo olarak bozulmadan tek satırda kalır (| kaçışlı, satır sonu yok)', !!row && row.trimEnd().endsWith('|') && row.includes('\\|x\\|'), row);
+const sneaky = await newProject(sec, '../../etc/passwd"\r\nSet-Cookie: a=b; x.md');
+await withAcceptedRequirements(sec, sneaky);
+const exp2 = await call('POST', `/api/projects/${sneaky}/exports`, { token: sec.token, body: { format: 'markdown' } });
+const dl2 = await call('GET', `/api/projects/${sneaky}/exports/${exp2.body.id}/download`, { token: sec.token, raw: true });
+const disp = dl2.headers.get('content-disposition') ?? '';
+check('dosya adı yol/başlık enjeksiyonu içermez (/, \\, .., CR/LF yok)', dl2.status === 200 && !/[\/\\\r\n]|\.\./.test(disp.replace(/^attachment; /, '')), disp);
+check('yanıtta enjekte edilmiş Set-Cookie başlığı yok', dl2.headers.get('set-cookie') === null);
+check('Markdown yanıtı text/markdown ve nosniff ile gelir', /text\/markdown/.test(dl.headers.get('content-type') ?? '') && dl.headers.get('x-content-type-options') === 'nosniff', [...dl.headers.entries()]);
+
 finish();
