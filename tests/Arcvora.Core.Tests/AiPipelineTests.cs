@@ -342,6 +342,41 @@ public class LlmPipelineTests
     }
 
     [Fact]
+    public void Guard_keeps_only_the_three_highest_impact_new_questions_and_drops_links_to_the_rest()
+    {
+        OpenQuestion Q(string id, Priority p) => new() { Id = id, Text = $"Soru {id}", Impact = p };
+        var model = ExpenseSample.Model();
+        var ops = new List<PatchOperation>
+        {
+            ModelPatch.Upsert(ObjectType.OpenQuestion, Q("OQ-010", Priority.Low)),
+            ModelPatch.Upsert(ObjectType.OpenQuestion, Q("OQ-011", Priority.Critical)),
+            ModelPatch.Upsert(ObjectType.OpenQuestion, Q("OQ-012", Priority.High)),
+            ModelPatch.Upsert(ObjectType.OpenQuestion, Q("OQ-013", Priority.Medium)),
+            ModelPatch.Upsert(ObjectType.OpenQuestion, Q("OQ-014", Priority.High)),
+            ModelPatch.Upsert(ObjectType.TraceLink, new TraceLink { Id = "TRC-100", FromId = "DEC-001", ToId = "OQ-010", Kind = TraceKind.BlockedBy }),
+            ModelPatch.Upsert(ObjectType.TraceLink, new TraceLink { Id = "TRC-101", FromId = "DEC-001", ToId = "OQ-011", Kind = TraceKind.BlockedBy }),
+        };
+        var (guarded, violations) = GeneratorGuard.Enforce(GenerationTask.Architecture, model, new ModelPatch { Operations = ops });
+
+        var kept = guarded.Operations.Where(o => o.Type == ObjectType.OpenQuestion).Select(o => o.Id).OrderBy(x => x).ToArray();
+        Assert.Equal(["OQ-011", "OQ-012", "OQ-014"], kept);                               // kritik, yüksek, yüksek
+        Assert.DoesNotContain(guarded.Operations, o => o.Id == "TRC-100");                // çıkarılan soruya bağlantı da gitti
+        Assert.Contains(guarded.Operations, o => o.Id == "TRC-101");
+        Assert.Contains(violations, v => !v.Blocking && v.Message.Contains("OQ-010") && v.Message.Contains("OQ-013"));
+        Assert.True(ModelPatcher.Apply(model, guarded).Ok);
+        Assert.Empty(ModelPatcher.NewBlockingFindings(model, ModelPatcher.Apply(model, guarded).Model!));
+    }
+
+    [Fact]
+    public void Guard_leaves_three_or_fewer_questions_alone()
+    {
+        var ops = Enumerable.Range(1, 3).Select(i => ModelPatch.Upsert(ObjectType.OpenQuestion, new OpenQuestion { Id = $"OQ-10{i}", Text = "?" })).ToList();
+        var (guarded, violations) = GeneratorGuard.Enforce(GenerationTask.Architecture, new ArchitectureModel(), new ModelPatch { Operations = ops });
+        Assert.Equal(3, guarded.Operations.Count);
+        Assert.Empty(violations);
+    }
+
+    [Fact]
     public void Guard_caps_the_number_of_operations()
     {
         var ops = Enumerable.Range(1, GeneratorGuard.MaxOperations + 5)

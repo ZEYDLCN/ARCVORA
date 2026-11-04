@@ -15,6 +15,8 @@ public sealed record GuardViolation(bool Blocking, string Message);
 public static class GeneratorGuard
 {
     public const int MaxOperations = 400;
+    /// <summary>Her turda en fazla üç öncelikli soru (§8.3).</summary>
+    public const int MaxNewQuestions = 3;
 
     private static readonly IReadOnlyDictionary<GenerationTask, ObjectType[]> Allowed = new Dictionary<GenerationTask, ObjectType[]>
     {
@@ -121,7 +123,33 @@ public static class GeneratorGuard
             ops.Add(op with { Value = JsonSerializer.SerializeToElement(node, ArcvoraJson.Options) });
         }
 
+        ops = CapQuestions(index, ops, violations);
         return ((patch with { Operations = ops }).WithDefaultGroups(), violations);
+    }
+
+    /// <summary>
+    /// Yeni açık soruları önceliğe göre (etki: kritik → düşük, eşitlikte üretim sırası) en fazla <see cref="MaxNewQuestions"/>
+    /// ile sınırlar; çıkarılan sorulara işaret eden izlenebilirlik bağlantıları da çıkarılır (sarkan referans kalmaz).
+    /// </summary>
+    private static List<PatchOperation> CapQuestions(ModelIndex index, List<PatchOperation> ops, List<GuardViolation> violations)
+    {
+        var fresh = ops.Select((o, i) => (Op: o, Order: i))
+            .Where(x => x.Op is { Op: PatchOpKind.Upsert, Type: ObjectType.OpenQuestion } && !index.Contains(x.Op.Id)).ToList();
+        if (fresh.Count <= MaxNewQuestions) return ops;
+
+        static int Rank(PatchOperation o) => o.Value is { ValueKind: JsonValueKind.Object } v
+                                             && v.TryGetProperty("impact", out var i) ? i.GetString() switch
+        {
+            "critical" => 0, "high" => 1, "low" => 3, _ => 2,
+        } : 2;
+
+        var drop = fresh.OrderBy(x => Rank(x.Op)).ThenBy(x => x.Order).Skip(MaxNewQuestions).Select(x => x.Op.Id).ToHashSet();
+        violations.Add(new GuardViolation(false,
+            $"Her turda en fazla {MaxNewQuestions} öncelikli soru: {drop.Count} düşük öncelikli soru çıkarıldı ({string.Join(", ", drop.OrderBy(x => x, StringComparer.Ordinal))})."));
+
+        return ops.Where(o =>
+            !(o.Type == ObjectType.OpenQuestion && drop.Contains(o.Id))
+            && !(o.Type == ObjectType.TraceLink && o.Value is { } v && Ids.StructuralRefs(v.GetRawText()).Any(drop.Contains))).ToList();
     }
 
     private static bool ExcerptsVerified(JsonObject req, Dictionary<string, string> sources)
