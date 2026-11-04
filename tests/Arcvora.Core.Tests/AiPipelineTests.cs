@@ -125,6 +125,23 @@ public class HeuristicGeneratorTests
     }
 
     [Fact]
+    public async Task Architecture_proposal_does_not_duplicate_an_architecture_that_is_already_accepted()
+    {
+        var extractCtx = new GenerationContext(ModelWithSource(), ProfileCatalog.AspNetCore);
+        var extracted = await Pipeline().RunAsync(GenerationTask.Extract, extractCtx, new PipelineBudget());
+        var confirmed = ModelPatcher.Apply(extractCtx.Model, extracted.Patch, confirmApplied: true).Model!;
+        var first = await Pipeline().RunAsync(GenerationTask.Architecture, new GenerationContext(confirmed, ProfileCatalog.AspNetCore), new PipelineBudget());
+        var withArchitecture = ModelPatcher.Apply(confirmed, first.Patch, confirmApplied: true).Model!;
+        Assert.NotEmpty(withArchitecture.Components);
+
+        var again = await Pipeline().RunAsync(GenerationTask.Architecture, new GenerationContext(withArchitecture, ProfileCatalog.AspNetCore), new PipelineBudget());
+
+        // Aynı bileşenler yeni kimliklerle ikinci kez önerilirse kabul modeli çoğaltır (5 bileşen → 10).
+        Assert.True(again.Patch.IsEmpty, "Mevcut mimari varken buluşsal üretici yeni nesne önermemeli.");
+        Assert.Contains("zaten", again.Note);
+    }
+
+    [Fact]
     public async Task Change_analysis_records_the_request_and_flags_possible_impacts_without_inventing_design()
     {
         var model = ExpenseSample.Model();

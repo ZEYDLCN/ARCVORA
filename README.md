@@ -1,6 +1,25 @@
+<div align="center">
+
+<img src="docs/assets/logo-mark.svg" width="96" height="96" alt="Arcvora logosu" />
+
 # ARCVORA
 
-> **Turn intent into architecture.** Fikrini anlat. Kararlarını netleştir. Mimariyi birlikte geliştir.
+**Turn intent into architecture.**
+<br />
+Fikrini anlat · Kararlarını netleştir · Mimariyi birlikte geliştir
+
+<br />
+
+[![CI](https://github.com/ZEYDLCN/ARCVORA/actions/workflows/ci.yml/badge.svg)](https://github.com/ZEYDLCN/ARCVORA/actions/workflows/ci.yml)
+![.NET 8](https://img.shields.io/badge/.NET-8-512BD4?logo=dotnet&logoColor=white)
+![React 18](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
+![PostgreSQL 16](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
+![Durum: MVP](https://img.shields.io/badge/durum-MVP-8b6cf6)
+
+[Hızlı başlangıç](#hızlı-başlangıç) · [Kullanım rehberi](docs/KULLANIM.md) · [Ücretsiz dağıtım](docs/DEPLOY.md) · [Mimari](docs/ARCHITECTURE.md) · [Yol haritası](docs/ROADMAP.md)
+
+</div>
 
 ARCVORA; yazılım fikirlerini ve gereksinimlerini gerekçeli mimari kararlara, birbiriyle tutarlı diyagramlara ve
 geliştiriciye teslim edilebilecek bir teknik plana dönüştüren; yeni talepler geldikçe bu planın nasıl değişmesi
@@ -10,6 +29,83 @@ gereksinimler, kararlar, bileşenler ve bunların birbirleriyle ilişkileridir.
 **Durum:** ürün dokümanındaki ilk dikey kesit çalışıyor ve testli:
 `tek proje → onaylanan gereksinimler → mimari model → üç görünüm → yeni talep → etki incelemesi → yeni sürüm → Markdown çıktısı`.
 Ürün doğrulaması (gerçek pilotlar, fiyat, kalite eşikleri) **yapılmadı**; bu depo yazılım tarafını kapsar. Ayrıntı: [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
+<p align="center">
+  <img src="docs/assets/screen-canvas.jpg" alt="Arcvora mimari tuvali: teknoloji logolu bileşenler ve akış çizgileri" width="100%" />
+</p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/assets/screen-review.jpg" alt="Değişiklik önerisi inceleme ekranı ve etki özeti" /></td>
+    <td width="50%"><img src="docs/assets/screen-canvas-dark.jpg" alt="Koyu temada mimari tuvali" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Etki incelemesi:</b> öneri kabul edilene kadar model değişmez</sub></td>
+    <td align="center"><sub><b>Koyu tema</b> · ⌘K / Ctrl+K ile arama</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/assets/screen-mermaid.jpg" alt="Aynı modelden türetilen Mermaid bileşen diyagramı" /></td>
+    <td width="50%" align="center"><img src="docs/assets/screen-mobile.jpg" alt="Mobil görünüm" width="240" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Türetilmiş görünüm:</b> Mermaid aynı model sürümünden üretilir</sub></td>
+    <td align="center"><sub><b>Mobil:</b> çekmece menü, yatay taşma yok</sub></td>
+  </tr>
+</table>
+
+<details>
+<summary><b>İçindekiler</b></summary>
+
+- [Neden ARCVORA?](#neden-arcvora) · [Hızlı başlangıç](#hızlı-başlangıç) · [Nasıl çalışır?](#nasıl-çalışır)
+- [Neler var?](#neler-var) · [Test güvencesi](#test-güvencesi) · [Yerelde çalıştırma](#yerelde-çalıştırma-adım-adım)
+- [Yapılandırma](#yapılandırma) · [Testler](#testler) · [Depo yapısı](#depo-yapısı)
+- [MVP kabul listesi](#mvp-kabul-listesi-doküman-25--durum) · [Bilinen sınırlar](#bilinen-sınırlar-dürüst-liste)
+- Rehberler: [Kullanım](docs/KULLANIM.md) · [Ücretsiz dağıtım](docs/DEPLOY.md) · [Yerel model](docs/LOCAL_LLM.md) · [Pilot rehberi](docs/PILOT_PLAYBOOK.md)
+
+</details>
+
+## Neden ARCVORA?
+
+AI'dan mimari önerisi almak kolay; **neyin kimden geldiğini ve neyin onaylandığını kaybetmemek** zor. ARCVORA üç kural üzerine kuruludur:
+
+| | İlke | Somut karşılığı |
+|---|---|---|
+| 🔎 | **Kaynağı kaybetme** | "Kullanıcı söyledi", "sistem önerdi" ve "varsayım" ayrı tutulur. Kullanıcı ifadesi sayılmak için kaynak metinden **birebir alıntı** gerekir; kabul edilen nesne bu bilgiyi kaybetmez. |
+| 📝 | **Öneri bir taslaktır** | AI çıktısı kabul edilene kadar modeli değiştirmez. Kabul sürüm üretir; eski temele dayalı öneri güncel modeli ezemez; kısmi kabul bağımlılıkları korur. |
+| 🔗 | **Her değişikliğin etkisi görünür** | Gereksinim → karar → bileşen bağları izlenir; yeni bir talep hangi nesneleri doğrudan, bağımlı ya da olası etkilediğini gösterir. |
+
+> Bu bir **konumlandırma hipotezidir**, kanıtlanmış bir üstünlük değil: gerçek pilot ve gerçek model kalitesi ölçümü yapılmadı (bkz. [bilinen sınırlar](#bilinen-sınırlar-dürüst-liste)).
+
+## Hızlı başlangıç
+
+Gerekenler: .NET 8 SDK, Node.js 20+, Docker (PostgreSQL için).
+
+```bash
+git clone https://github.com/ZEYDLCN/ARCVORA.git && cd ARCVORA
+scripts/dev.sh        # PostgreSQL (Docker) + API + web, hepsi tek komutla
+```
+
+Tarayıcıda <http://localhost:5173> → **Kayıt ol** → **Örnek projeyi incele**. Anahtar gerekmez: varsayılan üretici kural tabanlıdır ve arayüzde "AI değil" diye etiketlenir.
+Gerçek bir model için (yerel Qwen/Ollama dahil) [`docs/KULLANIM.md`](docs/KULLANIM.md); internete ücretsiz koymak için [`docs/DEPLOY.md`](docs/DEPLOY.md).
+
+## Nasıl çalışır?
+
+```mermaid
+flowchart LR
+  A["Fikir ve kaynak metinler"] --> B["Üretici: AI veya kural tabanlı"]
+  B --> C{{"Koruyucu + doğrulama"}}
+  C -- geçerli --> D["Öneri (taslak)"]
+  C -- hatalı --> R["Onarım turu, en fazla N"]
+  R --> B
+  D --> E{"İnsan incelemesi"}
+  E -- "kabul / kısmi kabul" --> F[("Yeni model sürümü")]
+  E -- reddet --> X["Model değişmez"]
+  F --> G["Görünümler: tuval, Mermaid, ER, akış"]
+  F --> H["Markdown / paket çıktısı"]
+  F -- "yeni talep" --> B
+```
+
+Model tek gerçek kaynaktır; diyagramlar ondan **türetilir** (LLM çizmez). Ayrıntı: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## Neler var?
 
@@ -27,7 +123,37 @@ gereksinimler, kararlar, bileşenler ve bunların birbirleriyle ilişkileridir.
 | Çıktı | Tek dosya Markdown veya paket (zip); her çıktı model sürümü, profil sürümü, üretici sürümü ve hash ile kaydedilir. |
 | Web | React + TypeScript çalışma alanı: taneli renkli zemin üzerinde yüzen kenar çubuğu (daraltılabilir, ⌘K / Ctrl+K arama), **logolu mimari tuvali** (noktalı akış çizgileri, teknoloji yığını), buzlu cam (glassmorphism) görünümü, Mermaid görünümleri, gerekçe ve ilişki zinciri, değişiklik incelemesi, mobilde çekmece menü, koyu/açık tema. |
 
+<details>
+<summary><b>🇬🇧 English summary</b></summary>
+
+<br />
+
+**ARCVORA** is an AI-assisted software-architecture workspace. You describe an idea; it proposes requirements, decisions and components as **drafts**.
+Nothing changes the model until a human accepts it, every accepted object keeps its **provenance** (user statement vs. system proposal vs. assumption),
+and every new request shows its **impact** on the existing design. Diagrams (component, sequence, ER) are *derived* from one versioned model, never drawn by an LLM.
+
+- **Stack:** .NET 8 (modular monolith) · PostgreSQL · React + TypeScript · Mermaid
+- **AI providers:** rule-based heuristic (no key, clearly labelled "not AI") · Anthropic · any OpenAI-compatible local server (Ollama, llama.cpp, vLLM — e.g. Qwen)
+- **Run it:** `scripts/dev.sh`, then open <http://localhost:5173> and try the sample project
+- **Deploy free:** see [`docs/DEPLOY.md`](docs/DEPLOY.md) (Render + Neon)
+- **Status:** working MVP with extensive automated tests. **Not validated** with real pilots, and real local-model output quality has **not been measured**. Documentation is in Turkish.
+
+</details>
+
+## Test güvencesi
+
+| Katman | Kapsam | Komut |
+|---|---|---|
+| Birim (Core) | model, kimlikler, profiller, doğrulayıcı, yama, etki, görünümler, AI hattı — **130** test | `dotnet test tests/Arcvora.Core.Tests` |
+| Entegrasyon | gerçek PostgreSQL: erişim, sürümler, işler, yerel model istemcisi — **93** test | `dotnet test tests/Arcvora.Integration.Tests` |
+| Web | düzen algoritması, grup bağımlılıkları, açılış animasyonu, arama paleti — **58** vitest testi | `cd web && npm test` |
+| Uçtan uca | API + tarayıcı (Playwright), **340'tan fazla doğrulama**: roller, eşzamanlılık, XSS/enjeksiyon, hız sınırı, üretim yapılandırması | `scripts/e2e.sh` · `--local` · `--prod` |
+
+Uçtan uca testler henüz CI'da çalışmıyor; yerelde çalıştırılır. Ayrıntı: [Testler](#testler).
+
 ## Yerelde çalıştırma (adım adım)
+
+> macOS + yerel Qwen/Ollama ile baştan sona arayüz yolculuğu için: [`docs/KULLANIM.md`](docs/KULLANIM.md).
 
 ### 0) Bir kez kurulacaklar
 
@@ -107,6 +233,8 @@ dotnet test                         # entegrasyon testleri çalışan bir Postgr
 cd web && npm test
 ```
 
+> **Ücretsiz olarak internette yayınlamak için:** [`docs/DEPLOY.md`](docs/DEPLOY.md) (Render + Neon, `Dockerfile`).
+
 ### Tek süreçten sunum (üretim benzeri)
 
 ```bash
@@ -167,6 +295,18 @@ Ortam değişkenleri `__` ile iç içe anahtar yazar (örn. `Ai__Provider`). Ör
 dotnet test                       # birim + entegrasyon; entegrasyon testleri gerçek PostgreSQL ister
 cd web && npm run typecheck && npm test
 ```
+
+Uçtan uca (gerçek PostgreSQL + API + web + isteğe bağlı sahte yerel model; geçici veritabanını kendisi açıp siler):
+
+```bash
+scripts/e2e.sh --no-ui           # API: yolculuk, roller, eşzamanlılık, yaşam döngüsü, uç durumlar, hız sınırı (247 doğrulama)
+scripts/e2e.sh --local --no-ui   # + sahte yerel model: istek biçimi, onarım turu, yavaş modelde iş iptali ve zaman aşımı
+scripts/e2e.sh                   # + tarayıcı: yolculuk ve uç durumlar (hata yolları, oturum, XSS, klavye, ekran boyutları; 91 doğrulama; Playwright: cd web && npm i --no-save playwright && npx playwright install chromium)
+```
+
+Sahte model ([`scripts/e2e/mock-llm.mjs`](scripts/e2e/mock-llm.mjs)) ARCVORA'nın `Ai__Provider=local` yolunu sınamak içindir; **gerçek model kalitesi hakkında bir şey söylemez**.
+`scripts/e2e.sh --prod` üretim yapılandırmasını (yayınlanmış uygulama, `wwwroot`, `DATABASE_URL`, `Production`) sınar.
+Uçtan uca testler henüz CI'da çalıştırılmıyor (GitHub Actions'ta denenmedi).
 
 Entegrasyon testleri her sınıf için geçici bir veritabanı oluşturur. Bağlantı için `ARCVORA_TEST_PG`
 (varsayılan: `Host=localhost;Username=postgres;Password=postgres`). CI: [`.github/workflows/ci.yml`](.github/workflows/ci.yml).

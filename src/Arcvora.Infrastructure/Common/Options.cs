@@ -46,3 +46,13 @@ public sealed class LocalLlmOptions
     /// <summary>Qwen3 gibi "düşünen" modellerde isteğe `/no_think` ekler; yanıttaki `&lt;think&gt;` bloğu her durumda temizlenir.</summary>
     public bool DisableThinking { get; set; }
 }
+
+public sealed class AuthOptions
+{
+    /// <summary>
+    /// false: yeni hesap açılamaz (403 registration_closed); mevcut kullanıcılar girmeye devam eder. Herkese açık ücretsiz bir dağıtımda
+    /// yabancıların kayıt olup kaynakları (özellikle ücretli bir AI anahtarını) kullanmasını önlemek için ilk hesap açıldıktan sonra kapatın.
+    /// </summary>
+    public bool RegistrationOpen { get; set; } = true;
+}
+

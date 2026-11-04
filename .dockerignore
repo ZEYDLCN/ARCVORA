@@ -1,0 +1,12 @@
+**/bin/
+**/obj/
+**/node_modules/
+web/dist/
+.git/
+.github/
+tests/
+docs/
+scripts/
+e2e-screenshots/
+*.log
+.env

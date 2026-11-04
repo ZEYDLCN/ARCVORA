@@ -3,7 +3,9 @@ import { IconSearch } from './icons';
 
 export interface PaletteItem { id: string; label: string; hint?: string; group: string; keywords?: string; onSelect: () => void }
 
-const fold = (s: string) => s.replace(/İ/g, 'i').replace(/I/g, 'ı').toLowerCase();
+// Arama büyük/küçük harf ve aksan duyarsızdır: İ, I, ı hepsi "i" olur (böylece "api", "API" kısaltmasını ve "istanbul", "İstanbul"u bulur;
+// Türkçe kuralıyla I→ı yapmak "API"yi "apı" yapıp "api" aramasını bozuyordu), ç/ş/ğ/ö/ü aksansız karşılıklarına katlanır.
+const fold = (s: string) => s.replace(/[İIı]/g, 'i').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
 export function filterItems(items: PaletteItem[], query: string, limit = 40): PaletteItem[] {
   const q = fold(query.trim());
@@ -24,7 +26,22 @@ export function CommandPalette({ open, onClose, items, placeholder }: { open: bo
   const input = useRef<HTMLInputElement>(null);
   const results = useMemo(() => filterItems(items, query), [items, query]);
 
-  useEffect(() => { if (open) { setQuery(''); setActive(0); setTimeout(() => input.current?.focus(), 0); } }, [open]);
+  useEffect(() => {
+    if (!open) return;
+    setQuery(''); setActive(0);
+    // Paleti açan öğeyi hatırla; kapanınca odağı ona geri ver (WAI-ARIA dialog deseni). Aksi halde odak body'ye düşer.
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const t = setTimeout(() => input.current?.focus(), 0);
+    // Modal: Escape, odak diyaloğun içinde olmasa bile paleti kapatır (odak kutuya henüz geçmemiş veya dışarı düşmüş olabilir).
+    const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); onClose(); } };
+    window.addEventListener('keydown', onEsc);
+    return () => {
+      window.removeEventListener('keydown', onEsc);
+      clearTimeout(t);
+      if (opener && opener.isConnected && opener !== document.body) opener.focus();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
   useEffect(() => { setActive(0); }, [query]);
 
   if (!open) return null;
