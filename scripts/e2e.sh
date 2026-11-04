@@ -2,6 +2,7 @@
 # Uçtan uca testleri tek komutla çalıştırır: geçici veritabanı + API (+ web) (+ sahte yerel model) açar, testleri koşar, temizler.
 #   scripts/e2e.sh              -> buluşsal üretici: API yolculuğu + tarayıcı yolculuğu
 #   scripts/e2e.sh --local      -> sahte yerel model (Ai__Provider=local): API yolculuğu, istek biçimi, onarım turu, tarayıcı
+#   scripts/e2e.sh --prod       -> ÜRETİM yapılandırması: yayınlanmış uygulama + wwwroot (tek süreç, aynı origin) + DATABASE_URL (postgres://)
 #   scripts/e2e.sh --no-ui      -> tarayıcı testini atlar (Playwright gerekmez)
 # Gerekir: .NET 8 SDK, Node 20+, çalışan PostgreSQL (docker compose -f docker-compose.dev.yml up -d). Tarayıcı testi için:
 #   cd web && npm i -D playwright && npx playwright install chromium
@@ -13,9 +14,10 @@ MODE=heuristic; UI=1
 for a in "$@"; do
   case "$a" in
     --local) MODE=local ;;
+    --prod) MODE=prod ;;
     --no-ui) UI=0 ;;
     -h|--help) sed -n 2,9p "$0"; exit 0 ;;
-    *) echo "Bilinmeyen seçenek: $a (--local, --no-ui, --help)"; exit 2 ;;
+    *) echo "Bilinmeyen seçenek: $a (--local, --prod, --no-ui, --help)"; exit 2 ;;
   esac
 done
 
@@ -58,11 +60,19 @@ else
 fi
 
 port_free "$API_PORT" "API" || exit 2
-[ "$UI" = 1 ] && { port_free "$WEB_PORT" "web" || exit 2; }
+[ "$UI" = 1 ] && [ "$MODE" != prod ] && { port_free "$WEB_PORT" "web" || exit 2; }
 [ "$MODE" = local ] && { port_free "$MOCK_PORT" "sahte model" || exit 2; }
 
 echo "→ API derleniyor…"
 dotnet build src/Arcvora.Api --nologo -v q -c Debug >"$LOGS/build.log" 2>&1 || { echo "✗ Derleme başarısız:"; tail -20 "$LOGS/build.log"; exit 1; }
+if [ "$MODE" = prod ]; then
+  # Docker imajının yapacağının aynısı: arayüzü derle, API'yi yayınla, derlenmiş arayüzü wwwroot'a koy.
+  [ -d web/node_modules ] || { echo "→ npm ci (ilk kurulum)…"; (cd web && npm ci >"$LOGS/npm.log" 2>&1) || { tail -20 "$LOGS/npm.log"; exit 1; }; }
+  echo "→ Arayüz derleniyor ve API yayınlanıyor (Release)…"
+  (cd web && npm run build >"$LOGS/web-build.log" 2>&1) || { echo "✗ Web derlemesi başarısız:"; tail -20 "$LOGS/web-build.log"; exit 1; }
+  dotnet publish src/Arcvora.Api -c Release -o "$LOGS/pub" --nologo -v q >"$LOGS/publish.log" 2>&1 || { echo "✗ Yayınlama başarısız:"; tail -20 "$LOGS/publish.log"; exit 1; }
+  cp -r web/dist "$LOGS/pub/wwwroot"
+fi
 
 start_mock() { # fault ("" veya repair)
   MOCK_LLM_PORT="$MOCK_PORT" MOCK_LLM_MODEL="$MODEL" MOCK_LLM_FAULT="${1:-}" node scripts/e2e/mock-llm.mjs >"$LOGS/mock-llm.log" 2>&1 &
@@ -77,12 +87,23 @@ if [ "$MODE" = local ]; then
   API_ENV+=(Ai__Provider=local "Ai__Local__BaseUrl=http://127.0.0.1:$MOCK_PORT" "Ai__Local__Model=$MODEL" Ai__TimeoutSeconds=120)
 fi
 
-echo "→ API başlatılıyor (sağlayıcı: $MODE, veritabanı: $DB)…"
-( cd src/Arcvora.Api && exec env "${API_ENV[@]}" dotnet bin/Debug/net8.0/Arcvora.Api.dll >"$LOGS/api.log" 2>&1 ) &
+echo "→ API başlatılıyor (mod: $MODE, veritabanı: $DB)…"
+if [ "$MODE" = prod ]; then
+  # Üretim: Production ortamı, DATABASE_URL (postgres:// adresi), uygulama içi worker, proxy başlıkları; geliştirme ayarı yok.
+  ( cd "$LOGS/pub" && exec env ASPNETCORE_ENVIRONMENT=Production "ASPNETCORE_URLS=http://127.0.0.1:$API_PORT" \
+      Jwt__Key="e2e-uretim-anahtari-en-az-32-karakter-0123456789abcdef" \
+      "DATABASE_URL=postgres://$PGUSER:$PGPASSWORD@$PGHOST:5432/$DB?sslmode=disable" \
+      Database__MigrateOnStartup=true Worker__InProcess=true ForwardedHeaders__Enabled=true RateLimit__AuthPerMinute=1000 \
+      dotnet Arcvora.Api.dll >"$LOGS/api.log" 2>&1 ) &
+else
+  ( cd src/Arcvora.Api && exec env "${API_ENV[@]}" dotnet bin/Debug/net8.0/Arcvora.Api.dll >"$LOGS/api.log" 2>&1 ) &
+fi
 PIDS+=("$!")
 wait_http "http://127.0.0.1:$API_PORT/health" "API" 120 || { tail -20 "$LOGS/api.log"; exit 1; }
 
-if [ "$UI" = 1 ]; then
+if [ "$UI" = 1 ] && [ "$MODE" = prod ]; then
+  WEB_PORT="$API_PORT"   # üretimde arayüz API ile aynı süreçten, aynı origin'den sunulur
+elif [ "$UI" = 1 ]; then
   [ -d web/node_modules ] || { echo "→ npm ci (ilk kurulum)…"; (cd web && npm ci >"$LOGS/npm.log" 2>&1) || { tail -20 "$LOGS/npm.log"; exit 1; }; }
   echo "→ Web başlatılıyor…"
   ( cd web && VITE_API_TARGET="http://127.0.0.1:$API_PORT" exec node node_modules/vite/bin/vite.js --port "$WEB_PORT" --host 127.0.0.1 --strictPort >"$LOGS/web.log" 2>&1 ) &
@@ -125,6 +146,10 @@ if [ "$MODE" = local ]; then
   }
   slow_phase cancel "$((API_PORT + 10))" "$((MOCK_PORT + 1))" 4000 120 "Yavaş model: çalışan iş iptali" scripts/e2e/local-cancel.mjs
   slow_phase timeout "$((API_PORT + 11))" "$((MOCK_PORT + 2))" 6000 2 "Yavaş model: zaman aşımı" scripts/e2e/local-timeout.mjs
+elif [ "$MODE" = prod ]; then
+  step "API yolculuğu (üretim yapılandırması, tek süreç)" env EXPECT_PROVIDER=heuristic node scripts/e2e/api-journey.mjs
+  api_extras
+  step "Arayüz üretimde sunuluyor (SPA yedeği, /api JSON 404)" node scripts/e2e/prod-serving.mjs
 else
   step "API yolculuğu (buluşsal üretici)" env EXPECT_PROVIDER=heuristic node scripts/e2e/api-journey.mjs
   api_extras
