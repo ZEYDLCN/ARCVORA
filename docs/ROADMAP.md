@@ -102,6 +102,7 @@ Teslimler
 - Üst çubuk: aktif sürüm, teknoloji profili, taslak (bekleyen öneri) durumu, dışa aktarma.
 - Mobilde çekmece menü; diyagramın metinsel karşılığı her zaman erişilebilir.
 - Tasarım dili (4 Kasım 2026 revizyonu): kabartmalı buzlu cam zemin, yarı saydam (glassmorphism) kenar çubuğu ve kartlar, ⌘K arama, marka logolu mimari tuvali (`ArchCanvas`), tema anahtarı.
+- Açılış logo animasyonu (`Intro`): ~2,5 sn, oturum başına bir kez, atlanabilir, `prefers-reduced-motion` uyumlu; yalnızca `transform`/`opacity` (README "Açılış animasyonu").
 - Durumlar: boş, analiz sürüyor, açıklama bekliyor, taslak hazır, doğrulama hatası, sağlayıcı hatası, iptal, kabul.
 - Durumlar yalnızca renkle anlatılmaz (etiket + simge).
 

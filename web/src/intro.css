@@ -1,0 +1,109 @@
+/*
+ * ARCVORA açılış animasyonu — toplam ≈ 2,5 sn (CSS zaman çizelgesi 2,35 sn + ilk boyama).
+ *   0–500 ms     Faz 1  Belirme: opacity 0→1, scale .9→1
+ *   500–1300 ms  Faz 2  Dikey eksende tam 360° dönüş (cubic-bezier(.65, 0, .35, 1))
+ *   1300–2000 ms Faz 3  Lavanta ışık, logo üzerinde gezen parıltı, ışığın yumuşak ortam ışığına sönmesi
+ *   1500–1950 ms Faz 4  Marka adı belirir; 1900–2350 ms katman solar ve uygulama paneller hâlinde açılır (+ yük ≈ 2,5 sn)
+ * Yalnızca transform / opacity (+ bağımsız `translate`) canlandırılır: yerleşim kayması ve boyama maliyeti yoktur.
+ */
+:root {
+  --brand-petrol: #153d46;
+  --brand-ink: #091a20;
+  --brand-lavender: #a98af2;
+  --brand-aqua: #72bfc0;
+  --brand-sage: #d4e7d2;
+}
+
+/* Sayfa yüklenirken (React gelmeden) mavi bir arka plan parlamasını önler.
+   Not: örtülü uygulamanın görünürlüğünü kapatmak denendi ve geri alındı: ölçülebilir bir kare hızı kazancı yoktu,
+   üstelik uygulama ilk kez görünür olurken pahalı bir ilk boyama (cam/blur) takılması ekliyordu. */
+html.intro-boot, html.intro-boot body { background: var(--brand-ink, #091a20); }
+
+.intro {
+  --logo: clamp(92px, 23vmin, 144px);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-rot: cubic-bezier(0.65, 0, 0.35, 1);
+  position: fixed; inset: 0; z-index: 1000;
+  display: grid; place-items: center;
+  overflow: hidden; contain: layout paint style;
+  background:
+    radial-gradient(70% 55% at 50% 44%, rgba(21, 61, 70, 0.9) 0%, rgba(21, 61, 70, 0) 72%),
+    var(--brand-ink);
+  color: #eef7f6;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  animation: intro-exit 450ms cubic-bezier(0.4, 0, 0.2, 1) 1900ms both;
+}
+.intro[data-phase='skip'] { animation: intro-skip 260ms ease 0ms both; }
+.intro[data-phase='skip'], .intro[data-phase='leave'] { pointer-events: none; }
+
+.intro-stage { position: relative; width: var(--logo); height: var(--logo); }
+
+/* Işık katmanları: logonun arkasında, logodan büyük */
+.intro-glow { position: absolute; border-radius: 50%; pointer-events: none; opacity: 0; will-change: transform, opacity; }
+.intro-glow.l {
+  inset: calc(var(--logo) * -0.95);
+  background: radial-gradient(circle, rgba(169, 138, 242, 0.55) 0%, rgba(169, 138, 242, 0.2) 36%, rgba(169, 138, 242, 0) 68%);
+  animation: intro-glow-l 700ms var(--ease-out) 1300ms both;
+}
+.intro-glow.a {
+  inset: calc(var(--logo) * -0.7);
+  translate: 7% 9%;
+  background: radial-gradient(circle, rgba(114, 191, 192, 0.42) 0%, rgba(114, 191, 192, 0.14) 40%, rgba(114, 191, 192, 0) 70%);
+  animation: intro-glow-a 700ms var(--ease-out) 1380ms both;
+}
+
+/* Faz 1: belirme + ölçek */
+.intro-in { position: absolute; inset: 0; opacity: 0; will-change: transform, opacity; animation: intro-in 500ms var(--ease-out) 0ms both; }
+/* Faz 2: tam 360° (başlangıçta 0°, bitişte 360° ≡ 0°; sıçrama veya geri tepme yok) */
+.intro-rot { position: absolute; inset: 0; will-change: transform; animation: intro-rot 800ms var(--ease-rot) 500ms both; }
+.intro-rot > svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+/* Faz 3: logonun kendi siluetinde ışık hâlesi ve gezen parıltı */
+.intro-halo { position: absolute; inset: 0; opacity: 0; filter: blur(calc(var(--logo) * 0.07)); will-change: opacity; animation: intro-halo 700ms ease-out 1300ms both; }
+.intro-halo > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.intro-sheen-mask { position: absolute; inset: 0; overflow: hidden; mask-size: 100% 100%; mask-repeat: no-repeat; -webkit-mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; pointer-events: none; }
+.intro-sheen {
+  /* Yatay gradyan kutunun iki ucunda da tamamen saydamdır (sert kenar kalmaz); eğim `skewX` ile verilir */
+  position: absolute; top: -25%; bottom: -25%; left: 0; width: 46%; opacity: 0; will-change: transform, opacity;
+  background: linear-gradient(90deg, rgba(233, 224, 255, 0) 0%, rgba(233, 224, 255, 0.18) 16%, rgba(233, 224, 255, 0.95) 48%, rgba(190, 236, 236, 0.7) 62%, rgba(190, 236, 236, 0) 100%);
+  animation: intro-sheen 600ms cubic-bezier(0.45, 0, 0.25, 1) 1340ms both;
+}
+
+/* Faz 4: marka adı (logo konumunu etkilemesin diye mutlak konumlu; yer önceden ayrılmıştır) */
+.intro-brand {
+  position: absolute; left: 50%; top: calc(100% + clamp(24px, 5.5vmin, 38px)); translate: -50% 0;
+  display: grid; justify-items: center; gap: 10px; width: max-content; max-width: 90vw; text-align: center;
+}
+.intro-word { font: 700 clamp(28px, 6.4vmin, 40px) / 1 var(--font, system-ui, sans-serif); letter-spacing: -0.035em; color: #eef7f6; opacity: 0; animation: intro-rise 450ms var(--ease-out) 1500ms both; }
+.intro-tag { font: 500 clamp(10px, 1.9vmin, 12px) / 1 var(--font, system-ui, sans-serif); letter-spacing: 0.22em; text-transform: uppercase; color: var(--brand-aqua); opacity: 0; animation: intro-rise 450ms var(--ease-out) 1650ms both; }
+.intro-tag.dim { color: var(--brand-sage); }
+/* Belirsiz (indeterminate) minimal gösterge: ilerleme iddiası taşımaz */
+.intro-bar { position: relative; width: 112px; height: 2px; border-radius: 2px; overflow: hidden; background: rgba(114, 191, 192, 0.16); opacity: 0; margin-top: 6px; animation: intro-fade 300ms ease 1600ms both; }
+.intro-bar > i { position: absolute; inset: 0 auto 0 0; width: 36%; border-radius: 2px; background: linear-gradient(90deg, var(--brand-lavender), var(--brand-aqua)); will-change: transform; animation: intro-bar 1.1s cubic-bezier(0.45, 0, 0.25, 1) infinite; }
+
+@keyframes intro-in { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+@keyframes intro-rot { from { transform: perspective(900px) rotateY(0deg); } to { transform: perspective(900px) rotateY(360deg); } }
+@keyframes intro-glow-l { 0% { opacity: 0; transform: scale(0.82); } 38% { opacity: 1; transform: scale(1.06); } 100% { opacity: 0.46; transform: scale(1); } }
+@keyframes intro-glow-a { 0% { opacity: 0; transform: scale(0.8); } 40% { opacity: 0.85; transform: scale(1.04); } 100% { opacity: 0.34; transform: scale(1); } }
+@keyframes intro-halo { 0% { opacity: 0; } 36% { opacity: 0.85; } 100% { opacity: 0.3; } }
+@keyframes intro-sheen { 0% { transform: translateX(-110%) skewX(-16deg); opacity: 0; } 14% { opacity: 1; } 86% { opacity: 1; } 100% { transform: translateX(225%) skewX(-16deg); opacity: 0; } }
+@keyframes intro-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes intro-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes intro-bar { 0% { transform: translateX(-110%); } 100% { transform: translateX(300%); } }
+@keyframes intro-exit { from { opacity: 1; } to { opacity: 0; } }
+@keyframes intro-skip { from { opacity: 1; } to { opacity: 0; } }
+
+/* Hareket azaltma: dönüş, ölçek ve parıltı yok; yalnızca kısa bir opaklık geçişi */
+@media (prefers-reduced-motion: reduce) {
+  .intro { animation: intro-exit 400ms ease 1300ms both; }
+  .intro[data-phase='skip'] { animation: intro-skip 200ms ease 0ms both; }
+  .intro-in { transform: none; animation: intro-fade 500ms ease 0ms both; }
+  .intro-rot { animation: none; }
+  .intro-halo, .intro-sheen-mask { display: none; }
+  .intro-glow.l { animation: intro-fade 600ms ease 400ms both; opacity: 0.4; }
+  .intro-glow.a { display: none; }
+  .intro-word { animation: intro-fade 400ms ease 500ms both; transform: none; }
+  .intro-tag { animation: intro-fade 400ms ease 600ms both; transform: none; }
+  .intro-bar { display: none; }
+}

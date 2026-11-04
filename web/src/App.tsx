@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, getToken, setSessionToken, setToken } from './api';
+import { Intro } from './components/Intro';
+import { safeSessionStorage, shouldShowIntro } from './lib/intro';
 import { Auth } from './pages/Auth';
 import { Projects } from './pages/Projects';
 import { Workspace } from './pages/Workspace';
@@ -26,6 +28,10 @@ export function App() {
   const [booting, setBooting] = useState(Boolean(getToken()));
   const [theme, setTheme] = useState<Theme>(readTheme);
   const [current, setCurrent] = useState(route);
+  // Açılış animasyonu: oturum başına bir kez (SPA içi gezinmede veya yenilemede tekrarlanmaz); ?intro ile zorlanır
+  const [intro, setIntro] = useState(() => shouldShowIntro(window.location.search, safeSessionStorage()));
+  // Animasyon gösterilmeyecekse index.html'in koyu önyükleme zemini kalmasın
+  useEffect(() => { if (!intro) document.documentElement.classList.remove('intro-boot'); }, [intro]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -61,7 +67,12 @@ export function App() {
   const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
 
   const dark = theme === 'dark';
-  const wrap = (node: React.ReactNode) => <ThemeContext.Provider value={{ dark }}>{node}</ThemeContext.Provider>;
+  const wrap = (node: React.ReactNode) => (
+    <ThemeContext.Provider value={{ dark }}>
+      {node}
+      {intro && <Intro onDone={() => setIntro(false)} />}
+    </ThemeContext.Provider>
+  );
 
   if (booting) return wrap(<><div className="bg" aria-hidden="true" /><div className="auth"><div className="auth-form"><p className="muted">Yükleniyor…</p></div></div></>);
   if (!session) return wrap(<Auth onAuth={onAuth} />);
