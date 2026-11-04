@@ -316,4 +316,15 @@ const srcRm = await patchI([{ op: 'remove', type: 'source', id: 'SRC-001' }]);
 check('kaynak silinemez → 422 source_removal', srcRm.status === 422 && srcRm.body?.code === 'source_removal', srcRm);
 check('reddedilen yamaların hiçbiri sürüm üretmedi', (await head(iu2, ipid3)) === headBefore, await head(iu2, ipid3));
 
+section('Yama: geçici kimlikler gerçek kimliğe çevrilir');
+const temp = await patchI([{ op: 'upsert', type: 'component', id: 'x y', value: { id: 'x y', name: 'Boşluklu kimlikli' } }]);
+check('biçimi bozuk kimlikli yeni nesne kabul edilir', temp.status === 200, temp);
+const modelT = (await call('GET', `/api/projects/${ipid3}`, { token: iu2.token })).body.model;
+const added = modelT.components.find((c) => c.name === 'Boşluklu kimlikli');
+check('nesne ham kimlikle değil, sistemin atadığı CMP-NNN kimliğiyle saklanır', /^CMP-\d{3,}$/.test(added?.id ?? ''), added);
+const own = await patchI([{ op: 'upsert', type: 'component', id: 'CMP-777', value: { id: 'CMP-777', name: 'Kendi kimliği' } }]);
+check('biçimi geçerli yeni kimlik olduğu gibi korunur', own.status === 200 && (await call('GET', `/api/projects/${ipid3}`, { token: iu2.token })).body.model.components.some((c) => c.id === 'CMP-777'));
+const dupName = await patchI([{ op: 'upsert', type: 'relationship', id: 'REL-900', value: { id: 'REL-900', sourceId: added.id, targetId: added.id } }]);
+check('kendine bağlantı reddedilmez ama doğrulama uyarısı üretir (CON-001)', dupName.status === 200 && (await call('GET', `/api/projects/${ipid3}/versions/${await head(iu2, ipid3)}/findings`, { token: iu2.token })).body.findings.some((f) => f.ruleId === 'CON-001'));
+
 finish();
