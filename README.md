@@ -1,6 +1,25 @@
+<div align="center">
+
+<img src="docs/assets/logo-mark.svg" width="96" height="96" alt="Arcvora logosu" />
+
 # ARCVORA
 
-> **Turn intent into architecture.** Fikrini anlat. Kararlarını netleştir. Mimariyi birlikte geliştir.
+**Turn intent into architecture.**
+<br />
+Fikrini anlat · Kararlarını netleştir · Mimariyi birlikte geliştir
+
+<br />
+
+[![CI](https://github.com/ZEYDLCN/ARCVORA/actions/workflows/ci.yml/badge.svg)](https://github.com/ZEYDLCN/ARCVORA/actions/workflows/ci.yml)
+![.NET 8](https://img.shields.io/badge/.NET-8-512BD4?logo=dotnet&logoColor=white)
+![React 18](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
+![PostgreSQL 16](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
+![Durum: MVP](https://img.shields.io/badge/durum-MVP-8b6cf6)
+
+[Hızlı başlangıç](#hızlı-başlangıç) · [Kullanım rehberi](docs/KULLANIM.md) · [Ücretsiz dağıtım](docs/DEPLOY.md) · [Mimari](docs/ARCHITECTURE.md) · [Yol haritası](docs/ROADMAP.md)
+
+</div>
 
 ARCVORA; yazılım fikirlerini ve gereksinimlerini gerekçeli mimari kararlara, birbiriyle tutarlı diyagramlara ve
 geliştiriciye teslim edilebilecek bir teknik plana dönüştüren; yeni talepler geldikçe bu planın nasıl değişmesi
