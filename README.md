@@ -144,9 +144,9 @@ and every new request shows its **impact** on the existing design. Diagrams (com
 
 | Katman | Kapsam | Komut |
 |---|---|---|
-| Birim (Core) | model, doğrulayıcı, yama, etki, görünümler, AI hattı — **86** test | `dotnet test tests/Arcvora.Core.Tests` |
+| Birim (Core) | model, kimlikler, profiller, doğrulayıcı, yama, etki, görünümler, AI hattı — **130** test | `dotnet test tests/Arcvora.Core.Tests` |
 | Entegrasyon | gerçek PostgreSQL: erişim, sürümler, işler, yerel model istemcisi — **93** test | `dotnet test tests/Arcvora.Integration.Tests` |
-| Web | düzen algoritması, grup bağımlılıkları, açılış animasyonu, arama paleti — vitest | `cd web && npm test` |
+| Web | düzen algoritması, grup bağımlılıkları, açılış animasyonu, arama paleti — **58** vitest testi | `cd web && npm test` |
 | Uçtan uca | API + tarayıcı (Playwright), **340'tan fazla doğrulama**: roller, eşzamanlılık, XSS/enjeksiyon, hız sınırı, üretim yapılandırması | `scripts/e2e.sh` · `--local` · `--prod` |
 
 Uçtan uca testler henüz CI'da çalışmıyor; yerelde çalıştırılır. Ayrıntı: [Testler](#testler).
