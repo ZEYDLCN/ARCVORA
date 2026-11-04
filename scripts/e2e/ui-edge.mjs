@@ -40,6 +40,39 @@ try {
   check('kısa parola tarayıcı doğrulamasıyla engellenir (istek gönderilmez)', !!bubble && (await page.getByRole('heading', { name: 'Projeler' }).count()) === 0, bubble);
   await shot('edge-01-giris-hatalari');
 
+  section('Oturum: yenileme, çıkış, bozuk token');
+  const email2 = `uisess-${run}@example.com`;
+  await page.goto(`${WEB}/?intro`);
+  await page.keyboard.press('Escape');
+  await register(page, { email: email2 });
+  await visible(page.getByRole('heading', { name: 'Projeler' }));
+  await page.reload();
+  check('sayfa yenilenince oturum korunur (giriş ekranına dönmez)', await visible(page.getByRole('heading', { name: 'Projeler' })));
+  check('yenilemede giriş formu görünmez', (await page.getByRole('tab', { name: 'Kayıt ol' }).count()) === 0);
+  const storedKeys = await page.evaluate(() => Object.keys(localStorage).concat(Object.keys(sessionStorage)));
+  const secretLike = await page.evaluate(() => [...Object.values(localStorage), ...Object.values(sessionStorage)].some((v) => /Parola-12345/.test(v)));
+  check('parola hiçbir tarayıcı deposunda saklanmaz', !secretLike, storedKeys);
+  // Token'ı bozarak oturum düşmesini sına
+  const tokenKey = await page.evaluate(() => Object.keys(localStorage).find((k) => /token|auth|session/i.test(k) && !/intro/i.test(k)));
+  check('token bir tarayıcı deposunda bulunur (oturum anahtarı)', !!tokenKey, storedKeys);
+  if (tokenKey) {
+    await page.evaluate((k) => localStorage.setItem(k, localStorage.getItem(k).slice(0, -4) + 'AAAA'), tokenKey);
+    await page.reload();
+    check('bozulmuş token: kullanıcı giriş ekranına yönlendirilir (boş/hatalı sayfa değil)', await visible(page.getByRole('heading', { name: /Tekrar hoş geldin|Hesap oluştur/ }), 15_000));
+    check('bozuk token temizlenir (yeniden yenilemede döngü yok)', !(await page.evaluate((k) => localStorage.getItem(k), tokenKey)) || (await page.getByRole('tab', { name: 'Kayıt ol' }).count()) > 0);
+  }
+  await page.getByRole('tab', { name: 'Giriş' }).click();
+  await page.getByLabel(/E-posta/i).fill(email2);
+  await page.locator('#password').fill('Parola-12345');
+  await page.getByRole('button', { name: 'Giriş yap' }).click();
+  check('doğru parolayla yeniden giriş yapılır', await visible(page.getByRole('heading', { name: 'Projeler' })));
+  await page.getByRole('button', { name: /Çıkış/ }).first().click();
+  await visible(page.getByRole('heading', { name: /Tekrar hoş geldin|Hesap oluştur/ }));
+  await page.reload();
+  check('çıkıştan sonra yenileme oturumu geri getirmez', await visible(page.getByRole('heading', { name: /Tekrar hoş geldin|Hesap oluştur/ })) && (await page.getByRole('heading', { name: 'Projeler' }).count()) === 0);
+  await page.goBack().catch(() => {});
+  check('çıkıştan sonra "geri" tuşu korumalı veriyi göstermez', (await page.getByRole('heading', { name: 'Projeler' }).count()) === 0);
+
   section('Sonuç');
   check('sayfa/konsol hatası yok (beklenen 4xx istekleri hariç)', problems.filter((p) => !/status of 4\d\d|401|409|422/.test(p)).length === 0, problems.slice(0, 5));
 } catch (e) {
