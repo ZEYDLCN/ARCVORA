@@ -47,11 +47,15 @@ check('Bearer olmayan şema → 401', wrongScheme.status === 401, wrongScheme.st
 
 section('İstek biçimi');
 const badJson = await raw('POST', '/api/auth/login', { body: '{bozuk json', headers: { 'content-type': 'application/json' } });
-check('bozuk JSON → 400 bad_request', badJson.status === 400 && (await badJson.json()).code === 'bad_request');
+const badJsonText = await badJson.text();
+check('bozuk JSON → 400 ve JSON hata gövdesi (code=bad_request)', badJson.status === 400 && (() => { try { return JSON.parse(badJsonText).code === 'bad_request'; } catch { return false; } })(), [badJson.status, badJsonText.slice(0, 80)]);
 const wrongType = await raw('POST', '/api/auth/login', { body: 'x', headers: { 'content-type': 'text/plain' } });
 check('yanlış Content-Type → 415', wrongType.status === 415, wrongType.status);
 const unknownRoute = await raw('GET', '/api/yok-boyle-bir-yol', { token: goodToken });
-check('olmayan yol → 404', unknownRoute.status === 404, unknownRoute.status);
+const unknownBody = await unknownRoute.text();
+check('olmayan /api yolu → 404 ve JSON hata gövdesi (arayüz sayfasına düşmez)',
+  unknownRoute.status === 404 && /json/.test(unknownRoute.headers.get('content-type') ?? '') && (() => { try { return JSON.parse(unknownBody).code === 'not_found'; } catch { return false; } })(),
+  [unknownRoute.status, unknownRoute.headers.get('content-type'), unknownBody.slice(0, 80)]);
 const badGuid = await raw('GET', '/api/projects/guid-degil', { token: goodToken });
 check('geçersiz GUID yolu → 404 (500 değil)', badGuid.status === 404, badGuid.status);
 const hdrs = (await raw('GET', '/health')).headers;
