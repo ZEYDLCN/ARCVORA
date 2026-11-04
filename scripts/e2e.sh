@@ -145,6 +145,7 @@ ratelimit_phase() {
 ratelimit_phase
 
 [ "$UI" = 1 ] && step "Tarayıcı yolculuğu" env E2E_SHOTS_DIR="$LOGS/ekran-goruntuleri" node scripts/e2e/ui-journey.mjs
+[ "$UI" = 1 ] && step "Tarayıcı uç durumları (hata yolları, oturum, XSS, klavye, ekran boyutları)" env E2E_SHOTS_DIR="$LOGS/ekran-goruntuleri" node scripts/e2e/ui-edge.mjs
 
 echo
 if [ "$FAIL" = 0 ]; then echo "✓ Tüm uçtan uca testler geçti ($MODE)."; else echo "✗ Bazı uçtan uca testler başarısız ($MODE). Kayıtlar: $LOGS"; fi
