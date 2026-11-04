@@ -25,7 +25,7 @@ gereksinimler, kararlar, bileşenler ve bunların birbirleriyle ilişkileridir.
 | İş kuyruğu | PostgreSQL üzerinde dayanıklı işler: `SKIP LOCKED` claim, lease + kalp atışı, worker çökmesi kurtarma, yeniden deneme, iptal, `Idempotency-Key`. |
 | Erişim | JWT, çalışma alanı üyeliği, roller (yönetici/düzenleyici/okuyucu) + ayrı kabul yetkisi. Başka çalışma alanındaki proje için `404`. |
 | Çıktı | Tek dosya Markdown veya paket (zip); her çıktı model sürümü, profil sürümü, üretici sürümü ve hash ile kaydedilir. |
-| Web | React + TypeScript çalışma alanı: gereksinimler/kararlar/sorular, diyagramlar, gerekçe ve ilişki zinciri, değişiklik incelemesi, mobil sekmeler, koyu/açık tema. |
+| Web | React + TypeScript çalışma alanı: taneli renkli zemin üzerinde yüzen kenar çubuğu (daraltılabilir, ⌘K / Ctrl+K arama), **logolu mimari tuvali** (noktalı akış çizgileri, teknoloji yığını), Mermaid görünümleri, gerekçe ve ilişki zinciri, değişiklik incelemesi, mobilde çekmece menü, koyu/açık tema. |
 
 ## Hızlı başlangıç
 
@@ -54,6 +54,16 @@ cp -r dist ../src/Arcvora.Api/wwwroot                 # API, wwwroot varsa SPA'y
 API'de `Worker__InProcess=false` bırakın ve `src/Arcvora.Worker` projesini ayrı süreç olarak çalıştırın (aynı veritabanı).
 Production'da `Database__MigrateOnStartup=false` tutup migrasyonu dağıtım adımında uygulayın
 (`dotnet ef database update -p src/Arcvora.Infrastructure -s src/Arcvora.Infrastructure`).
+
+## Logolar ve marka işaretleri
+
+Teknoloji logoları ([simple-icons](https://simpleicons.org), CC0) paketinden, **resmî marka renkleriyle** gelir ve yalnızca bir bileşenin hangi teknolojiyi
+kullandığını belirtmek için gösterilir (tuvaldeki düğümler, teknoloji yığını şeridi, profil kartları, giriş sayfası). Markalar ilgili sahiplerine aittir;
+bu, ARCVORA'nın onlarla bir ortaklığı veya onayı olduğu anlamına gelmez. Bileşenin `technology` alanındaki serbest metin anahtar sözcüklerle eşlenir
+(`web/src/lib/techLogo.ts`); eşleşme yoksa tür simgesi kullanılır, logo uydurulmaz.
+
+Yalnızca kullanılan 43 logo `web/src/lib/logos.generated.ts` içinde tutulur. Yenilemek veya eklemek için: `cd web && npm run gen:logos`.
+AWS, Azure ve SQL Server logoları simple-icons paketinden kaldırıldığı için dahil değildir.
 
 ## Yapılandırma
 
@@ -126,4 +136,5 @@ docs/                       ROADMAP, ARCHITECTURE, PILOT_PLAYBOOK
 - Profil sürüm aralıkları resmî kaynaklardan doğrulanmadı (`verification: pending`).
 - Parola sıfırlama, e-posta doğrulama, refresh token, saklama/silme politikası ve yedeklerde veri ömrü tanımlı değil.
 - Çok kullanıcılı dal/birleştirme yok; geçmiş doğrusaldır.
-- Marka adı, alan adı ve sosyal hesap uygunluğu kontrol edilmedi (doküman §2.1).
+- Marka adı, alan adı ve sosyal hesap uygunluğu kontrol edilmedi (doküman §2.1). Arayüzdeki Arcvora logosu özgün bir çalışma işaretidir; kesin marka kimliği değildir.
+- Mimari tuvali, bileşenleri **türe göre** soldan sağa dizer (istemci → API → modül → işleyici → veri → dış servis); sürükle-bırak düzenleme yoktur ve çok geniş mimarilerde yatay kaydırma gerekir.

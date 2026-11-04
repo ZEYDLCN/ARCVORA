@@ -3,6 +3,7 @@ import { api, getToken, setSessionToken, setToken } from './api';
 import { Auth } from './pages/Auth';
 import { Projects } from './pages/Projects';
 import { Workspace } from './pages/Workspace';
+import { ThemeContext } from './theme';
 import type { AuthResult } from './types';
 
 type Theme = 'dark' | 'light';
@@ -59,12 +60,15 @@ export function App() {
   };
   const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
 
-  if (booting) return <div className="page"><p className="muted">Yükleniyor…</p></div>;
-  if (!session) return <Auth onAuth={onAuth} />;
+  const dark = theme === 'dark';
+  const wrap = (node: React.ReactNode) => <ThemeContext.Provider value={{ dark }}>{node}</ThemeContext.Provider>;
+
+  if (booting) return wrap(<><div className="bg" aria-hidden="true" /><div className="auth"><div className="auth-form"><p className="muted">Yükleniyor…</p></div></div></>);
+  if (!session) return wrap(<Auth onAuth={onAuth} />);
   if (current.projectId) {
-    return <Workspace key={current.projectId} projectId={current.projectId} dark={theme === 'dark'} onTheme={toggleTheme}
-      onBack={() => { window.location.hash = '#/'; }} />;
+    return wrap(<Workspace key={current.projectId} projectId={current.projectId} user={session.user} dark={dark} onTheme={toggleTheme}
+      onLogout={logout} onBack={() => { window.location.hash = '#/'; }} />);
   }
-  return <Projects user={session.user} workspaces={session.workspaces} theme={theme} onTheme={toggleTheme}
-    onOpen={(id) => { window.location.hash = `#/p/${id}`; }} onLogout={logout} />;
+  return wrap(<Projects user={session.user} workspaces={session.workspaces} dark={dark} onTheme={toggleTheme}
+    onOpen={(id) => { window.location.hash = `#/p/${id}`; }} onLogout={logout} />);
 }

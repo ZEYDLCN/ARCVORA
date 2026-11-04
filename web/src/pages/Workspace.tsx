@@ -1,23 +1,47 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, ApiError } from '../api';
+import { ArchCanvas } from '../components/ArchCanvas';
 import { Badge } from '../components/Badge';
+import type { PaletteItem } from '../components/CommandPalette';
+import {
+  IconChecklist, IconDecision, IconDiagram, IconDownload, IconFile, IconFolder, IconHelp, IconInbox, IconPlus, IconShield,
+} from '../components/icons';
 import { MermaidView } from '../components/MermaidView';
 import { FindingList, ObjectDetail } from '../components/ObjectDetail';
 import { ProposalReview } from '../components/ProposalReview';
-import { buildIndex, findingKindLabel, kindLabel, originInfo, priorityLabel, reviewInfo, textAlternative } from '../lib/model';
+import { Shell, type NavItem } from '../components/Shell';
+import { TechLogo } from '../components/TechLogo';
+import {
+  buildIndex, findingKindLabel, kindLabel, originInfo, priorityLabel, reviewInfo, textAlternative, typeOfId,
+} from '../lib/model';
+import type { LogoId } from '../lib/logos.generated';
 import type { Finding, Job, Model, ProjectDetail, ProposalSummary, VersionInfo, View } from '../types';
 
-type LeftTab = 'req' | 'dec' | 'oq' | 'src' | 'val';
-type CenterTab = 'component' | 'er' | 'sequence';
+type Section = 'arch' | 'req' | 'dec' | 'oq' | 'src' | 'val' | 'prop';
+type ArchTab = 'canvas' | 'component' | 'er' | 'sequence';
 
 const jobLabel: Record<string, string> = { analysis: 'Gereksinim çıkarımı', architecture: 'Mimari taslak', change: 'Değişiklik analizi' };
 const stageLabel: Record<string, string> = {
   generate: 'Taslak üretiliyor', validate: 'Doğrulanıyor', repair: 'Hatalar düzeltiliyor', analyze: 'Etki analiz ediliyor',
 };
+const sectionTitle: Record<Section, string> = {
+  arch: 'Mimari', req: 'Gereksinimler', dec: 'Kararlar', oq: 'Açık sorular ve varsayımlar', src: 'Kaynaklar', val: 'Doğrulama', prop: 'Değişiklik önerileri',
+};
+const navLabel: Record<Section, string> = { arch: 'Mimari', req: 'Gereksinimler', dec: 'Kararlar', oq: 'Açık sorular', src: 'Kaynaklar', val: 'Doğrulama', prop: 'Öneriler' };
+const profileLogo: Record<string, LogoId> = { aspnetcore: 'dotnet', springboot: 'springboot' };
 
 interface Notice { type: 'error' | 'ok'; text: string; lines?: string[] }
 
-export function Workspace({ projectId, onBack, dark, onTheme }: { projectId: string; onBack: () => void; dark: boolean; onTheme: () => void }) {
+interface Props {
+  projectId: string;
+  user: { displayName: string };
+  onBack: () => void;
+  onLogout: () => void;
+  dark: boolean;
+  onTheme: () => void;
+}
+
+export function Workspace({ projectId, user, onBack, onLogout, dark, onTheme }: Props) {
   const [detail, setDetail] = useState<ProjectDetail | null>(null);
   const [versions, setVersions] = useState<VersionInfo[]>([]);
   const [proposals, setProposals] = useState<ProposalSummary[]>([]);
@@ -28,10 +52,9 @@ export function Workspace({ projectId, onBack, dark, onTheme }: { projectId: str
   const [findings, setFindings] = useState<Finding[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [openProposal, setOpenProposal] = useState<string | null>(null);
-  const [leftTab, setLeftTab] = useState<LeftTab>('req');
-  const [centerTab, setCenterTab] = useState<CenterTab>('component');
+  const [section, setSection] = useState<Section>('arch');
+  const [archTab, setArchTab] = useState<ArchTab>('canvas');
   const [flowId, setFlowId] = useState<string | null>(null);
-  const [mobile, setMobile] = useState<'req' | 'diagram' | 'dec'>('diagram');
   const [notice, setNotice] = useState<Notice | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [sourceText, setSourceText] = useState('');
@@ -92,11 +115,34 @@ export function Workspace({ projectId, onBack, dark, onTheme }: { projectId: str
 
   const idx = useMemo(() => (model ? buildIndex(model) : null), [model]);
   const pendingProposals = proposals.filter((p) => p.status === 'pending');
-  const selectObj = useCallback((id: string) => { setSelected(id); setOpenProposal(null); }, []);
 
-  const flowViews = views.filter((v) => v.kind === 'sequence');
-  const currentFlow = flowViews.find((v) => v.flowId === flowId) ?? flowViews[0];
-  const currentView: View | undefined = centerTab === 'sequence' ? currentFlow : views.find((v) => v.kind === centerTab);
+  /** Bir nesneyi ilgili bölümde ve ayrıntı panelinde aç. */
+  const goTo = useCallback((id: string) => {
+    setOpenProposal(null);
+    setSelected(id);
+    const prefix = id.split('-')[0];
+    if (prefix === 'REQ') setSection('req');
+    else if (prefix === 'DEC') setSection('dec');
+    else if (prefix === 'OQ' || prefix === 'ASM') setSection('oq');
+    else if (prefix === 'SRC') setSection('src');
+    else if (prefix === 'ENT') { setSection('arch'); setArchTab('er'); }
+    else if (prefix === 'FLW') { setSection('arch'); setArchTab('sequence'); setFlowId(id); }
+    else if (['CMP', 'REL', 'ACT', 'API'].includes(prefix)) { setSection('arch'); setArchTab((t) => (t === 'sequence' || t === 'er' ? 'canvas' : t)); }
+  }, []);
+
+  const searchItems = useMemo<PaletteItem[]>(() => {
+    if (!model || !idx) return [];
+    const sections: PaletteItem[] = (Object.keys(sectionTitle) as Section[]).map((s) => ({
+      id: `sec-${s}`, label: sectionTitle[s], group: 'Bölümler', onSelect: () => { setSection(s); setSelected(null); setOpenProposal(null); },
+    }));
+    const objs = [...idx.values()].filter((o) => !['İzlenebilirlik'].includes(o.type)).map((o) => ({
+      id: o.id, label: o.title, hint: `${o.id} · ${o.type}`, group: 'Nesneler', onSelect: () => goTo(o.id),
+    }));
+    const props: PaletteItem[] = proposals.map((p) => ({
+      id: `prop-${p.id}`, label: p.title, hint: 'Öneri', group: 'Öneriler', onSelect: () => { setSection('prop'); setOpenProposal(p.id); setSelected(null); },
+    }));
+    return [...sections, ...props, ...objs];
+  }, [model, idx, proposals, goTo]);
 
   const guarded = async (fn: () => Promise<void>) => {
     setBusy(true); setNotice(null);
@@ -108,21 +154,43 @@ export function Workspace({ projectId, onBack, dark, onTheme }: { projectId: str
     setJobs((cur) => [job, ...cur.filter((j) => j.id !== job.id)]);
   });
 
-  if (loadError) return <div className="page"><div className="notice error" role="alert">{loadError}</div><p><button className="btn" onClick={onBack}>← Projeler</button></p></div>;
-  if (!detail || !model || !idx) return <div className="page"><p className="muted">Çalışma alanı yükleniyor…</p></div>;
+  const nav: NavItem[] = [
+    { id: 'back', label: 'Tüm projeler', icon: <IconFolder />, onClick: onBack },
+    ...([
+      ['arch', <IconDiagram key="a" />, undefined],
+      ['req', <IconChecklist key="r" />, model?.requirements.length],
+      ['dec', <IconDecision key="d" />, model?.decisions.length],
+      ['oq', <IconHelp key="q" />, model?.openQuestions.filter((q) => q.status !== 'answered').length],
+      ['src', <IconFile key="s" />, model?.sources.length],
+      ['val', <IconShield key="v" />, findings.filter((f) => f.severity !== 'info').length],
+      ['prop', <IconInbox key="p" />, pendingProposals.length],
+    ] as const).map(([s, icon, badge]) => ({
+      id: s, label: navLabel[s], icon, badge,
+      active: section === s, onClick: () => { setSection(s); setSelected(null); setOpenProposal(null); },
+    })),
+  ];
+
+  if (loadError) return <div className="auth"><div className="auth-form"><div className="notice error" role="alert">{loadError}</div><p style={{ marginTop: 12 }}><button className="btn" onClick={onBack}>← Projeler</button></p></div></div>;
+  if (!detail || !model || !idx) return <div className="auth"><div className="auth-form"><p className="muted">Çalışma alanı yükleniyor…</p></div></div>;
 
   const canEdit = detail.canEdit && !readOnly;
   const analyzed = new Set(model.requirements.flatMap((r) => r.sourceRefs.map((s) => s.sourceId)));
   const hasPendingSource = model.sources.some((s) => !analyzed.has(s.id));
   const hasReq = model.requirements.some((r) => r.reviewStatus !== 'rejected');
   const hasArch = model.components.length > 0;
+  const drafting = pendingProposals.length > 0;
+  const detailOpen = openProposal !== null || selected !== null;
+  const currentHash = (versions.find((v) => v.number === effectiveNo)?.contentHash ?? detail.head.contentHash).slice(0, 8);
+
+  const flowViews = views.filter((v) => v.kind === 'sequence');
+  const currentFlow = flowViews.find((v) => v.flowId === flowId) ?? flowViews[0];
+  const mermaidView: View | undefined = archTab === 'sequence' ? currentFlow : views.find((v) => v.kind === archTab);
 
   const exportAs = (format: 'markdown' | 'package') => guarded(async () => {
     const a = await api.exportProject(projectId, effectiveNo, format);
     await api.download(projectId, a);
     setNotice({ type: 'ok', text: `v${a.versionNumber} dışa aktarıldı (model özeti ${a.modelHash.slice(0, 12)}).` });
   });
-
   const updateReq = async (id: string, body: Record<string, unknown>) => {
     try { await api.updateRequirement(projectId, id, { ...body, baseVersion: headNo }); await loadAll(); } catch (e) { report(e); }
   };
@@ -130,237 +198,216 @@ export function Workspace({ projectId, onBack, dark, onTheme }: { projectId: str
     try { await api.answerQuestion(projectId, id, { ...body, baseVersion: headNo }); await loadAll(); } catch (e) { report(e); }
   };
 
-  const drafting = pendingProposals.length > 0;
-  const detailOpen = selected !== null || openProposal !== null;
+  const objectCard = (id: string, title: string, meta: React.ReactNode) => (
+    <li key={id}>
+      <button className="item" aria-current={selected === id} onClick={() => goTo(id)}>
+        <span className="id">{id}</span><span className="title">{title}</span><span className="meta">{meta}</span>
+      </button>
+    </li>
+  );
 
   return (
-    <div className="ws" data-mobile={mobile}>
-      <header className="topbar">
-        <button className="btn small" onClick={onBack} aria-label="Projelere dön">←</button>
-        <b>{detail.summary.name}</b>
-        <label htmlFor="ver" className="muted" style={{ margin: 0 }}>Sürüm</label>
-        <select id="ver" value={effectiveNo} onChange={(e) => { const n = Number(e.target.value); setViewNo(n === headNo ? null : n); setSelected(null); }}>
-          {versions.map((v) => <option key={v.id} value={v.number}>v{v.number} · {v.summary}{v.number === headNo ? ' (güncel)' : ''}</option>)}
-        </select>
-        <span className="badge neutral" title="Teknoloji profili">⚙ {detail.model.project.techProfileId === 'aspnetcore' ? 'ASP.NET Core' : detail.model.project.techProfileId}</span>
-        {drafting
-          ? <span className="badge info" title="Bekleyen öneriler kabul edilmeden model değişmez">◔ Taslak: {pendingProposals.length} bekleyen öneri</span>
-          : <span className="badge ok">✓ Kabul edilmiş sürüm</span>}
-        <span className="spacer" />
-        <button className="btn small" disabled={!detail.canEdit || readOnly} onClick={() => setShowChange((s) => !s)}>＋ Yeni talep ekle</button>
-        <button className="btn small" disabled={busy} onClick={() => exportAs('markdown')}>⇩ Markdown</button>
-        <button className="btn small" disabled={busy} onClick={() => exportAs('package')}>⇩ Paket (zip)</button>
-        <button className="btn small" onClick={onTheme} aria-label="Temayı değiştir">{dark ? '☀' : '☾'}</button>
-      </header>
-
-      <nav className="mobile-tabs" aria-label="Bölümler">
-        {([['req', 'Gereksinimler'], ['diagram', 'Diyagram'], ['dec', 'Kararlar']] as const).map(([k, l]) => (
-          <button key={k} className="tab" aria-selected={mobile === k} onClick={() => { setMobile(k); if (k === 'req') setLeftTab('req'); if (k === 'dec') setLeftTab('dec'); }}>{l}</button>
-        ))}
-      </nav>
-
-      <aside className="panel left" aria-label="Proje kapsamı">
-        <div className="tabs" role="tablist">
-          {([['req', `Gereksinimler (${model.requirements.length})`], ['dec', `Kararlar (${model.decisions.length})`],
-            ['oq', `Açık sorular (${model.openQuestions.filter((q) => q.status !== 'answered').length})`], ['src', 'Kaynaklar'],
-            ['val', `Doğrulama (${findings.length})`]] as const).map(([k, l]) => (
-            <button key={k} role="tab" className="tab" aria-selected={leftTab === k} onClick={() => setLeftTab(k)}>{l}</button>
-          ))}
+    <Shell nav={nav} navTitle="Proje" user={user} dark={dark} onTheme={onTheme} onLogout={onLogout}
+      searchItems={searchItems} searchPlaceholder="Gereksinim, karar, bileşen, akış ara…">
+      <div className="ws-head">
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <h1>{detail.summary.name}</h1>
+          <div className="row">
+            <label htmlFor="ver" className="muted" style={{ margin: 0 }}>Sürüm</label>
+            <select id="ver" style={{ width: 'auto', maxWidth: 420, padding: '5px 12px' }} value={effectiveNo}
+              onChange={(e) => { const n = Number(e.target.value); setViewNo(n === headNo ? null : n); setSelected(null); }}>
+              {versions.map((v) => <option key={v.id} value={v.number}>v{v.number} · {v.summary}{v.number === headNo ? ' (güncel)' : ''}</option>)}
+            </select>
+            <span className="badge neutral" title="Teknoloji profili">
+              {profileLogo[detail.model.project.techProfileId] && <TechLogo id={profileLogo[detail.model.project.techProfileId]} size={14} />}
+              {detail.model.project.techProfileId === 'aspnetcore' ? 'ASP.NET Core' : detail.model.project.techProfileId}
+            </span>
+            {drafting
+              ? <span className="badge info" title="Bekleyen öneriler kabul edilmeden model değişmez">◔ Taslak: {pendingProposals.length} bekleyen öneri</span>
+              : <span className="badge ok">✓ Kabul edilmiş sürüm</span>}
+            <span className="muted mono">özet {currentHash}</span>
+          </div>
         </div>
-        <div className="inner">
-          {leftTab === 'req' && (
+        <div className="row">
+          <button className="btn" disabled={!detail.canEdit || readOnly} onClick={() => setShowChange((s) => !s)}><IconPlus size={16} /> Yeni talep ekle</button>
+          <button className="btn" disabled={busy} onClick={() => exportAs('markdown')}><IconDownload size={16} /> Markdown</button>
+          <button className="btn" disabled={busy} onClick={() => exportAs('package')}><IconDownload size={16} /> Paket</button>
+        </div>
+      </div>
+
+      <div className={`ws-body ${detailOpen ? '' : 'no-detail'}`}>
+        <section className="content" aria-label={sectionTitle[section]}>
+          {readOnly && (
+            <div className="banner warn" role="status">
+              <span>Eski sürümü (v{effectiveNo}) görüntülüyorsunuz — salt okunur.</span>
+              <button className="btn small" onClick={() => setViewNo(null)}>Güncel sürüme dön</button>
+              {detail.canAccept && <button className="btn small" disabled={busy} onClick={() => guarded(async () => {
+                await api.revert(projectId, effectiveNo, headNo); setViewNo(null); await loadAll();
+                setNotice({ type: 'ok', text: `v${effectiveNo} içeriği yeni sürüm olarak geri yüklendi; geçmiş korundu.` });
+              })}>Bu sürüme geri dön (yeni sürüm olarak)</button>}
+            </div>
+          )}
+
+          {showChange && canEdit && (
+            <form className="card" style={{ marginBottom: 12 }} onSubmit={(e) => { e.preventDefault(); void startJob((k) => api.changeRequest(projectId, changeText, k)).then(() => { setChangeText(''); setShowChange(false); }); }}>
+              <label htmlFor="chg" style={{ marginTop: 0 }}>Yeni talep — kabul edilmiş sürüm üzerinde etkisi analiz edilir; sürüm yalnızca siz kabul edince oluşur.</label>
+              <textarea id="chg" value={changeText} onChange={(e) => setChangeText(e.target.value)} placeholder="Örn. Artık şirketler kendi iki aşamalı onay sürecini tanımlayabilsin." />
+              <div className="row" style={{ marginTop: 10 }}>
+                <button className="btn primary" disabled={busy || changeText.trim().length < 3}>Etkiyi analiz et</button>
+                <button type="button" className="btn" onClick={() => setShowChange(false)}>Vazgeç</button>
+              </div>
+            </form>
+          )}
+
+          {jobs.slice(0, 5).filter((j) => j.status !== 'succeeded' || active.some((a) => a.id === j.id)).map((j) => (
+            <div key={j.id} className={`notice ${j.status === 'failed' ? 'error' : ''}`} style={{ marginBottom: 10 }} role="status">
+              <div className="row">
+                <b>{jobLabel[j.kind] ?? j.kind}</b>
+                {j.status === 'queued' && <span className="badge neutral">◔ Kuyrukta</span>}
+                {j.status === 'running' && <span className="badge info">⟳ {stageLabel[j.stage ?? ''] ?? 'Çalışıyor'}</span>}
+                {j.status === 'failed' && <span className="badge bad">✕ Başarısız{j.errorCode ? ` (${j.errorCode})` : ''}</span>}
+                {j.status === 'cancelled' && <span className="badge neutral">✕ İptal edildi</span>}
+                {j.attempts > 1 && <span className="muted">deneme {j.attempts}/{j.maxAttempts}</span>}
+                <span className="spacer" />
+                {(j.status === 'queued' || j.status === 'running') && (
+                  <button className="btn small" disabled={j.cancelRequested} onClick={() => guarded(async () => { await api.cancelJob(j.id); await loadAll(); })}>
+                    {j.cancelRequested ? 'İptal isteniyor…' : 'İptal et'}
+                  </button>
+                )}
+              </div>
+              {j.status === 'failed' && <div>{j.error} Son kabul edilmiş model korundu.</div>}
+              {j.status === 'failed' && j.problems.length > 0 && <ul>{j.problems.slice(0, 5).map((p) => <li key={p}>{p}</li>)}</ul>}
+            </div>
+          ))}
+
+          {notice && (
+            <div className={`notice ${notice.type === 'error' ? 'error' : ''}`} role={notice.type === 'error' ? 'alert' : 'status'} style={{ marginBottom: 10 }}>
+              {notice.text}
+              {notice.lines && notice.lines.length > 0 && <ul>{notice.lines.map((l) => <li key={l}>{l}</li>)}</ul>}
+              <button className="btn small" style={{ marginTop: 6 }} onClick={() => setNotice(null)}>Kapat</button>
+            </div>
+          )}
+
+          {/* ------------------------------ Mimari ------------------------------ */}
+          {section === 'arch' && (
+            <>
+              <div className="tabs">
+                <div className="seg" role="tablist" aria-label="Mimari görünüm">
+                  <button role="tab" aria-selected={archTab === 'canvas'} onClick={() => setArchTab('canvas')}>Tuval</button>
+                  <button role="tab" aria-selected={archTab === 'component'} onClick={() => setArchTab('component')}>Bileşenler (Mermaid)</button>
+                  <button role="tab" aria-selected={archTab === 'er'} onClick={() => setArchTab('er')}>Veri modeli</button>
+                  <button role="tab" aria-selected={archTab === 'sequence'} onClick={() => setArchTab('sequence')}>Akışlar ({flowViews.length})</button>
+                </div>
+                {archTab === 'sequence' && flowViews.length > 0 && (
+                  <select aria-label="Akış seç" style={{ width: 'auto' }} value={currentFlow?.flowId ?? ''} onChange={(e) => setFlowId(e.target.value)}>
+                    {flowViews.map((f) => <option key={f.flowId} value={f.flowId}>{f.title.replace('Akış: ', '')}</option>)}
+                  </select>
+                )}
+                <span className="spacer" />
+                {canEdit && (
+                  <button className="btn" disabled={busy || !hasReq} title={hasReq ? '' : 'Önce gereksinim gerekli'}
+                    onClick={() => startJob((k) => api.proposeArchitecture(projectId, k))}>{hasArch ? 'Mimari taslağı yenile' : 'Mimari taslak oluştur'}</button>
+                )}
+              </div>
+
+              {archTab === 'canvas' ? <ArchCanvas model={model} selected={selected} onSelect={goTo} /> : mermaidView ? (
+                <>
+                  <MermaidView source={mermaidView.mermaid} dark={dark} onSelect={archTab === 'sequence' ? undefined : goTo} />
+                  <details className="alt">
+                    <summary>Metinsel karşılık ve Mermaid kaynağı</summary>
+                    <ul>{textAlternative(model, archTab, mermaidView.flowId).map((l) => <li key={l}>{l}</li>)}</ul>
+                    <pre className="notice mono" style={{ overflow: 'auto' }}>{mermaidView.mermaid}</pre>
+                    <p className="muted">Bu dosyada dışarıda yapılan düzenlemeler modele otomatik aktarılmaz; model yapılandırılmış düzenleyici veya öneriler üzerinden değişir.</p>
+                  </details>
+                </>
+              ) : <div className="empty-state"><b>{archTab === 'sequence' ? 'Henüz akış yok' : 'Görünüm yükleniyor…'}</b></div>}
+            </>
+          )}
+
+          {/* ---------------------------- Gereksinimler ---------------------------- */}
+          {section === 'req' && (
             <ul className="list">
-              {model.requirements.map((r) => (
-                <li key={r.id}><button className="item" aria-current={selected === r.id} onClick={() => selectObj(r.id)}>
-                  <span className="id">{r.id}</span><span className="title">{r.text}</span>
-                  <span className="meta"><Badge info={reviewInfo[r.reviewStatus]} /><Badge info={originInfo[r.origin]} />
-                    <span className="badge neutral">{kindLabel[r.kind]} · {priorityLabel[r.priority]}</span></span>
-                </button></li>
-              ))}
-              {model.requirements.length === 0 && <li className="muted">Henüz gereksinim yok. Bir kaynak ekleyip “Gereksinimleri çıkar”ı çalıştırın.</li>}
+              {model.requirements.map((r) => objectCard(r.id, r.text, <>
+                <Badge info={reviewInfo[r.reviewStatus]} /><Badge info={originInfo[r.origin]} />
+                <span className="badge neutral">{kindLabel[r.kind]} · {priorityLabel[r.priority]}</span>
+              </>))}
+              {model.requirements.length === 0 && <div className="empty-state"><b>Henüz gereksinim yok</b><span>Kaynaklar bölümünden bir metin ekleyip “Gereksinimleri çıkar”ı çalıştırın.</span></div>}
             </ul>
           )}
-          {leftTab === 'dec' && (
+
+          {/* ------------------------------ Kararlar ------------------------------ */}
+          {section === 'dec' && (
             <ul className="list">
-              {model.decisions.map((d) => (
-                <li key={d.id}><button className="item" aria-current={selected === d.id} onClick={() => selectObj(d.id)}>
-                  <span className="id">{d.id}</span><span className="title">{d.title}</span>
-                  <span className="meta"><Badge info={reviewInfo[d.reviewStatus]} /><Badge info={originInfo[d.origin]} /></span>
-                </button></li>
-              ))}
-              {model.decisions.length === 0 && <li className="muted">Henüz karar yok.</li>}
+              {model.decisions.map((d) => objectCard(d.id, d.title, <><Badge info={reviewInfo[d.reviewStatus]} /><Badge info={originInfo[d.origin]} /></>))}
+              {model.decisions.length === 0 && <div className="empty-state"><b>Henüz karar yok</b><span>Mimari taslak oluşturulunca gerekçeli kararlar burada listelenir.</span></div>}
             </ul>
           )}
-          {leftTab === 'oq' && (
-            <ul className="list">
-              {model.openQuestions.map((q) => (
-                <li key={q.id}><button className="item" aria-current={selected === q.id} onClick={() => selectObj(q.id)}>
-                  <span className="id">{q.id}</span><span className="title">{q.text}</span>
-                  <span className="meta"><span className={`badge ${q.status === 'answered' ? 'ok' : q.status === 'deferred' ? 'warn' : 'info'}`}>
+
+          {/* ------------------------- Açık sorular, varsayımlar ------------------------- */}
+          {section === 'oq' && (
+            <>
+              <ul className="list">
+                {model.openQuestions.map((q) => objectCard(q.id, q.text, <>
+                  <span className={`badge ${q.status === 'answered' ? 'ok' : q.status === 'deferred' ? 'warn' : 'info'}`}>
                     {q.status === 'answered' ? '✓ Cevaplandı' : q.status === 'deferred' ? '⏸ Ertelendi' : '? Açık'}</span>
-                    <span className="badge neutral">Etki: {priorityLabel[q.impact]}</span></span>
-                </button></li>
-              ))}
-              {model.openQuestions.length === 0 && <li className="muted">Açık soru yok.</li>}
-              {model.assumptions.length > 0 && <li><h3 style={{ marginTop: 12 }}>Varsayımlar</h3></li>}
-              {model.assumptions.map((a) => (
-                <li key={a.id}><button className="item" aria-current={selected === a.id} onClick={() => selectObj(a.id)}>
-                  <span className="id">{a.id}</span><span className="title">{a.text}</span>
-                  <span className="meta"><span className="badge warn">? {a.status === 'unverified' ? 'Doğrulanmadı' : a.status === 'verified' ? 'Doğrulandı' : 'Geçersiz'}</span></span>
-                </button></li>
-              ))}
-            </ul>
+                  <span className="badge neutral">Etki: {priorityLabel[q.impact]}</span>
+                </>))}
+                {model.openQuestions.length === 0 && <div className="empty-state"><b>Açık soru yok</b></div>}
+              </ul>
+              {model.assumptions.length > 0 && <h3 style={{ margin: '20px 0 8px' }}>Varsayımlar</h3>}
+              <ul className="list">
+                {model.assumptions.map((a) => objectCard(a.id, a.text, <span className="badge warn">? {a.status === 'unverified' ? 'Doğrulanmadı' : a.status === 'verified' ? 'Doğrulandı' : 'Geçersiz'}</span>))}
+              </ul>
+            </>
           )}
-          {leftTab === 'src' && (
+
+          {/* ------------------------------ Kaynaklar ------------------------------ */}
+          {section === 'src' && (
             <div className="stack">
               <ul className="list">
-                {model.sources.map((s) => (
-                  <li key={s.id}><button className="item" aria-current={selected === s.id} onClick={() => selectObj(s.id)}>
-                    <span className="id">{s.id}</span><span className="title">{s.title || s.text.slice(0, 80)}</span>
-                    <span className="meta">{analyzed.has(s.id) ? <span className="badge ok">✓ Analiz edildi</span> : <span className="badge warn">◔ Analiz bekliyor</span>}</span>
-                  </button></li>
-                ))}
+                {model.sources.map((s) => objectCard(s.id, s.title || s.text.slice(0, 90),
+                  analyzed.has(s.id) ? <span className="badge ok">✓ Analiz edildi</span> : <span className="badge warn">◔ Analiz bekliyor</span>))}
+                {model.sources.length === 0 && <div className="empty-state"><b>Henüz kaynak yok</b></div>}
               </ul>
               {canEdit && (
                 <div className="card">
-                  <label htmlFor="src">Yeni kaynak (toplantı notu, gereksinim paketi…)</label>
+                  <label htmlFor="src" style={{ marginTop: 0 }}>Yeni kaynak (toplantı notu, gereksinim paketi…)</label>
                   <textarea id="src" value={sourceText} onChange={(e) => setSourceText(e.target.value)} />
-                  <div className="row" style={{ marginTop: 8 }}>
-                    <button className="btn small" disabled={busy || !sourceText.trim()} onClick={() => guarded(async () => {
+                  <div className="row" style={{ marginTop: 10 }}>
+                    <button className="btn" disabled={busy || !sourceText.trim()} onClick={() => guarded(async () => {
                       await api.addSource(projectId, '', sourceText, headNo); setSourceText(''); await loadAll();
                     })}>Kaynağı ekle</button>
+                    <button className="btn primary" disabled={busy || !hasPendingSource} title={hasPendingSource ? '' : 'Analiz edilecek yeni kaynak yok'}
+                      onClick={() => startJob((k) => api.analyze(projectId, k))}>Gereksinimleri çıkar</button>
                   </div>
                 </div>
               )}
             </div>
           )}
-          {leftTab === 'val' && (
+
+          {/* ------------------------------ Doğrulama ------------------------------ */}
+          {section === 'val' && (
             <div className="stack">
-              <p className="muted">Şema/referans bulguları deterministik kontrollerdir; “inceleme önerisi” kural tabanlı bir tavsiyedir ve kanıt değildir.</p>
+              <p className="muted">Şema ve referans bulguları deterministik kontrollerdir; “inceleme önerisi” kural tabanlı bir tavsiyedir ve kanıt değildir.</p>
               {(['schema', 'reference', 'consistency', 'traceability', 'profile', 'review_suggestion'] as const).map((k) => {
                 const list = findings.filter((f) => f.kind === k);
                 return list.length === 0 ? null : (
-                  <details key={k} open={k === 'schema' || k === 'reference'}>
+                  <details key={k} className="card" open={k === 'schema' || k === 'reference' || k === 'review_suggestion'}>
                     <summary><b>{findingKindLabel[k]}</b> ({list.length})</summary>
                     <FindingList findings={list} />
                   </details>
                 );
               })}
-              {findings.length === 0 && <p>Bulgu yok.</p>}
+              {findings.length === 0 && <div className="empty-state"><b>Bulgu yok</b></div>}
             </div>
           )}
-        </div>
-        {canEdit && (
-          <div className="inner" style={{ borderTop: '1px solid var(--line)' }}>
-            <div className="row">
-              <button className="btn small" disabled={busy || !hasPendingSource} title={hasPendingSource ? '' : 'Analiz edilecek yeni kaynak yok'}
-                onClick={() => startJob((k) => api.analyze(projectId, k))}>Gereksinimleri çıkar</button>
-              <button className="btn small" disabled={busy || !hasReq} title={hasReq ? '' : 'Önce gereksinim gerekli'}
-                onClick={() => startJob((k) => api.proposeArchitecture(projectId, k))}>{hasArch ? 'Mimari taslağı yenile' : 'Mimari taslak oluştur'}</button>
-            </div>
-          </div>
-        )}
-      </aside>
 
-      <main className="center">
-        {readOnly && (
-          <div className="banner warn" role="status">
-            <span>Eski sürümü (v{effectiveNo}) görüntülüyorsunuz — salt okunur.</span>
-            <button className="btn small" onClick={() => setViewNo(null)}>Güncel sürüme dön</button>
-            {detail.canAccept && <button className="btn small" disabled={busy} onClick={() => guarded(async () => {
-              await api.revert(projectId, effectiveNo, headNo); setViewNo(null); await loadAll();
-              setNotice({ type: 'ok', text: `v${effectiveNo} içeriği yeni sürüm olarak geri yüklendi; geçmiş korundu.` });
-            })}>Bu sürüme geri dön (yeni sürüm olarak)</button>}
-          </div>
-        )}
-
-        {showChange && canEdit && (
-          <form className="card" style={{ marginBottom: 12 }} onSubmit={(e) => { e.preventDefault(); void startJob((k) => api.changeRequest(projectId, changeText, k)).then(() => { setChangeText(''); setShowChange(false); }); }}>
-            <label htmlFor="chg">Yeni talep — kabul edilmiş sürüm üzerinde etkisi analiz edilir; sürüm yalnızca siz kabul edince oluşur.</label>
-            <textarea id="chg" value={changeText} onChange={(e) => setChangeText(e.target.value)} placeholder="Örn. Artık şirketler kendi iki aşamalı onay sürecini tanımlayabilsin." />
-            <div className="row" style={{ marginTop: 8 }}>
-              <button className="btn primary" disabled={busy || changeText.trim().length < 3}>Etkiyi analiz et</button>
-              <button type="button" className="btn" onClick={() => setShowChange(false)}>Vazgeç</button>
-            </div>
-          </form>
-        )}
-
-        {jobs.slice(0, 5).filter((j) => j.status !== 'succeeded' || active.some((a) => a.id === j.id)).map((j) => (
-          <div key={j.id} className={`notice ${j.status === 'failed' ? 'error' : ''}`} style={{ marginBottom: 8 }} role="status">
-            <div className="row">
-              <b>{jobLabel[j.kind] ?? j.kind}</b>
-              {j.status === 'queued' && <span className="badge neutral">◔ Kuyrukta</span>}
-              {j.status === 'running' && <span className="badge info">⟳ {stageLabel[j.stage ?? ''] ?? 'Çalışıyor'}</span>}
-              {j.status === 'failed' && <span className="badge bad">✕ Başarısız{j.errorCode ? ` (${j.errorCode})` : ''}</span>}
-              {j.status === 'cancelled' && <span className="badge neutral">✕ İptal edildi</span>}
-              {j.attempts > 1 && <span className="muted">deneme {j.attempts}/{j.maxAttempts}</span>}
-              <span className="spacer" />
-              {(j.status === 'queued' || j.status === 'running') && (
-                <button className="btn small" disabled={j.cancelRequested} onClick={() => guarded(async () => { setJobs((c) => c.map((x) => x.id === j.id ? { ...x, ...{} } : x)); await api.cancelJob(j.id); await loadAll(); })}>
-                  {j.cancelRequested ? 'İptal isteniyor…' : 'İptal et'}
-                </button>
-              )}
-            </div>
-            {j.status === 'failed' && <div>{j.error} Son kabul edilmiş model korundu.</div>}
-            {j.status === 'failed' && j.problems.length > 0 && <ul>{j.problems.slice(0, 5).map((p) => <li key={p}>{p}</li>)}</ul>}
-          </div>
-        ))}
-
-        {notice && (
-          <div className={`notice ${notice.type === 'error' ? 'error' : ''}`} role={notice.type === 'error' ? 'alert' : 'status'} style={{ marginBottom: 8 }}>
-            {notice.text}
-            {notice.lines && notice.lines.length > 0 && <ul>{notice.lines.map((l) => <li key={l}>{l}</li>)}</ul>}
-            <button className="btn small" style={{ marginLeft: 8 }} onClick={() => setNotice(null)}>Kapat</button>
-          </div>
-        )}
-
-        <div className="tabs" role="tablist" style={{ marginBottom: 10 }}>
-          <button role="tab" className="tab" aria-selected={centerTab === 'component'} onClick={() => setCenterTab('component')}>Bileşenler</button>
-          <button role="tab" className="tab" aria-selected={centerTab === 'er'} onClick={() => setCenterTab('er')}>Veri modeli</button>
-          <button role="tab" className="tab" aria-selected={centerTab === 'sequence'} onClick={() => setCenterTab('sequence')}>Akışlar ({flowViews.length})</button>
-          {centerTab === 'sequence' && flowViews.length > 0 && (
-            <select aria-label="Akış seç" style={{ width: 'auto', marginLeft: 8 }} value={currentFlow?.flowId ?? ''} onChange={(e) => setFlowId(e.target.value)}>
-              {flowViews.map((f) => <option key={f.flowId} value={f.flowId}>{f.title.replace('Akış: ', '')}</option>)}
-            </select>
-          )}
-          <span className="spacer" />
-          <span className="muted" style={{ alignSelf: 'center' }}>v{effectiveNo} · özet {(versions.find((v) => v.number === effectiveNo)?.contentHash ?? detail.head.contentHash).slice(0, 8)}</span>
-        </div>
-
-        {currentView ? (
-          <>
-            <MermaidView source={currentView.mermaid} dark={dark} onSelect={centerTab === 'sequence' ? undefined : selectObj} />
-            <details className="alt">
-              <summary>Metinsel karşılık ve Mermaid kaynağı</summary>
-              <ul>{textAlternative(model, centerTab, currentView.flowId).map((l) => <li key={l}>{l}</li>)}</ul>
-              <pre className="notice mono" style={{ overflow: 'auto' }}>{currentView.mermaid}</pre>
-              <p className="muted">Bu dosyada dışarıda yapılan düzenlemeler modele otomatik aktarılmaz; model yapılandırılmış düzenleyici veya öneriler üzerinden değişir.</p>
-            </details>
-          </>
-        ) : <p className="muted">{centerTab === 'sequence' ? 'Henüz akış yok.' : 'Görünüm yükleniyor…'}</p>}
-      </main>
-
-      <aside className={`panel right ${detailOpen ? 'open' : ''}`} aria-label="Ayrıntı ve değişiklik incelemesi">
-        <div className="inner">
-          {openProposal ? (
-            <ProposalReview projectId={projectId} proposalId={openProposal} headNumber={headNo} canAccept={detail.canAccept && !readOnly}
-              onClose={() => setOpenProposal(null)} onSelect={selectObj} onChanged={() => void loadAll()}
-              onAccepted={async (n) => { setOpenProposal(null); setViewNo(null); await loadAll(); setNotice({ type: 'ok', text: `Yeni sürüm oluşturuldu: v${n}. Önceki sürümler erişilebilir kalır.` }); }}
-              onRetryChange={(t) => { setOpenProposal(null); void startJob((k) => api.changeRequest(projectId, t, k)); }} />
-          ) : selected ? (
+          {/* -------------------------------- Öneriler -------------------------------- */}
+          {section === 'prop' && (
             <>
-              <button className="btn small close-detail" onClick={() => setSelected(null)} aria-label="Kapat" style={{ marginBottom: 8 }}>✕ Kapat</button>
-              <div className="row" style={{ marginBottom: 8 }}><button className="btn small" onClick={() => setSelected(null)}>← Öneriler</button></div>
-              <ObjectDetail model={model} id={selected} findings={findings} canEdit={canEdit} onSelect={selectObj}
-                onUpdateRequirement={updateReq} onAnswerQuestion={answerQ} />
-            </>
-          ) : (
-            <div className="stack">
-              <h2>Değişiklik önerileri</h2>
-              {proposals.length === 0 && <p className="muted">Henüz öneri yok. “Yeni talep ekle” ile mevcut tasarım üzerinde etki analizi başlatın; bir bileşene, karara veya gereksinime tıklayarak gerekçesini ve bağlantılarını görün.</p>}
               <ul className="list">
                 {proposals.map((p) => (
-                  <li key={p.id}><button className="item" onClick={() => { setOpenProposal(p.id); setSelected(null); }}>
+                  <li key={p.id}><button className="item" aria-current={openProposal === p.id} onClick={() => { setOpenProposal(p.id); setSelected(null); }}>
                     <span className="title">{p.title}</span>
                     <span className="meta">
                       <span className={`badge ${p.status === 'accepted' ? 'ok' : p.status === 'pending' ? 'info' : p.status === 'rejected' ? 'bad' : 'warn'}`}>
@@ -371,10 +418,31 @@ export function Workspace({ projectId, onBack, dark, onTheme }: { projectId: str
                   </button></li>
                 ))}
               </ul>
-            </div>
+              {proposals.length === 0 && <div className="empty-state"><b>Henüz öneri yok</b><span>“Yeni talep ekle” ile mevcut tasarım üzerinde etki analizi başlatın.</span></div>}
+            </>
           )}
-        </div>
-      </aside>
-    </div>
+        </section>
+
+        {detailOpen && (
+          <aside className="detail open" aria-label="Ayrıntı ve değişiklik incelemesi">
+            {openProposal ? (
+              <ProposalReview projectId={projectId} proposalId={openProposal} headNumber={headNo} canAccept={detail.canAccept && !readOnly}
+                onClose={() => setOpenProposal(null)} onSelect={goTo} onChanged={() => void loadAll()}
+                onAccepted={async (n) => { setOpenProposal(null); setViewNo(null); await loadAll(); setNotice({ type: 'ok', text: `Yeni sürüm oluşturuldu: v${n}. Önceki sürümler erişilebilir kalır.` }); }}
+                onRetryChange={(t) => { setOpenProposal(null); void startJob((k) => api.changeRequest(projectId, t, k)); }} />
+            ) : selected ? (
+              <>
+                <div className="row" style={{ marginBottom: 8 }}>
+                  <span className="muted">{typeOfId(selected)}</span><span className="spacer" />
+                  <button className="btn small" onClick={() => setSelected(null)} aria-label="Ayrıntıyı kapat">Kapat ✕</button>
+                </div>
+                <ObjectDetail model={model} id={selected} findings={findings} canEdit={canEdit} onSelect={goTo}
+                  onUpdateRequirement={updateReq} onAnswerQuestion={answerQ} />
+              </>
+            ) : null}
+          </aside>
+        )}
+      </div>
+    </Shell>
   );
 }
