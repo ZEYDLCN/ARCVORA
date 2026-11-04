@@ -62,4 +62,30 @@ describe('CommandPalette', () => {
     expect(options()[2].getAttribute('aria-selected')).toBe('true');
     expect(input().getAttribute('aria-activedescendant')).toBe('pi-c');
   });
+
+  it('filters while typing, shows "Sonuç yok" for no match and resets the selection', () => {
+    render(true);
+    type('api');
+    expect(options().map((o) => o.id)).toEqual(['pi-c']);
+    type('zzzz');
+    expect(host.querySelector('.palette-empty')?.textContent).toBe('Sonuç yok');
+    expect(input().getAttribute('aria-activedescendant')).toBeNull();
+  });
+
+  it('Enter closes first, then runs the selected item', () => {
+    const order: string[] = [];
+    const list: PaletteItem[] = [{ id: 'x', label: 'Tek', group: 'g', onSelect: () => order.push('select') }];
+    act(() => { root.render(<CommandPalette open onClose={() => order.push('close')} items={list} placeholder="" />); });
+    key(host.querySelector('[role="dialog"]')!, 'Enter');
+    expect(order).toEqual(['close', 'select']);
+  });
+
+  it('Enter with no results does nothing', () => {
+    const onClose = vi.fn();
+    render(true, onClose);
+    type('zzzz');
+    key(host.querySelector('[role="dialog"]')!, 'Enter');
+    expect(onClose).not.toHaveBeenCalled();
+    expect(picked).toEqual([]);
+  });
 });
