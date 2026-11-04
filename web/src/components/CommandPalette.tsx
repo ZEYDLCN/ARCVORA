@@ -30,10 +30,15 @@ export function CommandPalette({ open, onClose, items, placeholder }: { open: bo
     // Paleti açan öğeyi hatırla; kapanınca odağı ona geri ver (WAI-ARIA dialog deseni). Aksi halde odak body'ye düşer.
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const t = setTimeout(() => input.current?.focus(), 0);
+    // Modal: Escape, odak diyaloğun içinde olmasa bile paleti kapatır (odak kutuya henüz geçmemiş veya dışarı düşmüş olabilir).
+    const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); onClose(); } };
+    window.addEventListener('keydown', onEsc);
     return () => {
+      window.removeEventListener('keydown', onEsc);
       clearTimeout(t);
       if (opener && opener.isConnected && opener !== document.body) opener.focus();
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
   useEffect(() => { setActive(0); }, [query]);
 
