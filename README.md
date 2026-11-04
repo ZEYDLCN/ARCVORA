@@ -130,6 +130,19 @@ bu, ARCVORA'nın onlarla bir ortaklığı veya onayı olduğu anlamına gelmez. 
 Yalnızca kullanılan 43 logo `web/src/lib/logos.generated.ts` içinde tutulur. Yenilemek veya eklemek için: `cd web && npm run gen:logos`.
 AWS, Azure ve SQL Server logoları simple-icons paketinden kaldırıldığı için dahil değildir.
 
+## Açılış animasyonu
+
+Uygulama ilk açıldığında ~2,5 sn'lik bir logo animasyonu oynar: belirme ve ölçek → 360° dönüş → lavanta ışık ve parıltı → marka adı → uygulamaya yumuşak geçiş.
+Logo yeniden çizilmedi; mevcut `Logo` bileşeni kullanılır. Renkler marka belirteçlerinden gelir (`--brand-ink #091A20`, `#153D46`, `#A98AF2`, `#72BFC0`, `#D4E7D2`).
+
+- Yalnızca CSS `transform` / `opacity` ile hareket eder; yerleşim kaymaz (ölçülen CLS: 0).
+- Oturum başına bir kez oynar (`sessionStorage`); tıklama veya herhangi bir tuş ile atlanır. Yeniden izlemek için adrese `?intro` ekleyin.
+- `prefers-reduced-motion` açıksa dönüş ve parıltı yok; kısa bir solma ile geçer.
+- Animasyon bittiğinde (`animationend`) kendiliğinden kalkar; olay hiç gelmezse 4,5 sn'lik güvenlik zamanlayıcısı devreye girer, yani uygulamayı engelleyemez.
+- Kodu: `web/src/components/Intro.tsx`, `web/src/intro.css`, `web/src/lib/intro.ts`.
+
+Ölçümler başsız (headless) Chromium'da, yazılım render ile alındı; gerçek GPU'da kare hızı bundan iyi veya farklı olabilir. Cam katmanlı uygulamaya geçiş anı en ağır kısım.
+
 ## Yapılandırma
 
 Ortam değişkenleri `__` ile iç içe anahtar yazar (örn. `Ai__Provider`). Örnekler: [`.env.example`](.env.example).

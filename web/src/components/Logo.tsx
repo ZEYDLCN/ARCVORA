@@ -12,6 +12,21 @@ function scallopedRing(cx: number, cy: number, R: number, a: number, lobes: numb
 }
 
 const RING = scallopedRing(16, 16, 11.2, 2.1, 8);
+const ARCH = 'M11.2 21.2v-4.1a4.8 4.8 0 0 1 9.6 0v4.1';
+const NODES = [{ cx: 11.2, cy: 21.6, r: 1.9 }, { cx: 20.8, cy: 21.6, r: 1.9 }];
+
+/**
+ * Logonun kendi geometrisinden üretilen siluet (CSS mask için). Açılış animasyonundaki parıltı yalnızca bu siluetin
+ * içinde kalır; logo yeniden çizilmez, yalnızca aynı yollar kullanılır.
+ */
+export function logoMaskDataUri(): string {
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'>`
+    + `<path d='${RING}' fill='none' stroke='white' stroke-width='3.1' stroke-linejoin='round'/>`
+    + `<path d='${ARCH}' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round'/>`
+    + NODES.map((n) => `<circle cx='${n.cx}' cy='${n.cy}' r='${n.r}' fill='white'/>`).join('')
+    + `</svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
 
 /**
  * Arcvora işareti: tırtıklı bir halka içinde bir mimari kemeri ve ona bağlanan iki düğüm
@@ -28,9 +43,8 @@ export function LogoMark({ size = 36 }: { size?: number }) {
         </linearGradient>
       </defs>
       <path d={RING} fill="none" stroke={`url(#${g})`} strokeWidth={3.1} strokeLinejoin="round" />
-      <path d="M11.2 21.2v-4.1a4.8 4.8 0 0 1 9.6 0v4.1" fill="none" stroke={`url(#${g})`} strokeWidth={2.4} strokeLinecap="round" />
-      <circle cx="11.2" cy="21.6" r="1.9" fill="#3dd6c6" />
-      <circle cx="20.8" cy="21.6" r="1.9" fill="#3dd6c6" />
+      <path d={ARCH} fill="none" stroke={`url(#${g})`} strokeWidth={2.4} strokeLinecap="round" />
+      {NODES.map((n) => <circle key={n.cx} cx={n.cx} cy={n.cy} r={n.r} fill="#3dd6c6" />)}
     </svg>
   );
 }
