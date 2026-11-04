@@ -183,4 +183,30 @@ const revRev = await call('POST', `/api/projects/${vpid}/versions/2/revert`, { t
 check('geri almayı geri alma da yeni sürümdür (v' + (hv + 2) + ')', revRev.status === 200 && revRev.body.version.number === hv + 2, revRev);
 check('gereksinimler geri geldi', (await vget('')).body.model.requirements.length > 0);
 
+section('Dışa aktarma biçimleri');
+const expPost = (body) => call('POST', `/api/projects/${vpid}/exports`, { token: vu.token, body });
+const badFmt = await expPost({ format: 'docx' });
+check('desteklenmeyen biçim → 422 unknown_format', badFmt.status === 422 && badFmt.body?.code === 'unknown_format', badFmt);
+check('olmayan sürümün çıktısı → 404', (await expPost({ format: 'markdown', versionNumber: 99 })).status === 404);
+const e1 = await expPost({ format: 'markdown', versionNumber: 2 });
+const e1b = await expPost({ format: 'markdown', versionNumber: 2 });
+check('aynı sürüm+biçim için çıktı tekrar üretilmez (aynı kimlik ve özet)', e1.body.id === e1b.body.id && e1.body.modelHash === e1b.body.modelHash, [e1.body.id, e1b.body.id]);
+const old = await call('GET', `/api/projects/${vpid}/exports/${e1.body.id}/download`, { token: vu.token, raw: true });
+check('eski sürümün Markdown çıktısı o sürümün gereksinimlerini içerir', old.status === 200 && /REQ-001/.test(old.body), old.body.slice(0, 120));
+const pack = await expPost({ format: 'package', versionNumber: 2 });
+check('paket çıktısı 201 ve model özeti kaydı var', pack.status === 201 && !!pack.body.modelHash, pack);
+const zipRes = await fetch(`${API_URL}/api/projects/${vpid}/exports/${pack.body.id}/download`, { headers: { authorization: `Bearer ${vu.token}` } });
+check('paket application/zip olarak iner', zipRes.status === 200 && /application\/zip/.test(zipRes.headers.get('content-type') ?? ''), zipRes.headers.get('content-type'));
+const zip = readZip(Buffer.from(await zipRes.arrayBuffer()));
+const expected = ['PROJECT_OVERVIEW.md', 'REQUIREMENTS.md', 'ARCHITECTURE.md', 'DECISIONS.md', 'OPEN_QUESTIONS.md', 'CHANGELOG.md', 'MANIFEST.json'];
+check('zip beklenen 7 dosyayı içerir', expected.every((n) => zip[n]) && Object.keys(zip).length === expected.length, Object.keys(zip));
+const manifest = JSON.parse(zip['MANIFEST.json'].toString('utf8'));
+check('MANIFEST model sürümü ve özeti çıktı kaydıyla aynı', manifest.modelVersion === 2 && manifest.modelHash === pack.body.modelHash, manifest);
+check('MANIFEST üretici ve profil sürümünü belirtir', !!manifest.generator && !!manifest.profile?.profileVersion, manifest);
+check('MANIFEST "üretime hazır" demez, dürüstlük notu taşır', /üretime hazır olduğu doğrulandı.*anlamına gelmez/.test(manifest.notice ?? ''), manifest.notice);
+check('olmayan çıktı indirme → 404', (await call('GET', `/api/projects/${vpid}/exports/11111111-1111-1111-1111-111111111111/download`, { token: vu.token })).status === 404);
+const stranger = await newUser('ver-out');
+check('başkasının çıktısını indirme → 404', (await call('GET', `/api/projects/${vpid}/exports/${e1.body.id}/download`, { token: stranger.token })).status === 404);
+check('çıktı listesi dışa aktarılanları gösterir', (await call('GET', `/api/projects/${vpid}/exports`, { token: vu.token })).body.length >= 2);
+
 finish();
