@@ -123,15 +123,15 @@ if [ "$MODE" = local ]; then
     else FAIL=1; tail -10 "$LOGS/api-$name.log"; fi
     stop_pid "$ap"; stop_pid "$mp"
   }
-  slow_phase cancel "$((API_PORT + 1))" "$((MOCK_PORT + 1))" 4000 120 "Yavaş model: çalışan iş iptali" scripts/e2e/local-cancel.mjs
-  slow_phase timeout "$((API_PORT + 2))" "$((MOCK_PORT + 2))" 6000 2 "Yavaş model: zaman aşımı" scripts/e2e/local-timeout.mjs
+  slow_phase cancel "$((API_PORT + 10))" "$((MOCK_PORT + 1))" 4000 120 "Yavaş model: çalışan iş iptali" scripts/e2e/local-cancel.mjs
+  slow_phase timeout "$((API_PORT + 11))" "$((MOCK_PORT + 2))" 6000 2 "Yavaş model: zaman aşımı" scripts/e2e/local-timeout.mjs
 else
   step "API yolculuğu (buluşsal üretici)" env EXPECT_PROVIDER=heuristic node scripts/e2e/api-journey.mjs
   api_extras
 fi
 # Hız sınırı: dakikada 3 kimlik isteği ile ayrı bir API (ana API'nin sınırı testleri engellemesin diye 1000'e ayarlı)
 ratelimit_phase() {
-  local aport="$((API_PORT + 3))"
+  local aport="$((API_PORT + 12))"
   port_free "$aport" "hız sınırı API" || { FAIL=1; return; }
   ( cd src/Arcvora.Api && exec env ASPNETCORE_ENVIRONMENT=Development "ASPNETCORE_URLS=http://127.0.0.1:$aport" RateLimit__AuthPerMinute=3 \
       "ConnectionStrings__Arcvora=Host=$PGHOST;Database=${DB}_ratelimit;Username=$PGUSER;Password=$PGPASSWORD" \
