@@ -209,4 +209,28 @@ const stranger = await newUser('ver-out');
 check('başkasının çıktısını indirme → 404', (await call('GET', `/api/projects/${vpid}/exports/${e1.body.id}/download`, { token: stranger.token })).status === 404);
 check('çıktı listesi dışa aktarılanları gösterir', (await call('GET', `/api/projects/${vpid}/exports`, { token: vu.token })).body.length >= 2);
 
+section('Öneri durum geçişleri');
+const pu = await newUser('prop');
+const ppid = await newProject(pu);
+await withAcceptedRequirements(pu, ppid);
+const pcall = (method, path, body, headers) => call(method, `/api/projects/${ppid}${path}`, { token: pu.token, body, headers });
+const genArch = async () => (await waitJob(pu.token, (await pcall('POST', '/architecture-proposals')).body.id)).proposalId;
+const A = await genArch();
+check('olmayan öneri → 404', (await pcall('GET', '/proposals/11111111-1111-1111-1111-111111111111')).status === 404);
+const badGroup = await pcall('POST', `/proposals/${A}/accept`, { groupIds: ['grp-yok'] });
+check('bilinmeyen grup → 422 invalid_selection', badGroup.status === 422 && badGroup.body?.code === 'invalid_selection', badGroup);
+const noGroup = await pcall('POST', `/proposals/${A}/accept`, { groupIds: [] });
+check('boş grup listesi → 422 invalid_selection', noGroup.status === 422 && noGroup.body?.code === 'invalid_selection', noGroup);
+check('reddedilen kabul denemeleri öneriyi bozmadı (hâlâ pending)', (await pcall('GET', '/proposals?status=pending')).body.some((x) => x.id === A));
+check('öneri reddedilir', (await pcall('POST', `/proposals/${A}/reject`, { note: 'olmaz' })).body?.status === 'rejected');
+check('aynı öneriyi tekrar reddetmek zararsız (idempotent 200)', (await pcall('POST', `/proposals/${A}/reject`, {})).status === 200);
+const accRej = await pcall('POST', `/proposals/${A}/accept`, {});
+check('reddedilmiş öneri kabul edilemez → 409 proposal_rejected', accRej.status === 409 && accRej.body?.code === 'proposal_rejected', accRej);
+check('durum filtresi: rejected yalnız reddedilenleri listeler', (await pcall('GET', '/proposals?status=rejected')).body.every((x) => x.status === 'rejected'));
+const B = await genArch();
+const accB = await pcall('POST', `/proposals/${B}/accept`, {});
+check('yeni öneri kabul edilir', accB.status === 200, accB);
+const rejAcc = await pcall('POST', `/proposals/${B}/reject`, {});
+check('kabul edilmiş öneri reddedilemez → 409 proposal_accepted', rejAcc.status === 409 && rejAcc.body?.code === 'proposal_accepted', rejAcc);
+
 finish();
