@@ -104,6 +104,23 @@ Model tek gerçek kaynaktır; diyagramlar ondan **türetilir** (LLM çizmez). Ay
 | Çıktı | Tek dosya Markdown veya paket (zip); her çıktı model sürümü, profil sürümü, üretici sürümü ve hash ile kaydedilir. |
 | Web | React + TypeScript çalışma alanı: taneli renkli zemin üzerinde yüzen kenar çubuğu (daraltılabilir, ⌘K / Ctrl+K arama), **logolu mimari tuvali** (noktalı akış çizgileri, teknoloji yığını), buzlu cam (glassmorphism) görünümü, Mermaid görünümleri, gerekçe ve ilişki zinciri, değişiklik incelemesi, mobilde çekmece menü, koyu/açık tema. |
 
+<details>
+<summary><b>🇬🇧 English summary</b></summary>
+
+<br />
+
+**ARCVORA** is an AI-assisted software-architecture workspace. You describe an idea; it proposes requirements, decisions and components as **drafts**.
+Nothing changes the model until a human accepts it, every accepted object keeps its **provenance** (user statement vs. system proposal vs. assumption),
+and every new request shows its **impact** on the existing design. Diagrams (component, sequence, ER) are *derived* from one versioned model, never drawn by an LLM.
+
+- **Stack:** .NET 8 (modular monolith) · PostgreSQL · React + TypeScript · Mermaid
+- **AI providers:** rule-based heuristic (no key, clearly labelled "not AI") · Anthropic · any OpenAI-compatible local server (Ollama, llama.cpp, vLLM — e.g. Qwen)
+- **Run it:** `scripts/dev.sh`, then open <http://localhost:5173> and try the sample project
+- **Deploy free:** see [`docs/DEPLOY.md`](docs/DEPLOY.md) (Render + Neon)
+- **Status:** working MVP with extensive automated tests. **Not validated** with real pilots, and real local-model output quality has **not been measured**. Documentation is in Turkish.
+
+</details>
+
 ## Test güvencesi
 
 | Katman | Kapsam | Komut |
