@@ -289,4 +289,31 @@ check('başkasının işini iptal etmek → 404', (await call('POST', `/api/jobs
 const jobList = await icall('GET', '/jobs');
 check('iş listesi projenin işlerini içerir', jobList.status === 200 && jobList.body.some((j) => j.id === k1.body.id), jobList.body?.length);
 
+section('Yama bütünlüğü: modeli bozan değişiklikler reddedilir');
+const iu2 = await newUser('integrity');
+const ipid3 = await newProject(iu2);
+await withAcceptedRequirements(iu2, ipid3);
+const archI = await waitJob(iu2.token, (await call('POST', `/api/projects/${ipid3}/architecture-proposals`, { token: iu2.token })).body.id);
+await call('POST', `/api/projects/${ipid3}/proposals/${archI.proposalId}/accept`, { token: iu2.token, body: {} });
+const modelI = (await call('GET', `/api/projects/${ipid3}`, { token: iu2.token })).body.model;
+const headBefore = await head(iu2, ipid3);
+const patchI = async (operations) => call('POST', `/api/projects/${ipid3}/patches`, { token: iu2.token, body: { baseVersion: await head(iu2, ipid3), summary: 't', patch: { operations } } });
+const apiComp = modelI.components.find((c) => modelI.relationships.some((r) => r.sourceId === c.id || r.targetId === c.id));
+const rm = await patchI([{ op: 'remove', type: 'component', id: apiComp.id }]);
+check('ilişkisi olan bileşeni silmek → 422 validation_failed', rm.status === 422 && rm.body?.code === 'validation_failed', rm);
+check('sarkan referans kural kimliğiyle bildirilir (REF-…)', rm.body?.details?.some((d) => /^REF-/.test(d.ruleId)), rm.body?.details);
+const reqRm = await patchI([{ op: 'remove', type: 'requirement', id: modelI.requirements[0].id }]);
+check('izlenebilirlik bağlantısı olan gereksinimi silmek → 422', reqRm.status === 422 && reqRm.body?.code === 'validation_failed', reqRm);
+const unknownRm = await patchI([{ op: 'remove', type: 'component', id: 'CMP-999' }]);
+check('olmayan nesneyi silmek → 422 patch_invalid', unknownRm.status === 422 && unknownRm.body?.code === 'patch_invalid', unknownRm);
+check('boş işlem listesi → 422 empty_patch', (await patchI([])).body?.code === 'empty_patch');
+const collide = await patchI([{ op: 'upsert', type: 'actor', id: modelI.components[0].id, value: { id: modelI.components[0].id, name: 'çakışma' } }]);
+check('başka türde nesneyle kimlik çakışması → 422 (SCH-001)', collide.status === 422 && collide.body?.details?.some((d) => d.ruleId === 'SCH-001'), collide);
+const mismatch = await patchI([{ op: 'upsert', type: 'component', id: 'CMP-050', value: { id: 'CMP-051', name: 'a' } }]);
+check('işlem kimliği ile nesne kimliği uyuşmuyor → 422 patch_invalid', mismatch.status === 422 && mismatch.body?.code === 'patch_invalid', mismatch);
+check('bilinmeyen nesne türü → 400', (await patchI([{ op: 'upsert', type: 'foo', id: 'X-1', value: {} }])).status === 400);
+const srcRm = await patchI([{ op: 'remove', type: 'source', id: 'SRC-001' }]);
+check('kaynak silinemez → 422 source_removal', srcRm.status === 422 && srcRm.body?.code === 'source_removal', srcRm);
+check('reddedilen yamaların hiçbiri sürüm üretmedi', (await head(iu2, ipid3)) === headBefore, await head(iu2, ipid3));
+
 finish();
