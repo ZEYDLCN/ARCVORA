@@ -259,4 +259,34 @@ check('bileşen, karar ve ilişki sayıları değişmedi',
 const names = model2.components.map((c) => c.name);
 check('aynı adlı birden fazla bileşen yok', new Set(names).size === names.length, names);
 
+section('Idempotency-Key ve iş yaşam döngüsü');
+const iu = await newUser('idem');
+const ipid = await newProject(iu);
+await withAcceptedRequirements(iu, ipid);
+const icall = (method, path, body, headers) => call(method, `/api/projects/${ipid}${path}`, { token: iu.token, body, headers });
+const k1 = await icall('POST', '/change-requests', { requestText: 'Aynı anahtar' }, { 'Idempotency-Key': 'ayni-1' });
+const k2 = await icall('POST', '/change-requests', { requestText: 'Farklı metin, aynı anahtar' }, { 'Idempotency-Key': 'ayni-1' });
+check('aynı anahtar aynı işi döndürür (ikinci yanıt 200, yeni iş yok)', k1.status === 202 && k2.status === 200 && k1.body.id === k2.body.id, [k1.status, k2.status]);
+const k3 = await icall('POST', '/change-requests', { requestText: 'Aynı anahtar' }, { 'Idempotency-Key': 'baska' });
+check('farklı anahtar yeni iş üretir', k3.body.id !== k1.body.id);
+const k4 = await icall('POST', '/change-requests', { requestText: 'Anahtarsız' });
+const k5 = await icall('POST', '/change-requests', { requestText: 'Anahtarsız' });
+check('anahtarsız istekler her seferinde yeni iş üretir', k4.body.id !== k5.body.id);
+const longKey = await icall('POST', '/change-requests', { requestText: 'uzun anahtar' }, { 'Idempotency-Key': 'k'.repeat(101) });
+check('101 karakterlik anahtar → 400', longKey.status === 400, longKey);
+const ipid2 = await newProject(iu, 'Diğer');
+await withAcceptedRequirements(iu, ipid2);
+const sameKeyOther = await call('POST', `/api/projects/${ipid2}/architecture-proposals`, { token: iu.token, headers: { 'Idempotency-Key': 'ayni-1' } });
+check('aynı anahtar başka projede başka işi üretir (anahtar proje kapsamlı)', sameKeyOther.status === 202 && sameKeyOther.body.projectId === ipid2, sameKeyOther);
+const finished = await waitJob(iu.token, k1.body.id);
+check('iş tamamlanır', finished.status === 'succeeded', finished);
+const cancelDone = await call('POST', `/api/jobs/${k1.body.id}/cancel`, { token: iu.token });
+check('biten işi iptal etmek zararsız: durum succeeded kalır', cancelDone.status === 200 && cancelDone.body.status === 'succeeded', cancelDone);
+check('olmayan iş → 404', (await call('GET', '/api/jobs/11111111-1111-1111-1111-111111111111', { token: iu.token })).status === 404);
+const stranger2 = await newUser('idem-out');
+check('başkasının işini görmek → 404', (await call('GET', `/api/jobs/${k1.body.id}`, { token: stranger2.token })).status === 404);
+check('başkasının işini iptal etmek → 404', (await call('POST', `/api/jobs/${k1.body.id}/cancel`, { token: stranger2.token })).status === 404);
+const jobList = await icall('GET', '/jobs');
+check('iş listesi projenin işlerini içerir', jobList.status === 200 && jobList.body.some((j) => j.id === k1.body.id), jobList.body?.length);
+
 finish();
