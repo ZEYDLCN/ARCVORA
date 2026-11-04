@@ -19,8 +19,10 @@ public static class DependencyInjection
         services.Configure<AiOptions>(config.GetSection("Ai"));
         services.Configure<JobOptions>(config.GetSection("Jobs"));
 
-        var connection = config.GetConnectionString("Arcvora")
-                         ?? throw new InvalidOperationException("ConnectionStrings:Arcvora yapılandırılmamış.");
+        // DATABASE_URL, barındırıcıların (Render, Koyeb, Fly…) yerleşik kuralıdır ve verilmişse önceliklidir; postgres:// adresi de kabul edilir.
+        var connection = ConnectionStringNormalizer.Normalize(
+            config["DATABASE_URL"] is { Length: > 0 } url ? url
+            : config.GetConnectionString("Arcvora") ?? throw new InvalidOperationException("ConnectionStrings:Arcvora yapılandırılmamış."));
         services.AddDbContext<ArcvoraDbContext>(o => o.UseNpgsql(connection));
 
         services.AddSingleton(TimeProvider.System);
