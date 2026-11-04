@@ -1,6 +1,7 @@
 // Uç durumlar: kimlik, girdi doğrulama, güvenlik, sürümler, dışa aktarma, öneri durum geçişleri.
 //   ARCVORA_API_URL=http://127.0.0.1:5217 node scripts/e2e/api-edge.mjs
 import { API_URL, call, check, fatal, finish, section, waitHealth, waitJob } from './lib.mjs';
+import { readZip } from './zip.mjs';
 import { head, newProject, newUser, withAcceptedRequirements } from './fixtures.mjs';
 
 if (!(await waitHealth(60_000))) fatal('API açılmadı');
@@ -152,5 +153,20 @@ const disp = dl2.headers.get('content-disposition') ?? '';
 check('dosya adı yol/başlık enjeksiyonu içermez (/, \\, .., CR/LF yok)', dl2.status === 200 && !/[\/\\\r\n]|\.\./.test(disp.replace(/^attachment; /, '')), disp);
 check('yanıtta enjekte edilmiş Set-Cookie başlığı yok', dl2.headers.get('set-cookie') === null);
 check('Markdown yanıtı text/markdown ve nosniff ile gelir', /text\/markdown/.test(dl.headers.get('content-type') ?? '') && dl.headers.get('x-content-type-options') === 'nosniff', [...dl.headers.entries()]);
+
+section('Sürüm okuma uç durumları');
+const vu = await newUser('ver');
+const vpid = await newProject(vu);
+await withAcceptedRequirements(vu, vpid);
+const vget = (path) => call('GET', `/api/projects/${vpid}${path}`, { token: vu.token });
+check('olmayan sürüm (v99) → 404', (await vget('/versions/99')).status === 404);
+for (const bad of ['0', 'abc', '-1']) check(`geçersiz sürüm "${bad}" → 400 (500 değil)`, (await vget(`/versions/${bad}`)).status === 400);
+const vlist = (await vget('/versions')).body;
+const byGuid = await vget(`/versions/${vlist[0].id}`);
+check('sürüm GUID ile de okunur ve numarası eşleşir', byGuid.status === 200 && byGuid.body.info.number === vlist[0].number, byGuid.body?.info);
+check('olmayan sürümün görünümleri/bulguları → 404', (await vget('/versions/99/views')).status === 404 && (await vget('/versions/99/findings')).status === 404);
+const v1 = (await vget('/versions/1')).body;
+const v2 = (await vget('/versions/2')).body;
+check('eski sürüm kendi içeriğini korur (v1 gereksinimsiz, v2 gereksinimli)', v1.model.requirements.length === 0 && v2.model.requirements.length > 0, [v1.model.requirements.length, v2.model.requirements.length]);
 
 finish();
