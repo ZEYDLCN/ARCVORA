@@ -60,7 +60,7 @@ gereksinimler, kararlar, bileşenler ve bunların birbirleriyle ilişkileridir.
 - [Neden ARCVORA?](#neden-arcvora) · [Hızlı başlangıç](#hızlı-başlangıç) · [Nasıl çalışır?](#nasıl-çalışır)
 - [Neler var?](#neler-var) · [Test güvencesi](#test-güvencesi) · [Yerelde çalıştırma](#yerelde-çalıştırma-adım-adım)
 - [Yapılandırma](#yapılandırma) · [Testler](#testler) · [Depo yapısı](#depo-yapısı)
-- [MVP kabul listesi](#mvp-kabul-listesi-doküman-25--durum) · [Bilinen sınırlar](#bilinen-sınırlar-dürüst-liste)
+- [MVP kabul listesi](#mvp-kabul-listesi-doküman-25--durum) · [Bilinen sınırlar](#bilinen-sınırlar-dürüst-liste) · [Lisans](#lisans)
 - Rehberler: [Kullanım](docs/KULLANIM.md) · [Ücretsiz dağıtım](docs/DEPLOY.md) · [Yerel model](docs/LOCAL_LLM.md) · [Pilot rehberi](docs/PILOT_PLAYBOOK.md)
 
 </details>
@@ -359,3 +359,7 @@ docs/                       ROADMAP, ARCHITECTURE, PILOT_PLAYBOOK
 - Çok kullanıcılı dal/birleştirme yok; geçmiş doğrusaldır.
 - Marka adı, alan adı ve sosyal hesap uygunluğu kontrol edilmedi (doküman §2.1). Arayüzdeki Arcvora logosu özgün bir çalışma işaretidir; kesin marka kimliği değildir.
 - Mimari tuvali, bileşenleri **türe göre** soldan sağa dizer (istemci → API → modül → işleyici → veri → dış servis); sürükle-bırak düzenleme yoktur ve çok geniş mimarilerde yatay kaydırma gerekir.
+
+## Lisans
+
+[MIT](LICENSE) © 2026 ZEYDLCN. Marka adı ve logo için yukarıdaki "Bilinen sınırlar" notuna bakın: lisans, marka hakkı vermez.
