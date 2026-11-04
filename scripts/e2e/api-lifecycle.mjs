@@ -65,4 +65,21 @@ check('eylemi yapan kullanıcı e-postası kayıtlı', audit.body?.every((a) => 
 const outsider = await newUser('audit-out');
 check('üye olmayan denetim kaydını göremez → 404', (await call('GET', `/api/projects/${pid}/audit`, { token: outsider.token })).status === 404);
 
+section('Proje silme');
+const delPid = await newProject(user, 'Silinecek proje');
+const editor = await newUser('del-editor');
+await call('POST', `/api/workspaces/${user.workspaceId}/members`, { token: user.token, body: { email: editor.email, role: 'editor', canAccept: true } });
+const byEditor = await call('DELETE', `/api/projects/${delPid}`, { token: editor.token });
+check('düzenleyici projeyi silemez → 403', byEditor.status === 403, byEditor.status);
+check('proje hâlâ duruyor', (await call('GET', `/api/projects/${delPid}`, { token: user.token })).status === 200);
+const byOutsider = await call('DELETE', `/api/projects/${delPid}`, { token: outsider.token });
+check('üye olmayan silemez → 404', byOutsider.status === 404, byOutsider.status);
+const byAdmin = await call('DELETE', `/api/projects/${delPid}`, { token: user.token });
+check('yönetici siler → 204', byAdmin.status === 204, byAdmin.status);
+check('silinen proje → 404', (await call('GET', `/api/projects/${delPid}`, { token: user.token })).status === 404);
+check('silinen projenin sürümleri → 404', (await call('GET', `/api/projects/${delPid}/versions`, { token: user.token })).status === 404);
+const list = (await call('GET', '/api/projects', { token: user.token })).body;
+check('proje listesinde artık yok', !list.some((p) => p.id === delPid), list.map((p) => p.name));
+check('diğer projeler etkilenmedi', list.some((p) => p.id === pid), list.map((p) => p.name));
+
 finish();
