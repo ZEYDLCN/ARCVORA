@@ -103,6 +103,11 @@ bayat öneri (409), geri alma, dışa aktarma, çalışma alanı yalıtımı (40
 roller (okuyucu / düzenleyici / ayrı kabul yetkisi / yönetici), paralel kabulün tek sürüm üretmesi, çakışan düzenlemede `409 version_conflict`,
 geçersiz yamanın modeli bozamaması, açık soru yanıtı, denetim kaydı, proje silme; `--local` ile ayrıca yavaş modelde iş iptali ve zaman aşımı.
 
+Uç durum testleri ayrıca: kayıt/giriş hataları ve kullanıcı sızdırmama, bozuk/değiştirilmiş/`alg:none` token, girdi sınır değerleri (ad 200, açıklama 4000, kaynak 100 000, talep 8000 karakter),
+düşmanca metinlerin (Mermaid yönergesi, HTML, dosya adı enjeksiyonu) görünümlerde, Markdown'da ve arayüzde etkisiz kalması (XSS), sürüm/geri alma/dışa aktarma (zip + MANIFEST) uç durumları,
+öneri durum geçişleri, `Idempotency-Key` kapsamı, yama bütünlüğü (sarkan referans, kimlik çakışması), kimlik uçlarında hız sınırı (`429` + `Retry-After`),
+tarayıcıda ağ kesintisi / sunucu 500 / 401 / 404, oturumun yenilemede kalması, klavye ve odak yönetimi, 320–1920 px ekran boyutları, tema kalıcılığı.
+
 ### Gerçek modelle dene
 
 API'yi 4. adımdaki ayarlarla (gerçek Ollama'ya bağlı) başlattıktan sonra, aynı yolculuğu gerçek model üzerinde koşabilirsiniz:
