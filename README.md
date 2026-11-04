@@ -30,6 +30,21 @@ gereksinimler, kararlar, bileşenler ve bunların birbirleriyle ilişkileridir.
 `tek proje → onaylanan gereksinimler → mimari model → üç görünüm → yeni talep → etki incelemesi → yeni sürüm → Markdown çıktısı`.
 Ürün doğrulaması (gerçek pilotlar, fiyat, kalite eşikleri) **yapılmadı**; bu depo yazılım tarafını kapsar. Ayrıntı: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
+<p align="center">
+  <img src="docs/assets/screen-canvas.jpg" alt="Arcvora mimari tuvali: teknoloji logolu bileşenler ve akış çizgileri" width="100%" />
+</p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/assets/screen-review.jpg" alt="Değişiklik önerisi inceleme ekranı ve etki özeti" /></td>
+    <td width="50%"><img src="docs/assets/screen-canvas-dark.jpg" alt="Koyu temada mimari tuvali" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Etki incelemesi:</b> öneri kabul edilene kadar model değişmez</sub></td>
+    <td align="center"><sub><b>Koyu tema</b> · ⌘K / Ctrl+K ile arama</sub></td>
+  </tr>
+</table>
+
 ## Neler var?
 
 | Alan | Açıklama |
