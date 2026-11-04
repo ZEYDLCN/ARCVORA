@@ -8,7 +8,7 @@ namespace Arcvora.Core.Ai;
 /// <see cref="ILlmClient"/> üzerinden şemalı üretim yapan üretici. Çıktı güvenilmeyen girdi sayılır;
 /// doğrulama, koruyucu ve kabul kararı boru hattı ile uygulama kurallarındadır.
 /// </summary>
-public sealed class LlmArchitectureGenerator(ILlmClient llm, int maxOutputTokens = 16_000) : IArchitectureGenerator
+public sealed class LlmArchitectureGenerator(ILlmClient llm, int maxOutputTokens = 16_000, JsonElement? strictSchema = null) : IArchitectureGenerator
 {
     public const string ToolName = "submit_model_draft";
 
@@ -138,7 +138,7 @@ public sealed class LlmArchitectureGenerator(ILlmClient llm, int maxOutputTokens
         var response = await llm.GenerateAsync(new StructuredRequest(
             SystemPrompt(ctx), user, ToolName,
             "Mimari model taslağını gönderir. Yalnızca öneridir; sistem doğrular.",
-            Schema, maxOutputTokens), ct);
+            strictSchema ?? Schema, maxOutputTokens), ct);
 
         try
         {

@@ -95,7 +95,7 @@ Doğrudan etki, model farkından (eklenen/değişen/silinen) gelir. Bağımlı e
 
 `IArchitectureGenerator` (Extract / Architecture / Change / Repair) iki gerçekleştirmeyle gelir:
 
-- `LlmArchitectureGenerator` → `ILlmClient` (şu an `AnthropicLlmClient`, zorunlu `tool_choice`).
+- `LlmArchitectureGenerator` → `ILlmClient`: `AnthropicLlmClient` (zorunlu `tool_choice`) veya `OpenAiCompatibleLlmClient` (yerel sunucular; `ModelDraft`'tan türetilen **sıkı JSON şeması** ile şema kısıtlı çıktı — bkz. `docs/LOCAL_LLM.md`).
 - `HeuristicGenerator` → anahtarsız, **AI olmayan**; çıktısı `isAi=false` ve notla işaretlenir.
 
 `ProposalPipeline`: üretim → `DraftResolver` (geçici `new-N` kimlikleri gerçek kimliklere) → `GeneratorGuard` → patch uygulama → doğrulama → (en çok `MaxRepairs` onarım) → etki analizi.

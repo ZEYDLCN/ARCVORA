@@ -71,7 +71,7 @@ Teslimler
 **Amaç:** AI üretimini sağlam modelin önüne eklemek (§26 adım 4). LLM öneri üretir; kabul, yetki ve yazım uygulama kurallarındadır.
 
 Teslimler
-- `ILlmClient` sağlayıcı arayüzü; Anthropic Messages API istemcisi (zorunlu tool-use ile şemalı çıktı).
+- `ILlmClient` sağlayıcı arayüzü; Anthropic Messages API istemcisi (zorunlu tool-use ile şemalı çıktı) ve OpenAI uyumlu yerel sunucu istemcisi (Qwen/Ollama/llama.cpp; şema kısıtlı çıktı). *Yerel istemci testle doğrulandı; gerçek Qwen kalitesi ölçülmedi.*
 - `IArchitectureGenerator`: gereksinim çıkarma, mimari taslak, değişiklik analizi.
 - Boru hattı: üretim → kimlik çözümü → patch uygulama → doğrulama → en fazla N onarım denemesi → inceleme.
 - İş başına token/süre/deneme bütçesi; sınırsız düzeltme döngüsü yok.
@@ -143,7 +143,7 @@ Tam uygulama üretimi, Git deposundan mimari çıkarımı, canlı yük/maliyet s
 
 ## Durum kaydı (4 Kasım 2026)
 
-**Doğrulanan** (otomatik): 85 çekirdek birim + 57 entegrasyon (gerçek PostgreSQL) + 9 web testi; tip denetimi ve üretim derlemesi.
+**Doğrulanan** (otomatik): 85 çekirdek birim + 77 entegrasyon (gerçek PostgreSQL) + 22 web testi; tip denetimi ve üretim derlemesi.
 Ayrıca gerçek tarayıcıda (Playwright) elle sürülen akışlar: kayıt → örnek proje → tüm görünümler → etki incelemesi → kabul → eski sürüm
 (salt okunur) → mobil; fikir metninden gereksinim çıkarımı → mimari taslak; düşmanca etiketli modelin gerçek Mermaid ile çizimi.
 

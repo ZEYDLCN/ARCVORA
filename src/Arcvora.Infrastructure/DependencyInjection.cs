@@ -51,11 +51,18 @@ public static class DependencyInjection
                 services.AddSingleton<IArchitectureGenerator>(sp =>
                     new LlmArchitectureGenerator(sp.GetRequiredService<ILlmClient>(), ai.Anthropic.MaxOutputTokens));
                 break;
+            case "local":
+                if (string.IsNullOrWhiteSpace(ai.Local.Model))
+                    throw new InvalidOperationException("Ai:Provider=local için Ai:Local:Model gerekli (örn. qwen2.5:7b-instruct).");
+                services.AddHttpClient<ILlmClient, OpenAiCompatibleLlmClient>(c => c.Timeout = TimeSpan.FromSeconds(ai.TimeoutSeconds + 30));
+                services.AddSingleton<IArchitectureGenerator>(sp =>
+                    new LlmArchitectureGenerator(sp.GetRequiredService<ILlmClient>(), ai.Local.MaxOutputTokens, DraftSchema.Get()));
+                break;
             case "heuristic":
                 services.AddSingleton<IArchitectureGenerator, HeuristicGenerator>();
                 break;
             default:
-                throw new InvalidOperationException($"Bilinmeyen Ai:Provider '{ai.Provider}' (heuristic | anthropic).");
+                throw new InvalidOperationException($"Bilinmeyen Ai:Provider '{ai.Provider}' (heuristic | anthropic | local).");
         }
 
         return services;
