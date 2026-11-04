@@ -4,6 +4,7 @@
 //
 //   node scripts/e2e/mock-llm.mjs                       # :11599, model adı "qwen-mock"
 //   MOCK_LLM_PORT=11434 MOCK_LLM_MODEL=qwen3:8b node scripts/e2e/mock-llm.mjs
+//   MOCK_LLM_DELAY_MS=3000 → her yanıtı gecikmeli verir (yavaş yerel model; iş iptali ve zaman aşımı sınamaları için)
 //   MOCK_LLM_FAULT=repair  → ilk mimari yanıtı bilerek bozuk (olmayan bileşene bağlantı) döndürür; ARCVORA'nın onarım turunu sınar
 //   GET /__requests → gelen isteklerin özeti (e2e testi, istemcinin doğru biçimde konuştuğunu buradan doğrular)
 import http from 'node:http';
@@ -11,6 +12,7 @@ import http from 'node:http';
 const PORT = Number(process.env.MOCK_LLM_PORT ?? 11599);
 const MODEL = process.env.MOCK_LLM_MODEL ?? 'qwen-mock';
 const FAULT = process.env.MOCK_LLM_FAULT ?? '';
+const DELAY = Number(process.env.MOCK_LLM_DELAY_MS ?? 0);
 const log = [];
 let architectureCalls = 0;
 
@@ -178,15 +180,15 @@ const server = http.createServer((req, res) => {
       const { task, content } = answer(body);
       log.push({ ...entry, task });
       console.log(`[mock-llm] ${task} (${body.model}) → ${content.length} karakter`);
-      send(200, {
+      setTimeout(() => send(200, {
         id: 'mock-1', object: 'chat.completion', model: body.model,
         choices: [{ index: 0, finish_reason: 'stop', message: { role: 'assistant', content } }],
         usage: { prompt_tokens: Math.ceil(JSON.stringify(body.messages).length / 4), completion_tokens: Math.ceil(content.length / 4) },
-      });
+      }), DELAY);
     });
     return;
   }
   send(404, { error: { message: 'bulunamadı' } });
 });
 
-server.listen(PORT, '127.0.0.1', () => console.log(`[mock-llm] http://127.0.0.1:${PORT}  model=${MODEL}${FAULT ? `  fault=${FAULT}` : ''}`));
+server.listen(PORT, '127.0.0.1', () => console.log(`[mock-llm] http://127.0.0.1:${PORT}  model=${MODEL}${FAULT ? `  fault=${FAULT}` : ''}${DELAY ? `  delay=${DELAY}ms` : ''}`));
