@@ -45,6 +45,18 @@ gereksinimler, kararlar, bileşenler ve bunların birbirleriyle ilişkileridir.
   </tr>
 </table>
 
+## Neden ARCVORA?
+
+AI'dan mimari önerisi almak kolay; **neyin kimden geldiğini ve neyin onaylandığını kaybetmemek** zor. ARCVORA üç kural üzerine kuruludur:
+
+| | İlke | Somut karşılığı |
+|---|---|---|
+| 🔎 | **Kaynağı kaybetme** | "Kullanıcı söyledi", "sistem önerdi" ve "varsayım" ayrı tutulur. Kullanıcı ifadesi sayılmak için kaynak metinden **birebir alıntı** gerekir; kabul edilen nesne bu bilgiyi kaybetmez. |
+| 📝 | **Öneri bir taslaktır** | AI çıktısı kabul edilene kadar modeli değiştirmez. Kabul sürüm üretir; eski temele dayalı öneri güncel modeli ezemez; kısmi kabul bağımlılıkları korur. |
+| 🔗 | **Her değişikliğin etkisi görünür** | Gereksinim → karar → bileşen bağları izlenir; yeni bir talep hangi nesneleri doğrudan, bağımlı ya da olası etkilediğini gösterir. |
+
+> Bu bir **konumlandırma hipotezidir**, kanıtlanmış bir üstünlük değil: gerçek pilot ve gerçek model kalitesi ölçümü yapılmadı (bkz. [bilinen sınırlar](#bilinen-sınırlar-dürüst-liste)).
+
 ## Neler var?
 
 | Alan | Açıklama |
