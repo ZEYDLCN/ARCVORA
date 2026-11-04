@@ -36,8 +36,14 @@ public sealed class ProposalService(ArcvoraDbContext db, ProjectAccessService ac
     {
         var ctx = await access.RequireAsync(userId, projectId, Permission.Read, track: false, ct);
         var query = db.Proposals.AsNoTracking().Where(p => p.ProjectId == projectId);
-        if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<ProposalStatus>(status, true, out var st))
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            // "1" gibi sayısal değerler de Enum.TryParse'tan geçer; yalnızca adlandırılmış durumlar kabul edilir.
+            if (!Enum.TryParse<ProposalStatus>(status, true, out var st) || !Enum.IsDefined(st) || int.TryParse(status, out _))
+                throw new RequestValidationException("invalid_status",
+                    $"Geçersiz durum '{status}'. Geçerli değerler: {string.Join(", ", Enum.GetNames<ProposalStatus>().Select(n => n.ToLowerInvariant()))}.");
             query = query.Where(p => p.Status == st);
+        }
         var rows = await query.OrderByDescending(p => p.CreatedAt).Take(100).ToListAsync(ct);
         return rows.Select(p => ToSummary(p, ctx.Project.HeadNumber)).ToList();
     }
