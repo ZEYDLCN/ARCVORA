@@ -85,4 +85,25 @@ const otherUser = await newUser('edge-other');
 const intoOthers = await call('POST', '/api/projects', { token: user.token, body: { workspaceId: otherUser.workspaceId, name: 'sızma', techProfileId: goodProfile } });
 check('başkasının çalışma alanına proje açılamaz → 404', intoOthers.status === 404, intoOthers.status);
 
+section('Kaynak ve değişiklik talebi doğrulaması');
+const pid = await newProject(user);
+await withAcceptedRequirements(user, pid);
+const base = await head(user, pid);
+const src = (b) => call('POST', `/api/projects/${pid}/sources`, { token: user.token, body: b });
+check('boş kaynak → 422 empty_source', (await src({ title: 'x', text: '  ', baseVersion: base })).body?.code === 'empty_source');
+const bigSrc = await src({ title: 'x', text: 'a'.repeat(100_001), baseVersion: base });
+check('100001 karakterlik kaynak → 422 source_too_long', bigSrc.status === 422 && bigSrc.body?.code === 'source_too_long', bigSrc);
+check('eski temele dayalı kaynak ekleme → 409', (await src({ title: 'x', text: 'metin burada', baseVersion: base - 1 })).status === 409);
+const odd = await src({ title: 'Toplantı', text: 'Yöneticiler raporu PDF indirebilsin.', format: 'pdf', baseVersion: base });
+check('tanınmayan format sessizce "text"e çevrilir, kaynak eklenir', odd.status === 201, odd);
+const stored = (await call('GET', `/api/projects/${pid}`, { token: user.token })).body.model.sources.at(-1);
+check('saklanan format yalnız "text" veya "markdown"', ['text', 'markdown'].includes(stored.format), stored.format);
+const chg = (requestText) => call('POST', `/api/projects/${pid}/change-requests`, { token: user.token, body: { requestText } });
+check('boş değişiklik talebi → 422 empty_request', (await chg('')).body?.code === 'empty_request');
+check('1 karakterlik talep → 422 empty_request', (await chg('a')).body?.code === 'empty_request');
+check('gövdesiz talep → 422', (await call('POST', `/api/projects/${pid}/change-requests`, { token: user.token, body: {} })).status === 422);
+const tooLong = await chg('a'.repeat(8001));
+check('8001 karakterlik talep → 422 request_too_long', tooLong.status === 422 && tooLong.body?.code === 'request_too_long', tooLong);
+check('tam 8000 karakterlik talep kabul edilir (202)', (await chg('b'.repeat(8000))).status === 202);
+
 finish();
