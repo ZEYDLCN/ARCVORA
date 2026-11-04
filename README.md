@@ -173,9 +173,9 @@ cd web && npm run typecheck && npm test
 Uçtan uca (gerçek PostgreSQL + API + web + isteğe bağlı sahte yerel model; geçici veritabanını kendisi açıp siler):
 
 ```bash
-scripts/e2e.sh --no-ui           # API yolculuğu, roller/yetkiler, eşzamanlılık, yaşam döngüsü (112 doğrulama)
+scripts/e2e.sh --no-ui           # API: yolculuk, roller, eşzamanlılık, yaşam döngüsü, uç durumlar, hız sınırı (247 doğrulama)
 scripts/e2e.sh --local --no-ui   # + sahte yerel model: istek biçimi, onarım turu, yavaş modelde iş iptali ve zaman aşımı
-scripts/e2e.sh                   # + tarayıcı yolculuğu (Playwright: cd web && npm i --no-save playwright && npx playwright install chromium)
+scripts/e2e.sh                   # + tarayıcı: yolculuk ve uç durumlar (hata yolları, oturum, XSS, klavye, ekran boyutları; 91 doğrulama; Playwright: cd web && npm i --no-save playwright && npx playwright install chromium)
 ```
 
 Sahte model ([`scripts/e2e/mock-llm.mjs`](scripts/e2e/mock-llm.mjs)) ARCVORA'nın `Ai__Provider=local` yolunu sınamak içindir; **gerçek model kalitesi hakkında bir şey söylemez**.
