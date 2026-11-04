@@ -81,7 +81,23 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
 if (builder.Configuration.GetValue("Worker:InProcess", false))
     builder.Services.AddHostedService<JobWorkerService>();
 
+// Bir ters proxy'nin (Render, Fly, Koyeb, nginx…) ARKASINDA çalışırken gerçek istemci adresi X-Forwarded-For'dan okunur; aksi halde
+// tüm kullanıcılar proxy'nin tek IP'sini paylaşır ve kimlik hız sınırı herkes için ortak dolar. Varsayılan KAPALI: uygulama doğrudan
+// internete açıksa başlığı istemci sahteleyebilir. Yalnızca trafik gerçekten bir proxy'den geliyorsa ForwardedHeaders__Enabled=true yapın.
+if (builder.Configuration.GetValue("ForwardedHeaders:Enabled", false))
+{
+    builder.Services.Configure<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>(o =>
+    {
+        o.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto;
+        // PaaS proxy adresleri önceden bilinmez; yalnızca proxy'den erişilebilir olduğu varsayılır.
+        o.KnownNetworks.Clear();
+        o.KnownProxies.Clear();
+    });
+}
+
 var app = builder.Build();
+
+if (app.Configuration.GetValue("ForwardedHeaders:Enabled", false)) app.UseForwardedHeaders();
 
 if (app.Configuration.GetValue("Database:MigrateOnStartup", false))
 {
