@@ -237,4 +237,26 @@ check('yeni öneri kabul edilir', accB.status === 200, accB);
 const rejAcc = await pcall('POST', `/proposals/${B}/reject`, {});
 check('kabul edilmiş öneri reddedilemez → 409 proposal_accepted', rejAcc.status === 409 && rejAcc.body?.code === 'proposal_accepted', rejAcc);
 
+section('Mimariyi yeniden üretmek bileşenleri çoğaltmaz (regresyon)');
+const ru = await newUser('regen');
+const rpid = await newProject(ru);
+await withAcceptedRequirements(ru, rpid);
+const rcall = (method, path, body, headers) => call(method, `/api/projects/${rpid}${path}`, { token: ru.token, body, headers });
+const regen = async () => waitJob(ru.token, (await rcall('POST', '/architecture-proposals')).body.id);
+const g1 = await regen();
+await rcall('POST', `/proposals/${g1.proposalId}/accept`, {});
+const model1 = (await rcall('GET', '')).body.model;
+const g2 = await regen();
+check('ikinci mimari işi hata vermeden biter', g2.status === 'succeeded', g2);
+const d2 = (await rcall('GET', `/proposals/${g2.proposalId}`)).body;
+check('mevcut mimari varken yeni öneri etki kalemi içermez (yeniden önermez)', (d2.impact?.items?.length ?? 0) === 0, d2.impact?.items?.length);
+const acc2 = await rcall('POST', `/proposals/${g2.proposalId}/accept`, {});
+check('boş öneriyi kabul → 422 empty_patch (sürüm üretmez)', acc2.status === 422 && acc2.body?.code === 'empty_patch', acc2);
+const model2 = (await rcall('GET', '')).body.model;
+check('bileşen, karar ve ilişki sayıları değişmedi',
+  model2.components.length === model1.components.length && model2.decisions.length === model1.decisions.length && model2.relationships.length === model1.relationships.length,
+  [model1.components.length, model2.components.length]);
+const names = model2.components.map((c) => c.name);
+check('aynı adlı birden fazla bileşen yok', new Set(names).size === names.length, names);
+
 finish();
