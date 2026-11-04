@@ -13,13 +13,13 @@ Durum sütunu depodaki gerçek koda göre tutulur; "tamam" yalnızca testle doğ
 
 | Faz | Ad | Doküman karşılığı | Bu depodaki karşılığı | Durum |
 |----:|----|-------------------|-----------------------|:-----:|
-| 0 | Problem doğrulama | §22, §23 Aşama 0 | `docs/PILOT_PLAYBOOK.md` (kod dışı hazırlık) | 🟡 hazırlık dokümanı var; görüşmeler kod dışı |
+| 0 | Problem doğrulama | §22, §23 Aşama 0 | `docs/PILOT_PLAYBOOK.md` (kod dışı hazırlık) | 🟡 rehber hazır; görüşmeler ve ödeme denemesi kod dışı, yapılmadı |
 | 1 | Model temeli | §14, §15.2, §18, §26.1–2 | `Arcvora.Core` | ✅ |
 | 2 | Çalışma alanı çekirdeği (erişim, sürüm, kabul) | §16.2, §17, §19, §26.3 | `Arcvora.Infrastructure`, `Arcvora.Api` | ✅ |
-| 3 | AI taslak hattı | §15, §26.4 | `Arcvora.Core/Ai`, `Arcvora.Infrastructure/Ai`, worker | ✅ (canlı sağlayıcı doğrulaması hariç) |
+| 3 | AI taslak hattı | §15, §26.4 | `Arcvora.Core/Ai`, `Arcvora.Infrastructure/Ai`, worker | ✅ sahte LLM ve HTTP stub ile; ⬜ canlı sağlayıcı kalitesi ölçülmedi |
 | 4 | Değişiklik etki motoru | §16, §26.5 | `Arcvora.Core/Impact`, proposal akışı | ✅ |
 | 5 | Web çalışma alanı | §12 | `web/` | ✅ temel akış |
-| 6 | Kalite ve güvenilirlik | §20, §26.6 | `tests/`, CI | 🟡 sürekli |
+| 6 | Kalite ve güvenilirlik | §20, §26.6 | `tests/`, CI | 🟡 §20.2 testleri tamam; değerlendirme kümesi ve eşikler yok |
 | 7 | Ücretli pilot hazırlığı | §21–22, §23 Aşama 5 | maliyet/hata görünürlüğü | ⬜ |
 | 8 | Spring Boot profili | §11, §23 Aşama 6 | `ProfileCatalog` (planned) | ⬜ |
 | 9 | Entegrasyonlar | §23 Aşama 7 | — | ⬜ |
@@ -137,3 +137,23 @@ Tam uygulama üretimi, Git deposundan mimari çıkarımı, canlı yük/maliyet s
 - Marka/alan adı/sosyal hesap doğrulaması (§2.1) — kod dışı.
 - LLM sağlayıcısının veri saklama ve eğitim koşulları (§19) — entegrasyon öncesi doğrulanmalı.
 - Profildeki sürüm aralıklarının resmî kaynaklardan doğrulanması (§11.2) — profil `verification: pending` olarak işaretlidir.
+
+---
+
+## Durum kaydı (4 Kasım 2026)
+
+**Doğrulanan** (otomatik): 85 çekirdek birim + 57 entegrasyon (gerçek PostgreSQL) + 9 web testi; tip denetimi ve üretim derlemesi.
+Ayrıca gerçek tarayıcıda (Playwright) elle sürülen akışlar: kayıt → örnek proje → tüm görünümler → etki incelemesi → kabul → eski sürüm
+(salt okunur) → mobil; fikir metninden gereksinim çıkarımı → mimari taslak; düşmanca etiketli modelin gerçek Mermaid ile çizimi.
+
+**Doküman §20.2 kritik testleri:** tamamı otomatik (bkz. `tests/Arcvora.Integration.Tests`).
+
+**Bilinen boşluklar / sıradaki işler (öncelik sırasıyla):**
+
+1. Canlı LLM ile değerlendirme kümesi (masraf, randevu, abonelik, envanter, destek) ve **pilot öncesi karar verilecek** başarı eşikleri. *Uzman içeriği gerektirir.*
+2. `IMPLEMENTATION_PLAN.md` (sıralı geliştirme işleri ve bağımlılıkları) — paket çıktısında henüz yok.
+3. Maliyet görünürlüğü (kabul edilen paket başına sağlayıcı maliyeti), hata izleme, geri bildirim toplama (Faz 7).
+4. Saklama/silme politikası, parola sıfırlama, e-posta doğrulama, yedeklerde veri ömrü.
+5. Üretim dağıtımı: Dockerfile/dağıtım betikleri yok (yalnızca geliştirme için PostgreSQL compose dosyası).
+6. Profil sürüm aralıklarının resmî kaynaklardan doğrulanması (`verification: pending`).
+7. Spring Boot profili: aynı değerlendirme kümesiyle kıyaslanmadan açılmaz.
