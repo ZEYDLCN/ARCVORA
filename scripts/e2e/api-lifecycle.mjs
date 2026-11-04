@@ -25,4 +25,14 @@ const edited = (await getModel()).requirements.find((r) => r.id === reqId);
 check('metin ve öncelik güncellendi', edited.text === 'Düzenlenmiş gereksinim metni.' && edited.priority === 'critical', edited);
 check('düzenleme kaynak bilgisini silmez: origin ve sourceRefs korunur', edited.origin === 'user_statement' && edited.sourceRefs.length > 0, edited);
 
+section('Geçersiz yama modeli bozamaz');
+const before = await head(user, pid);
+const badPatch = await call('POST', `/api/projects/${pid}/patches`, {
+  token: user.token,
+  body: { baseVersion: before, summary: 'bozuk', patch: { operations: [{ op: 'upsert', type: 'relationship', id: 'REL-1', value: { id: 'REL-1', sourceId: 'CMP-404', targetId: 'CMP-405' } }] } },
+});
+check('olmayan bileşene bağlantı → 422 validation_failed', badPatch.status === 422 && badPatch.body?.code === 'validation_failed', badPatch);
+check('hata ayrıntıları kural kimliği (REF-…) içerir', badPatch.body?.details?.some((d) => /^REF-/.test(d.ruleId)), badPatch.body?.details);
+check('geçersiz yama sürüm üretmedi', (await head(user, pid)) === before);
+
 finish();
