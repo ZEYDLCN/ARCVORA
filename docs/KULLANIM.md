@@ -99,7 +99,9 @@ scripts/e2e.sh --local        # sahte yerel model + tarayıcı
 ```
 
 Uçtan uca testler şunları kapsar: açılış animasyonu, kayıt/giriş, proje, gereksinim çıkarımı, mimari taslak, kısmi kabul ve bağımlılık reddi,
-bayat öneri (409), geri alma, dışa aktarma, çalışma alanı yalıtımı (404), tuval/Mermaid, arama, tema, mobil taşma, çıkış.
+bayat öneri (409), geri alma, dışa aktarma, çalışma alanı yalıtımı (404), tuval/Mermaid, arama, tema, mobil taşma, çıkış;
+roller (okuyucu / düzenleyici / ayrı kabul yetkisi / yönetici), paralel kabulün tek sürüm üretmesi, çakışan düzenlemede `409 version_conflict`,
+geçersiz yamanın modeli bozamaması, açık soru yanıtı, denetim kaydı, proje silme; `--local` ile ayrıca yavaş modelde iş iptali ve zaman aşımı.
 
 ### Gerçek modelle dene
 
