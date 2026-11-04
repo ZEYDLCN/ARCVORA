@@ -95,6 +95,9 @@ if (builder.Configuration.GetValue("ForwardedHeaders:Enabled", false))
     });
 }
 
+// Minimal API, Development dışında bozuk gövdeyi sessizce gövdesiz 400'e çevirir; her ortamda aynı JSON hata biçimi için istisna fırlatılsın.
+builder.Services.Configure<Microsoft.AspNetCore.Routing.RouteHandlerOptions>(o => o.ThrowOnBadRequest = true);
+
 var app = builder.Build();
 
 if (app.Configuration.GetValue("ForwardedHeaders:Enabled", false)) app.UseForwardedHeaders();
@@ -117,7 +120,9 @@ app.Use(async (ctx, next) =>
         var (status, code, message, details) = ex switch
         {
             AppException a => (a.Status, a.Code, a.Message, a.Details),
-            BadHttpRequestException => (400, "bad_request", "İstek gövdesi geçersiz.", (object?)null),
+            BadHttpRequestException { StatusCode: StatusCodes.Status415UnsupportedMediaType } =>
+                (415, "unsupported_media_type", "İçerik türü application/json olmalı.", (object?)null),
+            BadHttpRequestException => (400, "bad_request", "İstek gövdesi geçersiz.", null),
             JsonException => (400, "bad_request", "İstek gövdesi geçersiz JSON.", null),
             _ => (500, "internal_error", "Beklenmeyen bir hata oluştu.", null),
         };
@@ -138,6 +143,18 @@ app.Use(async (ctx, next) =>
     await next();
 });
 
+// Eşleşen uç noktası olmayan /api isteği arayüzün sayfasına düşmeden tutarlı JSON 404 alır (415 gibi uç noktaya özgü yanıtlara dokunulmaz).
+app.Use(async (ctx, next) =>
+{
+    await next();
+    if (ctx.Response.StatusCode == StatusCodes.Status404NotFound && !ctx.Response.HasStarted
+        && ctx.GetEndpoint() is null && ctx.Request.Path.StartsWithSegments("/api"))
+    {
+        await ctx.Response.WriteAsJsonAsync(new { status = 404, code = "not_found", title = "Uç nokta bulunamadı." },
+            (System.Text.Json.JsonSerializerOptions?)null, "application/problem+json");
+    }
+});
+
 app.UseCors();
 app.UseRateLimiter();
 app.UseAuthentication();
@@ -151,7 +168,7 @@ if (Directory.Exists(Path.Combine(app.Environment.ContentRootPath, "wwwroot")))
 {
     app.UseDefaultFiles();
     app.UseStaticFiles();
-    app.MapFallbackToFile("index.html");
+    app.MapFallbackToFile("{**path:regex(^(?!api(/|$)).*$)}", "index.html"); // /api altı SPA'ya düşmez
 }
 
 app.Run();
