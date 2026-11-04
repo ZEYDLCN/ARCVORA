@@ -104,6 +104,17 @@ Model tek gerçek kaynaktır; diyagramlar ondan **türetilir** (LLM çizmez). Ay
 | Çıktı | Tek dosya Markdown veya paket (zip); her çıktı model sürümü, profil sürümü, üretici sürümü ve hash ile kaydedilir. |
 | Web | React + TypeScript çalışma alanı: taneli renkli zemin üzerinde yüzen kenar çubuğu (daraltılabilir, ⌘K / Ctrl+K arama), **logolu mimari tuvali** (noktalı akış çizgileri, teknoloji yığını), buzlu cam (glassmorphism) görünümü, Mermaid görünümleri, gerekçe ve ilişki zinciri, değişiklik incelemesi, mobilde çekmece menü, koyu/açık tema. |
 
+## Test güvencesi
+
+| Katman | Kapsam | Komut |
+|---|---|---|
+| Birim (Core) | model, doğrulayıcı, yama, etki, görünümler, AI hattı — **86** test | `dotnet test tests/Arcvora.Core.Tests` |
+| Entegrasyon | gerçek PostgreSQL: erişim, sürümler, işler, yerel model istemcisi — **93** test | `dotnet test tests/Arcvora.Integration.Tests` |
+| Web | düzen algoritması, grup bağımlılıkları, açılış animasyonu, arama paleti — vitest | `cd web && npm test` |
+| Uçtan uca | API + tarayıcı (Playwright), **340'tan fazla doğrulama**: roller, eşzamanlılık, XSS/enjeksiyon, hız sınırı, üretim yapılandırması | `scripts/e2e.sh` · `--local` · `--prod` |
+
+Uçtan uca testler henüz CI'da çalışmıyor; yerelde çalıştırılır. Ayrıntı: [Testler](#testler).
+
 ## Yerelde çalıştırma (adım adım)
 
 > macOS + yerel Qwen/Ollama ile baştan sona arayüz yolculuğu için: [`docs/KULLANIM.md`](docs/KULLANIM.md).
