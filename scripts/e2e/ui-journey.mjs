@@ -175,6 +175,11 @@ try {
   await page.waitForTimeout(500);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   check('mobilde yatay kaydırma yok', overflow <= 1, overflow);
+  // Taşan öğe üst katmanda kırpılırsa scrollWidth fark etmez: asıl öğelerin sağ kenarı ekran içinde mi?
+  const outside = await page.evaluate(() => [...document.querySelectorAll('.ws-head select, .ws-head .btn, .ws-head h1')]
+    .map((el) => ({ el: el.id || el.className || el.tagName, right: Math.round(el.getBoundingClientRect().right) }))
+    .filter((x) => x.right > window.innerWidth + 1));
+  check('mobilde üst bölümün öğeleri ekran dışına taşmaz', outside.length === 0, outside);
   await shot('11-mobil');
   await page.setViewportSize({ width: 1360, height: 860 });
 
