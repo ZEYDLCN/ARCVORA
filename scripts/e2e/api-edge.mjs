@@ -1,7 +1,7 @@
 // Uç durumlar: kimlik, girdi doğrulama, güvenlik, sürümler, dışa aktarma, öneri durum geçişleri.
 //   ARCVORA_API_URL=http://127.0.0.1:5217 node scripts/e2e/api-edge.mjs
 import { API_URL, call, check, fatal, finish, section, waitHealth } from './lib.mjs';
-import { newUser } from './fixtures.mjs';
+import { head, newProject, newUser, withAcceptedRequirements } from './fixtures.mjs';
 
 if (!(await waitHealth(60_000))) fatal('API açılmadı');
 const raw = (method, path, { body, headers = {}, token } = {}) =>
@@ -57,5 +57,32 @@ const hdrs = (await raw('GET', '/health')).headers;
 check('güvenlik başlıkları: nosniff, DENY, no-referrer',
   hdrs.get('x-content-type-options') === 'nosniff' && hdrs.get('x-frame-options') === 'DENY' && hdrs.get('referrer-policy') === 'no-referrer',
   [...hdrs.entries()]);
+
+section('Proje girdi doğrulaması');
+const user = await newUser('edge');
+const profiles = (await call('GET', '/api/profiles')).body;
+const goodProfile = profiles.find((p) => p.selectable).id;
+const mk = (b) => call('POST', '/api/projects', { token: user.token, body: { workspaceId: user.workspaceId, techProfileId: goodProfile, ...b } });
+for (const [label, name] of [['boş ad', ''], ['yalnız boşluktan oluşan ad', '   '], ['null ad', null], ['201 karakterlik ad', 'a'.repeat(201)]]) {
+  const r = await mk({ name });
+  check(`${label} → 422 invalid_name`, r.status === 422 && r.body?.code === 'invalid_name', r);
+}
+check('tam 200 karakterlik ad kabul edilir (sınır değeri)', (await mk({ name: 'a'.repeat(200) })).status === 201);
+const longDesc = await mk({ name: 'd', description: 'a'.repeat(4001) });
+check('4001 karakterlik açıklama → 422 invalid_description', longDesc.status === 422 && longDesc.body?.code === 'invalid_description', longDesc);
+check('tam 4000 karakterlik açıklama kabul edilir', (await mk({ name: 'd', description: 'a'.repeat(4000) })).status === 201);
+const hugeIdea = await mk({ name: 'big', ideaText: 'a. '.repeat(70_000) });
+check('200 KB fikir metni → 422 source_too_long', hugeIdea.status === 422 && hugeIdea.body?.code === 'source_too_long', hugeIdea);
+const notReady = profiles.find((p) => !p.selectable);
+if (notReady) {
+  const r = await mk({ name: 'x', techProfileId: notReady.id });
+  check(`doğrulanmamış profil (${notReady.id}) seçilemez → 422 profile_not_available`, r.status === 422 && r.body?.code === 'profile_not_available', r);
+}
+check('olmayan profil → 422 unknown_profile', (await mk({ name: 'x', techProfileId: 'yok' })).body?.code === 'unknown_profile');
+const foreign = await call('POST', '/api/projects', { token: user.token, body: { workspaceId: '11111111-1111-1111-1111-111111111111', name: 'x', techProfileId: goodProfile } });
+check('olmayan/yabancı çalışma alanına proje → 404', foreign.status === 404, foreign);
+const otherUser = await newUser('edge-other');
+const intoOthers = await call('POST', '/api/projects', { token: user.token, body: { workspaceId: otherUser.workspaceId, name: 'sızma', techProfileId: goodProfile } });
+check('başkasının çalışma alanına proje açılamaz → 404', intoOthers.status === 404, intoOthers.status);
 
 finish();
