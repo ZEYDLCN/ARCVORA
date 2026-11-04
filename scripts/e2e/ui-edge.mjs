@@ -179,10 +179,10 @@ try {
   check('eşleşme yoksa "Sonuç yok" gösterilir', await visible(palette.getByText('Sonuç yok'), 3000));
   await page.keyboard.press('Enter');
   check('sonuçsuz Enter hata vermez, palet açık kalır', (await palette.count()) === 1);
-  await box.fill('uygulama');
+  await box.fill('a'); // veriden bağımsız: her modelde birden çok nesne/bölüm eşleşir
   await page.waitForTimeout(300);
   const optionCount = await palette.getByRole('option').count();
-  check('"uygulama" aramasında birden çok sonuç listelenir', optionCount >= 2, optionCount);
+  check('"a" aramasında birden çok sonuç listelenir', optionCount >= 2, optionCount);
   const firstSelected = await palette.getByRole('option').first().getAttribute('aria-selected');
   await page.keyboard.press('ArrowDown');
   const secondSelected = await palette.getByRole('option').nth(1).getAttribute('aria-selected');
