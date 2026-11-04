@@ -1,15 +1,30 @@
 // `Ai__Provider=local` yolunun uçtan uca denetimi: ARCVORA, sahte yerel model sunucusuna (mock-llm.mjs) doğru biçimde konuşuyor mu?
 //   ARCVORA_API_URL=http://127.0.0.1:5218 MOCK_URL=http://127.0.0.1:11599 MOCK_MODEL=qwen-mock node scripts/e2e/local-llm.mjs
 //   MOCK_LLM_FAULT=repair ile başlatılmış sunucuya karşı EXPECT_REPAIR=1 verin: ilk mimari yanıtı bozuk gelir, ARCVORA onarım turu açmalıdır.
+// GERÇEK sunucuya karşı (API Ai__Provider=local ile gerçek Ollama'ya bağlıyken): MOCK_URL vermeyin/erişilemez bırakın ve modeli verin:
+//   ARCVORA_API_URL=http://localhost:5217 LOCAL_MODEL=<etiket> E2E_JOB_TIMEOUT_MS=1800000 node scripts/e2e/local-llm.mjs
+//   Bu modda istek günlüğü (/__requests) olmadığı için "sunucuya giden istekler" ve onarım denetimleri atlanır; sağlayıcı etiketi,
+//   token kaydı ve taslağın doğrulamadan geçip öneri olarak listelenmesi sınanır.
 import { call, check, fatal, finish, section, waitHealth, waitJob } from './lib.mjs';
 
 const MOCK = (process.env.MOCK_URL ?? 'http://127.0.0.1:11599').replace(/\/$/, '');
-const MODEL = process.env.MOCK_MODEL ?? 'qwen-mock';
+const MODEL = process.env.LOCAL_MODEL ?? process.env.MOCK_MODEL ?? 'qwen-mock';
+const JOB_MS = Number(process.env.E2E_JOB_TIMEOUT_MS ?? 180_000);
 const EXPECT_REPAIR = process.env.EXPECT_REPAIR === '1';
 const run = Date.now();
 
 if (!(await waitHealth(60_000))) fatal('API açılmadı');
-const before = (await (await fetch(`${MOCK}/__requests`)).json()).length;
+// Sahte sunucuda istek günlüğü var; gerçek sunucuda yok → günlük denetimleri atlanır.
+const fetchLog = async () => {
+  try {
+    const r = await fetch(`${MOCK}/__requests`, { signal: AbortSignal.timeout(3000) });
+    return r.ok ? await r.json() : null;
+  } catch {
+    return null;
+  }
+};
+const initialLog = await fetchLog();
+const before = initialLog?.length ?? 0;
 
 section('Yerel model üzerinden gereksinim çıkarımı ve mimari taslak');
 const reg = await call('POST', '/api/auth/register', { body: { email: `local-${run}@example.com`, password: 'Parola-12345', displayName: 'Yerel' } });
@@ -21,12 +36,12 @@ const p = await call('POST', '/api/projects', {
 });
 const pid = p.body.summary.id;
 
-const a = await waitJob(token, (await call('POST', `/api/projects/${pid}/analyses`, { token })).body.id);
+const a = await waitJob(token, (await call('POST', `/api/projects/${pid}/analyses`, { token })).body.id, JOB_MS);
 check('çıkarım işi başarılı', a.status === 'succeeded', a);
 check('çıkarım, yerel model token kullanımını kaydetti (bütçe uygulanır)', a.tokensUsed > 0, a.tokensUsed);
 await call('POST', `/api/projects/${pid}/proposals/${a.proposalId}/accept`, { token, body: {} });
 
-const m = await waitJob(token, (await call('POST', `/api/projects/${pid}/architecture-proposals`, { token })).body.id);
+const m = await waitJob(token, (await call('POST', `/api/projects/${pid}/architecture-proposals`, { token })).body.id, JOB_MS);
 check('mimari işi başarılı', m.status === 'succeeded', m);
 const list = (await call('GET', `/api/projects/${pid}/proposals`, { token })).body;
 const arch = list.find((x) => x.kind === 'architecture');
@@ -34,7 +49,12 @@ check('öneri "local:<model>" sağlayıcısıyla etiketli ve yapay zekâ sayıl�
 check('buluşsal üretici notu yok (AI taslağı olarak gösterilir)', !/anahtar sözcük/.test(arch?.note ?? ''), arch?.note);
 
 section('Model sunucusuna giden istekler');
-const log = (await (await fetch(`${MOCK}/__requests`)).json()).slice(before);
+const fullLog = await fetchLog();
+if (fullLog === null) {
+  console.log('  (istek günlüğü yok: gerçek bir sunucu; istek biçimi ve onarım denetimleri atlandı)');
+  finish();
+}
+const log = fullLog.slice(before);
 check('çıkarım ve mimari istekleri sunucuya ulaştı', log.some((r) => r.task === 'extract') && log.some((r) => r.task === 'architecture'), log.map((r) => r.task));
 check('model adı yapılandırmadakiyle aynı', log.every((r) => r.model === MODEL), log.map((r) => r.model));
 check('stream=false (yanıt tek parça)', log.every((r) => r.stream === false), log.map((r) => r.stream));
