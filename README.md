@@ -73,8 +73,9 @@ Ortam değişkenleri `__` ile iç içe anahtar yazar (örn. `Ai__Provider`). Ör
 |---|---|---|
 | `ConnectionStrings__Arcvora` | yerel PostgreSQL | Veritabanı |
 | `Jwt__Key` | — (zorunlu, ≥32 karakter) | Eksikse API **başlamaz**. Development için `appsettings.Development.json`'da yalnızca geliştirme anahtarı vardır. |
-| `Ai__Provider` | `heuristic` | `heuristic`: anahtarsız, **yapay zekâ olmayan** anahtar sözcük iskeleti (arayüzde böyle etiketlenir). `anthropic`: Anthropic Messages API. |
+| `Ai__Provider` | `heuristic` | `heuristic`: anahtarsız, **yapay zekâ olmayan** anahtar sözcük iskeleti (arayüzde böyle etiketlenir). `anthropic`: Anthropic Messages API. `local`: OpenAI uyumlu yerel sunucu (Ollama, llama.cpp, vLLM; ör. **Qwen**) — bkz. [`docs/LOCAL_LLM.md`](docs/LOCAL_LLM.md). |
 | `Ai__Anthropic__ApiKey` / `Model` | — / `claude-sonnet-5-5` | `anthropic` seçilip anahtar yoksa uygulama başlangıçta hata verir. |
+| `Ai__Local__BaseUrl` / `Model` | `http://localhost:11434` / — | `local` için; `Model` boşsa uygulama başlamaz. Bağlam penceresi **en az 16k** olmalı. |
 | `Ai__MaxTokensPerJob`, `Ai__MaxRepairs`, `Ai__TimeoutSeconds` | 120000, 2, 300 | İş başına bütçe; sınırsız düzeltme döngüsü yoktur. |
 | `Jobs__*` | bkz. `JobOptions` | Yoklama aralığı, lease süresi, eşzamanlılık, deneme sayısı. |
 | `Worker__InProcess` | `false` | `true`: worker API içinde (yalnızca geliştirme kolaylığı). |
@@ -130,6 +131,7 @@ docs/                       ROADMAP, ARCHITECTURE, PILOT_PLAYBOOK
 
 ## Bilinen sınırlar (dürüst liste)
 
+- **Yerel model (Qwen) ile gerçek çalıştırma yapılmadı**: istemci, şema ve bağlantı testle ve sahte OpenAI uyumlu sunucuyla doğrulandı; model ağırlıkları bu ortamda indirilemedi. Kendi makinenizde denemek için [`docs/LOCAL_LLM.md`](docs/LOCAL_LLM.md) ve `scripts/check-local-llm.sh`.
 - **Canlı Anthropic çağrısı bu ortamda denenmedi** (API anahtarı yok). İstemcinin HTTP sözleşmesi ve hata sınıflandırması stub ile test edildi; üretim kalitesi bir değerlendirme kümesi ve pilotla ölçülmelidir. Doküman bu aşamada ölçülmemiş doğruluk/zaman kazancı iddiası içermez; bu depo da içermez.
 - Buluşsal sağlayıcı bir **iskelet** üretir (kabul ölçütü, akış, endpoint uydurmaz) ve değişiklik talebi için tasarım değişikliği önermez; yalnızca talebi gereksinim adayı olarak kaydeder ve olası etkileri işaretler.
 - Spring Boot profili `planned` olarak listelenir ve **seçilemez** (doküman §11.2).
