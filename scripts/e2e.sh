@@ -35,7 +35,9 @@ PIDS=()
 stop_pid() { pkill -P "$1" 2>/dev/null || true; kill "$1" 2>/dev/null || true; wait "$1" 2>/dev/null || true; }
 cleanup() {
   for p in "${PIDS[@]:-}"; do [ -n "$p" ] && stop_pid "$p"; done
-  if command -v psql >/dev/null 2>&1; then psql -Atc "drop database if exists \"$DB\" with (force)" >/dev/null 2>&1 || true; fi
+  if command -v psql >/dev/null 2>&1; then
+    for d in "$DB" "${DB}_cancel" "${DB}_timeout"; do psql -Atc "drop database if exists \"$d\" with (force)" >/dev/null 2>&1 || true; done
+  fi
   echo; echo "Kayıtlar: $LOGS"
 }
 trap cleanup EXIT
@@ -104,6 +106,24 @@ if [ "$MODE" = local ]; then
   step "Yerel sağlayıcı: istek biçimi ve token kaydı" node scripts/e2e/local-llm.mjs
   stop_pid "$MOCK_PID"; start_mock repair || exit 1; PIDS+=("$MOCK_PID")
   step "Yerel sağlayıcı: bozuk taslak → onarım turu" env EXPECT_REPAIR=1 node scripts/e2e/local-llm.mjs
+  # Yavaş model aşaması: ayrı API + ayrı gecikmeli sahte model + ayrı veritabanı (işçiler birbirinin işini almasın)
+  slow_phase() { # ad, API portu, sahte model portu, gecikme ms, zaman aşımı sn, başlık, betik
+    local name="$1" aport="$2" mport="$3" delay="$4" tmo="$5" title="$6" script="$7"
+    port_free "$aport" "yavaş-faz API" && port_free "$mport" "yavaş-faz sahte model" || { FAIL=1; return; }
+    MOCK_LLM_PORT="$mport" MOCK_LLM_MODEL="$MODEL" MOCK_LLM_DELAY_MS="$delay" node scripts/e2e/mock-llm.mjs >"$LOGS/mock-$name.log" 2>&1 &
+    local mp=$!; PIDS+=("$mp")
+    ( cd src/Arcvora.Api && exec env ASPNETCORE_ENVIRONMENT=Development "ASPNETCORE_URLS=http://127.0.0.1:$aport" RateLimit__AuthPerMinute=1000 \
+        Ai__Provider=local "Ai__Local__BaseUrl=http://127.0.0.1:$mport" "Ai__Local__Model=$MODEL" "Ai__TimeoutSeconds=$tmo" \
+        "ConnectionStrings__Arcvora=Host=$PGHOST;Database=${DB}_$name;Username=$PGUSER;Password=$PGPASSWORD" \
+        dotnet bin/Debug/net8.0/Arcvora.Api.dll >"$LOGS/api-$name.log" 2>&1 ) &
+    local ap=$!; PIDS+=("$ap")
+    if wait_http "http://127.0.0.1:$aport/health" "yavaş-faz API ($name)" 120; then
+      step "$title" env ARCVORA_API_URL="http://127.0.0.1:$aport" node "$script"
+    else FAIL=1; tail -10 "$LOGS/api-$name.log"; fi
+    stop_pid "$ap"; stop_pid "$mp"
+  }
+  slow_phase cancel "$((API_PORT + 1))" "$((MOCK_PORT + 1))" 4000 120 "Yavaş model: çalışan iş iptali" scripts/e2e/local-cancel.mjs
+  slow_phase timeout "$((API_PORT + 2))" "$((MOCK_PORT + 2))" 6000 2 "Yavaş model: zaman aşımı" scripts/e2e/local-timeout.mjs
 else
   step "API yolculuğu (buluşsal üretici)" env EXPECT_PROVIDER=heuristic node scripts/e2e/api-journey.mjs
   api_extras
