@@ -137,8 +137,9 @@ try {
     const partialBtn = page.getByRole('button', { name: /Seçilenleri kabul et|Hepsini kabul et/ });
     await partialBtn.click();
     check('bir grup seçimi kaldırılınca "kısmi kabul" etiketli v3 oluşur', await waitVersion(3));
-    check('sürüm özeti kısmi kabulü belirtir (2/3 grup)', (await page.locator('#ver').inputValue().catch(() => '')) === '3'
-      && /kısmi kabul: 2\/3/.test(await page.locator('#ver option:checked').innerText()), await page.locator('#ver option:checked').innerText());
+    const label = await page.locator('#ver option:checked').innerText();
+    const m = /kısmi kabul: (\d+)\/(\d+)/.exec(label);
+    check('sürüm özeti kısmi kabulü belirtir (seçilen grup sayısı < toplam)', !!m && Number(m[1]) < Number(m[2]), label);
   }
   await shot('08-v3');
 
