@@ -109,6 +109,8 @@ dotnet test                         # entegrasyon testleri çalışan bir Postgr
 cd web && npm test
 ```
 
+> **Ücretsiz olarak internette yayınlamak için:** [`docs/DEPLOY.md`](docs/DEPLOY.md) (Render + Neon, `Dockerfile`).
+
 ### Tek süreçten sunum (üretim benzeri)
 
 ```bash
@@ -179,6 +181,7 @@ scripts/e2e.sh                   # + tarayıcı: yolculuk ve uç durumlar (hata 
 ```
 
 Sahte model ([`scripts/e2e/mock-llm.mjs`](scripts/e2e/mock-llm.mjs)) ARCVORA'nın `Ai__Provider=local` yolunu sınamak içindir; **gerçek model kalitesi hakkında bir şey söylemez**.
+`scripts/e2e.sh --prod` üretim yapılandırmasını (yayınlanmış uygulama, `wwwroot`, `DATABASE_URL`, `Production`) sınar.
 Uçtan uca testler henüz CI'da çalıştırılmıyor (GitHub Actions'ta denenmedi).
 
 Entegrasyon testleri her sınıf için geçici bir veritabanı oluşturur. Bağlantı için `ARCVORA_TEST_PG`
