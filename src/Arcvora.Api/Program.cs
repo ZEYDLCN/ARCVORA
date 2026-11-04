@@ -168,7 +168,8 @@ if (Directory.Exists(Path.Combine(app.Environment.ContentRootPath, "wwwroot")))
 {
     app.UseDefaultFiles();
     app.UseStaticFiles();
-    app.MapFallbackToFile("{**path:regex(^(?!api(/|$)).*$)}", "index.html"); // /api altı SPA'ya düşmez
+    // "nonfile": dosya uzantılı yollar (eksik/eski /assets/*.js) SPA'ya düşmeden 404 alır; regex: /api altı da düşmez.
+    app.MapFallbackToFile("{**path:nonfile:regex(^(?!api(/|$)).*$)}", "index.html");
 }
 
 app.Run();
