@@ -173,8 +173,8 @@ cd web && npm run typecheck && npm test
 Uçtan uca (gerçek PostgreSQL + API + web + isteğe bağlı sahte yerel model; geçici veritabanını kendisi açıp siler):
 
 ```bash
-scripts/e2e.sh --no-ui           # API yolculuğu (52 doğrulama)
-scripts/e2e.sh --local --no-ui   # + sahte yerel model: istek biçimi ve onarım turu
+scripts/e2e.sh --no-ui           # API yolculuğu, roller/yetkiler, eşzamanlılık, yaşam döngüsü (112 doğrulama)
+scripts/e2e.sh --local --no-ui   # + sahte yerel model: istek biçimi, onarım turu, yavaş modelde iş iptali ve zaman aşımı
 scripts/e2e.sh                   # + tarayıcı yolculuğu (Playwright: cd web && npm i --no-save playwright && npx playwright install chromium)
 ```
 
