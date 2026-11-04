@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Badge } from './Badge';
+import { TechLogos } from './TechLogo';
+import { techLogoIds } from '../lib/techLogo';
 import {
   buildIndex, findingKindLabel, kindLabel, originInfo, priorityLabel, relationsOf, reviewInfo, severityInfo, typeOfId,
 } from '../lib/model';
-import type { Assumption, Component, Decision, Endpoint, Entity, Finding, Flow, Model, OpenQuestion, Requirement, Source } from '../types';
+import type { Assumption, Component, Decision, Endpoint, Entity, Finding, Flow, Model, OpenQuestion, Relationship, Requirement, Source } from '../types';
 
 interface Props {
   model: Model;
@@ -41,6 +43,7 @@ export function ObjectDetail({ model, id, findings, canEdit, onSelect, onUpdateR
       {id.startsWith('REQ') && <RequirementBody r={obj as unknown as Requirement} model={model} canEdit={canEdit} onUpdate={onUpdateRequirement} onSelect={onSelect} />}
       {id.startsWith('DEC') && <DecisionBody d={obj as unknown as Decision} />}
       {id.startsWith('CMP') && <ComponentBody c={obj as unknown as Component} />}
+      {id.startsWith('REL') && <RelationshipBody r={obj as unknown as Relationship} />}
       {id.startsWith('ENT') && <EntityBody e={obj as unknown as Entity} />}
       {id.startsWith('FLW') && <FlowBody f={obj as unknown as Flow} />}
       {id.startsWith('API') && <EndpointBody e={obj as unknown as Endpoint} />}
@@ -166,7 +169,25 @@ function DecisionBody({ d }: { d: Decision }) {
 }
 
 function ComponentBody({ c }: { c: Component }) {
-  return <dl className="kv"><Field label="Tür">{c.kind}</Field><Field label="Sorumluluk">{c.responsibility}</Field><Field label="Teknoloji">{c.technology}</Field></dl>;
+  const logos = techLogoIds(`${c.technology ?? ''} ${c.name}`, 4);
+  return (
+    <dl className="kv">
+      <Field label="Tür">{c.kind}</Field>
+      <Field label="Sorumluluk">{c.responsibility}</Field>
+      <Field label="Teknoloji">{c.technology && <span className="row"><TechLogos ids={logos} size={20} /><span>{c.technology}</span></span>}</Field>
+    </dl>
+  );
+}
+
+function RelationshipBody({ r }: { r: Relationship }) {
+  const comm = { sync: 'Eşzamanlı çağrı', async: 'Eşzamansız', event: 'Olay', data: 'Veri erişimi' }[r.communication] ?? r.communication;
+  return (
+    <dl className="kv">
+      <Field label="İletişim">{comm}</Field>
+      <Field label="Açıklama">{r.description}</Field>
+      <Field label="Hata davranışı">{r.failureBehavior ?? <span className="muted">Tanımsız — dış/eşzamansız çağrılarda tanımlanması önerilir.</span>}</Field>
+    </dl>
+  );
 }
 
 function EntityBody({ e }: { e: Entity }) {

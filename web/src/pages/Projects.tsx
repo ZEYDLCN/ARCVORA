@@ -1,5 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { api, ApiError } from '../api';
+import { IconFolder, IconPlus, IconSparkle } from '../components/icons';
+import { Shell, type NavItem } from '../components/Shell';
+import { TechLogo } from '../components/TechLogo';
+import type { PaletteItem } from '../components/CommandPalette';
+import type { LogoId } from '../lib/logos.generated';
 import type { ProfileInfo, ProjectSummary, WorkspaceInfo } from '../types';
 
 interface Props {
@@ -7,11 +12,13 @@ interface Props {
   workspaces: WorkspaceInfo[];
   onOpen: (id: string) => void;
   onLogout: () => void;
-  theme: 'dark' | 'light';
+  dark: boolean;
   onTheme: () => void;
 }
 
-export function Projects({ user, workspaces, onOpen, onLogout, theme, onTheme }: Props) {
+const profileLogo: Record<string, LogoId> = { aspnetcore: 'dotnet', springboot: 'springboot' };
+
+export function Projects({ user, workspaces, onOpen, onLogout, dark, onTheme }: Props) {
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null);
   const [profiles, setProfiles] = useState<ProfileInfo[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -32,64 +39,84 @@ export function Projects({ user, workspaces, onOpen, onLogout, theme, onTheme }:
     setError(null);
     try { await fn(); } catch (e) { setError(e instanceof ApiError ? e.message : 'İşlem başarısız.'); } finally { setBusy(false); }
   };
+  const createSample = () => guard(async () => onOpen((await api.createSample(ws.id)).summary.id));
+
+  const nav: NavItem[] = [
+    { id: 'projects', label: 'Projeler', icon: <IconFolder />, active: !creating, badge: projects?.length, onClick: () => setCreating(false) },
+    { id: 'new', label: 'İlk mimarini oluştur', icon: <IconPlus />, active: creating, onClick: () => setCreating(true) },
+    { id: 'sample', label: 'Örnek projeyi incele', icon: <IconSparkle />, onClick: () => { if (ws && !busy) void createSample(); } },
+  ];
+
+  const search = useMemo<PaletteItem[]>(() => [
+    { id: 'a-new', label: 'İlk mimarini oluştur', group: 'Eylemler', onSelect: () => setCreating(true) },
+    { id: 'a-sample', label: 'Örnek projeyi incele', hint: 'Masraf yönetimi', group: 'Eylemler', onSelect: () => { void createSample(); } },
+    ...(projects ?? []).map((p) => ({ id: p.id, label: p.name, hint: `v${p.headNumber}`, group: 'Projeler', onSelect: () => onOpen(p.id) })),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [projects]);
 
   return (
-    <main className="page">
-      <div className="row">
-        <div className="brand"><span className="mark">▲</span> ARCVORA</div>
-        <span className="spacer" />
-        <span className="muted">{user.displayName}</span>
-        <button className="btn small" onClick={onTheme} aria-label="Temayı değiştir">{theme === 'dark' ? '☀ Açık' : '☾ Koyu'}</button>
-        <button className="btn small" onClick={onLogout}>Çıkış</button>
+    <Shell nav={nav} navTitle="Çalışma alanı" user={user} dark={dark} onTheme={onTheme} onLogout={onLogout}
+      searchItems={search} searchPlaceholder="Proje veya eylem ara…">
+      <div className="page-head">
+        <h1>{creating ? 'Yeni proje' : 'Projeler'}</h1>
+        <p className="tagline">Fikrini anlat, kararlarını netleştir, mimariyi birlikte geliştir.</p>
+        <div className="row" style={{ marginTop: 10 }}>
+          <button className="btn primary" onClick={() => setCreating((c) => !c)}>{creating ? 'Listeye dön' : 'İlk mimarini oluştur'}</button>
+          <button className="btn" disabled={busy || !ws} onClick={() => void createSample()}>Örnek projeyi incele</button>
+        </div>
+        <p className="muted" style={{ marginTop: 8 }}>Örnek proje elle hazırlanmış bir masraf yönetimi modelidir (yapay zekâ çıktısı değildir) ve iki aşamalı onay değişikliğini içerir.</p>
       </div>
 
-      <h1 style={{ marginTop: 24 }}>Fikrini, ekibinin geliştirebileceği bir mimariye dönüştür.</h1>
-      <p className="tagline">Gereksinimlerini anlat. Eksik kararları keşfet. Mimari seçeneklerini değerlendir. Yeni bir özellik istediğinde, hangi parçaların değişeceğini aynı çalışma alanında gör.</p>
-      <div className="row">
-        <button className="btn primary" onClick={() => setCreating((c) => !c)}>İlk mimarini oluştur</button>
-        <button className="btn" disabled={busy || !ws} onClick={() => guard(async () => onOpen((await api.createSample(ws.id)).summary.id))}>Örnek projeyi incele</button>
+      <div className="page-body">
+        {error && <div className="notice error" role="alert" style={{ marginBottom: 12 }}>{error}</div>}
+
+        {creating && ws && (
+          <form className="card" style={{ maxWidth: 760 }} onSubmit={(e) => { e.preventDefault(); void guard(async () => {
+            const d = await api.createProject({ workspaceId: ws.id, name, description: '', techProfileId: profile, ideaText: idea });
+            onOpen(d.summary.id);
+          }); }}>
+            <label htmlFor="pname" style={{ marginTop: 0 }}>Proje adı</label>
+            <input id="pname" type="text" required maxLength={200} value={name} onChange={(e) => setName(e.target.value)} />
+            <label htmlFor="idea">Fikrin, beklediğin özellikler, ekip koşulları <span className="muted">(düz metin veya Markdown; bilmediklerini yazmak zorunda değilsin)</span></label>
+            <textarea id="idea" rows={8} value={idea} onChange={(e) => setIdea(e.target.value)}
+              placeholder="Örn. Şirketlerin çalışan masraflarını yönettiği bir SaaS geliştireceğiz. Çalışanlar fiş yükleyip masraf girecek. Yönetici onaylayacak…" />
+            <label id="profile-label">Teknoloji profili</label>
+            <div className="profile-cards" role="radiogroup" aria-labelledby="profile-label">
+              {(profiles.length ? profiles : [{ id: 'aspnetcore', name: 'ASP.NET Core', selectable: true } as ProfileInfo]).map((p) => (
+                <button key={p.id} type="button" role="radio" aria-checked={profile === p.id} className="profile-card" disabled={!p.selectable}
+                  onClick={() => setProfile(p.id)}>
+                  <span className="pc-logo">{profileLogo[p.id] ? <TechLogo id={profileLogo[p.id]} size={26} surfaceDark={false} /> : null}</span>
+                  <span><b>{p.name}</b><br /><span className="muted">{p.selectable ? 'Doğrulanmış profil' : 'Planlandı · henüz doğrulanmadı'}</span></span>
+                </button>
+              ))}
+            </div>
+            <p style={{ marginTop: 16 }}><button className="btn primary" disabled={busy || !name.trim()}>Projeyi oluştur</button></p>
+          </form>
+        )}
+
+        {!creating && (
+          <>
+            {projects === null && !error && <p className="muted">Yükleniyor…</p>}
+            {projects?.length === 0 && <div className="empty-state"><b>Henüz proje yok</b><span>“İlk mimarini oluştur” ile başlayın veya örnek projeyi inceleyin.</span></div>}
+            <div className="proj-grid">
+              {projects?.map((p) => (
+                <button key={p.id} className="proj-card" onClick={() => onOpen(p.id)}>
+                  <span className="row">
+                    {profileLogo[p.techProfileId] && <TechLogo id={profileLogo[p.techProfileId]} size={22} />}
+                    <span className="spacer" />
+                    <span className="badge neutral">{p.role}</span>
+                  </span>
+                  <b>{p.name}</b>
+                  <span className="muted">v{p.headNumber} · {new Date(p.updatedAt).toLocaleString('tr-TR')}</span>
+                  <span className="row" style={{ marginTop: 'auto' }}>
+                    {p.pendingProposals > 0 ? <span className="badge info">◔ {p.pendingProposals} bekleyen öneri</span> : <span className="badge ok">✓ Kabul edilmiş sürüm</span>}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </div>
-      <p className="muted">Örnek proje elle hazırlanmış bir masraf yönetimi modelidir (yapay zekâ çıktısı değildir) ve iki aşamalı onay değişikliğini içerir.</p>
-
-      {error && <div className="notice error" role="alert">{error}</div>}
-
-      {creating && ws && (
-        <form className="card" onSubmit={(e) => { e.preventDefault(); void guard(async () => {
-          const d = await api.createProject({ workspaceId: ws.id, name, description: '', techProfileId: profile, ideaText: idea });
-          onOpen(d.summary.id);
-        }); }}>
-          <h2>Yeni proje</h2>
-          <label htmlFor="pname">Proje adı</label>
-          <input id="pname" type="text" required maxLength={200} value={name} onChange={(e) => setName(e.target.value)} />
-          <label htmlFor="idea">Fikrin, beklediğin özellikler, ekip koşulları <span className="muted">(düz metin veya Markdown; bilmediklerini yazmak zorunda değilsin)</span></label>
-          <textarea id="idea" rows={8} value={idea} onChange={(e) => setIdea(e.target.value)}
-            placeholder="Örn. Şirketlerin çalışan masraflarını yönettiği bir SaaS geliştireceğiz. Çalışanlar fiş yükleyip masraf girecek. Yönetici onaylayacak…" />
-          <label htmlFor="profile">Teknoloji profili</label>
-          <select id="profile" value={profile} onChange={(e) => setProfile(e.target.value)}>
-            {profiles.map((p) => (
-              <option key={p.id} value={p.id} disabled={!p.selectable}>{p.name}{p.selectable ? '' : ' — planlandı, henüz doğrulanmadı'}</option>
-            ))}
-            {profiles.length === 0 && <option value="aspnetcore">ASP.NET Core</option>}
-          </select>
-          <p><button className="btn primary" disabled={busy || !name.trim()}>Projeyi oluştur</button></p>
-        </form>
-      )}
-
-      <h2 style={{ marginTop: 24 }}>Projeler</h2>
-      {projects === null && !error && <p className="muted">Yükleniyor…</p>}
-      {projects?.length === 0 && <p className="muted">Henüz proje yok.</p>}
-      <ul className="project-list">
-        {projects?.map((p) => (
-          <li key={p.id}>
-            <button className="project-item" onClick={() => onOpen(p.id)}>
-              <span><b>{p.name}</b><br /><span className="muted">v{p.headNumber} · {new Date(p.updatedAt).toLocaleString('tr-TR')}</span></span>
-              <span className="spacer" />
-              {p.pendingProposals > 0 && <span className="badge info">◔ {p.pendingProposals} bekleyen öneri</span>}
-              <span className="badge neutral">{p.role}</span>
-            </button>
-          </li>
-        ))}
-      </ul>
-    </main>
+    </Shell>
   );
 }

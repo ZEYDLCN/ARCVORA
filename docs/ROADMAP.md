@@ -100,7 +100,8 @@ Teslimler
 Teslimler
 - Sol: kapsam/gereksinimler/kararlar/açık sorular. Orta: Mermaid görünümleri. Sağ: seçili nesnenin gerekçesi, bağlantıları, değişiklik incelemesi.
 - Üst çubuk: aktif sürüm, teknoloji profili, taslak (bekleyen öneri) durumu, dışa aktarma.
-- Mobilde sekmeler; diyagramın metinsel karşılığı her zaman erişilebilir.
+- Mobilde çekmece menü; diyagramın metinsel karşılığı her zaman erişilebilir.
+- Tasarım dili (4 Kasım 2026 revizyonu): taneli gradyan zemin, yüzen beyaz kenar çubuğu, ⌘K arama, marka logolu mimari tuvali (`ArchCanvas`).
 - Durumlar: boş, analiz sürüyor, açıklama bekliyor, taslak hazır, doğrulama hatası, sağlayıcı hatası, iptal, kabul.
 - Durumlar yalnızca renkle anlatılmaz (etiket + simge).
 
