@@ -36,7 +36,7 @@ stop_pid() { pkill -P "$1" 2>/dev/null || true; kill "$1" 2>/dev/null || true; w
 cleanup() {
   for p in "${PIDS[@]:-}"; do [ -n "$p" ] && stop_pid "$p"; done
   if command -v psql >/dev/null 2>&1; then
-    for d in "$DB" "${DB}_cancel" "${DB}_timeout" "${DB}_ratelimit"; do psql -Atc "drop database if exists \"$d\" with (force)" >/dev/null 2>&1 || true; done
+    for d in "$DB" "${DB}_cancel" "${DB}_timeout" "${DB}_ratelimit" "${DB}_forwarded"; do psql -Atc "drop database if exists \"$d\" with (force)" >/dev/null 2>&1 || true; done
   fi
   echo; echo "Kayıtlar: $LOGS"
 }
@@ -129,20 +129,21 @@ else
   step "API yolculuğu (buluşsal üretici)" env EXPECT_PROVIDER=heuristic node scripts/e2e/api-journey.mjs
   api_extras
 fi
-# Hız sınırı: dakikada 3 kimlik isteği ile ayrı bir API (ana API'nin sınırı testleri engellemesin diye 1000'e ayarlı)
-ratelimit_phase() {
-  local aport="$((API_PORT + 12))"
-  port_free "$aport" "hız sınırı API" || { FAIL=1; return; }
-  ( cd src/Arcvora.Api && exec env ASPNETCORE_ENVIRONMENT=Development "ASPNETCORE_URLS=http://127.0.0.1:$aport" RateLimit__AuthPerMinute=3 \
-      "ConnectionStrings__Arcvora=Host=$PGHOST;Database=${DB}_ratelimit;Username=$PGUSER;Password=$PGPASSWORD" \
-      dotnet bin/Debug/net8.0/Arcvora.Api.dll >"$LOGS/api-ratelimit.log" 2>&1 ) &
+# Hız sınırı ve proxy başlıkları: dakikada 3 kimlik isteği ile AYRI API'ler (ana API'nin sınırı diğer testleri engellemesin diye 1000'e ayarlı)
+limit_phase() { # ad, port farkı, başlık, betik, ek ortam değişkenleri...
+  local name="$1" aport="$((API_PORT + $2))" title="$3" script="$4"; shift 4
+  port_free "$aport" "$name API" || { FAIL=1; return; }
+  ( cd src/Arcvora.Api && exec env ASPNETCORE_ENVIRONMENT=Development "ASPNETCORE_URLS=http://127.0.0.1:$aport" RateLimit__AuthPerMinute=3 "$@" \
+      "ConnectionStrings__Arcvora=Host=$PGHOST;Database=${DB}_$name;Username=$PGUSER;Password=$PGPASSWORD" \
+      dotnet bin/Debug/net8.0/Arcvora.Api.dll >"$LOGS/api-$name.log" 2>&1 ) &
   local ap=$!; PIDS+=("$ap")
-  if wait_http "http://127.0.0.1:$aport/health" "hız sınırı API" 120; then
-    step "Hız sınırı (kimlik uçları, dakikada 3)" env ARCVORA_API_URL="http://127.0.0.1:$aport" node scripts/e2e/api-ratelimit.mjs
-  else FAIL=1; tail -10 "$LOGS/api-ratelimit.log"; fi
+  if wait_http "http://127.0.0.1:$aport/health" "$name API" 120; then
+    step "$title" env ARCVORA_API_URL="http://127.0.0.1:$aport" node "$script"
+  else FAIL=1; tail -10 "$LOGS/api-$name.log"; fi
   stop_pid "$ap"
 }
-ratelimit_phase
+limit_phase ratelimit 12 "Hız sınırı (kimlik uçları, dakikada 3)" scripts/e2e/api-ratelimit.mjs
+limit_phase forwarded 13 "Proxy arkasında istemci başına hız sınırı (X-Forwarded-For)" scripts/e2e/api-forwarded.mjs ForwardedHeaders__Enabled=true
 
 [ "$UI" = 1 ] && step "Tarayıcı yolculuğu" env E2E_SHOTS_DIR="$LOGS/ekran-goruntuleri" node scripts/e2e/ui-journey.mjs
 [ "$UI" = 1 ] && step "Tarayıcı uç durumları (hata yolları, oturum, XSS, klavye, ekran boyutları)" env E2E_SHOTS_DIR="$LOGS/ekran-goruntuleri" node scripts/e2e/ui-edge.mjs
