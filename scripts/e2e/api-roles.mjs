@@ -44,4 +44,23 @@ check('düzenleyici mimari işi başlatabilir (202)', eJob.status === 202, eJob)
 const props = await call('GET', `/api/projects/${pid}/proposals?status=pending`, { token: editor.token });
 check('düzenleyici önerileri listeleyebilir', props.status === 200, props.status);
 
+section('Kabul yetkisi ayrı bir izindir');
+const pending = (await call('GET', `/api/projects/${pid}/proposals?status=pending`, { token: admin.token })).body;
+let arch = pending.find((p) => p.kind === 'architecture');
+if (!arch) {
+  const { waitJob } = await import('./lib.mjs');
+  const job = await waitJob(editor.token, eJob.body.id);
+  arch = { id: job.proposalId };
+}
+const noAccept = await call('POST', `/api/projects/${pid}/proposals/${arch.id}/accept`, { token: editor.token, body: {} });
+check('kabul yetkisiz düzenleyici öneriyi kabul edemez → 403', noAccept.status === 403, noAccept);
+const noReject = await call('POST', `/api/projects/${pid}/proposals/${arch.id}/reject`, { token: editor.token, body: {} });
+check('kabul yetkisiz düzenleyici öneriyi reddedemez → 403', noReject.status === 403, noReject);
+const asReader = await call('POST', `/api/projects/${pid}/proposals/${arch.id}/accept`, { token: reader.token, body: {} });
+check('okuyucu kabul edemez → 403', asReader.status === 403, asReader.status);
+check('reddedilen denemeler sürüm üretmedi (v2)', (await head(admin, pid)) === 2);
+check('yönetici düzenleyiciye kabul yetkisi verir', (await add(editor.email, 'editor', true)).status === 200);
+const yesAccept = await call('POST', `/api/projects/${pid}/proposals/${arch.id}/accept`, { token: editor.token, body: {} });
+check('yetki verilince düzenleyici kabul edebilir → v3', yesAccept.status === 200 && yesAccept.body?.version?.number === 3, yesAccept);
+
 finish();
