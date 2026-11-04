@@ -57,6 +57,25 @@ AI'dan mimari önerisi almak kolay; **neyin kimden geldiğini ve neyin onayland�
 
 > Bu bir **konumlandırma hipotezidir**, kanıtlanmış bir üstünlük değil: gerçek pilot ve gerçek model kalitesi ölçümü yapılmadı (bkz. [bilinen sınırlar](#bilinen-sınırlar-dürüst-liste)).
 
+## Nasıl çalışır?
+
+```mermaid
+flowchart LR
+  A["Fikir ve kaynak metinler"] --> B["Üretici: AI veya kural tabanlı"]
+  B --> C{{"Koruyucu + doğrulama"}}
+  C -- geçerli --> D["Öneri (taslak)"]
+  C -- hatalı --> R["Onarım turu, en fazla N"]
+  R --> B
+  D --> E{"İnsan incelemesi"}
+  E -- "kabul / kısmi kabul" --> F[("Yeni model sürümü")]
+  E -- reddet --> X["Model değişmez"]
+  F --> G["Görünümler: tuval, Mermaid, ER, akış"]
+  F --> H["Markdown / paket çıktısı"]
+  F -- "yeni talep" --> B
+```
+
+Model tek gerçek kaynaktır; diyagramlar ondan **türetilir** (LLM çizmez). Ayrıntı: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
 ## Neler var?
 
 | Alan | Açıklama |
