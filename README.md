@@ -43,6 +43,14 @@ gereksinimler, kararlar, bileşenler ve bunların birbirleriyle ilişkileridir.
     <td align="center"><sub><b>Etki incelemesi:</b> öneri kabul edilene kadar model değişmez</sub></td>
     <td align="center"><sub><b>Koyu tema</b> · ⌘K / Ctrl+K ile arama</sub></td>
   </tr>
+  <tr>
+    <td width="50%"><img src="docs/assets/screen-mermaid.jpg" alt="Aynı modelden türetilen Mermaid bileşen diyagramı" /></td>
+    <td width="50%" align="center"><img src="docs/assets/screen-mobile.jpg" alt="Mobil görünüm" width="240" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Türetilmiş görünüm:</b> Mermaid aynı model sürümünden üretilir</sub></td>
+    <td align="center"><sub><b>Mobil:</b> çekmece menü, yatay taşma yok</sub></td>
+  </tr>
 </table>
 
 <details>
