@@ -29,4 +29,12 @@ check('oturum açık kullanıcının işlemleri etkilenmez (/me, /projects)',
   (await call('GET', '/api/me', { token: user.token })).status === 200 && (await call('GET', '/api/projects', { token: user.token })).status === 200);
 check('/health etkilenmez', (await fetch(`${API_URL}/health`)).status === 200);
 
+section('X-Forwarded-For varsayılan olarak güvenilmez (sınırı aşmak için kullanılamaz)');
+const spoof = await fetch(`${API_URL}/api/auth/login`, {
+  method: 'POST',
+  headers: { 'content-type': 'application/json', 'x-forwarded-for': '203.0.113.77' },
+  body: JSON.stringify({ email: user.email, password: 'yanlis-parola-1' }),
+});
+check('sınır dolmuşken sahte X-Forwarded-For başlığı kovası değiştirmez → hâlâ 429', spoof.status === 429, spoof.status);
+
 finish();
