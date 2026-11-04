@@ -36,7 +36,7 @@ stop_pid() { pkill -P "$1" 2>/dev/null || true; kill "$1" 2>/dev/null || true; w
 cleanup() {
   for p in "${PIDS[@]:-}"; do [ -n "$p" ] && stop_pid "$p"; done
   if command -v psql >/dev/null 2>&1; then
-    for d in "$DB" "${DB}_cancel" "${DB}_timeout"; do psql -Atc "drop database if exists \"$d\" with (force)" >/dev/null 2>&1 || true; done
+    for d in "$DB" "${DB}_cancel" "${DB}_timeout" "${DB}_ratelimit"; do psql -Atc "drop database if exists \"$d\" with (force)" >/dev/null 2>&1 || true; done
   fi
   echo; echo "Kayıtlar: $LOGS"
 }
@@ -129,6 +129,21 @@ else
   step "API yolculuğu (buluşsal üretici)" env EXPECT_PROVIDER=heuristic node scripts/e2e/api-journey.mjs
   api_extras
 fi
+# Hız sınırı: dakikada 3 kimlik isteği ile ayrı bir API (ana API'nin sınırı testleri engellemesin diye 1000'e ayarlı)
+ratelimit_phase() {
+  local aport="$((API_PORT + 3))"
+  port_free "$aport" "hız sınırı API" || { FAIL=1; return; }
+  ( cd src/Arcvora.Api && exec env ASPNETCORE_ENVIRONMENT=Development "ASPNETCORE_URLS=http://127.0.0.1:$aport" RateLimit__AuthPerMinute=3 \
+      "ConnectionStrings__Arcvora=Host=$PGHOST;Database=${DB}_ratelimit;Username=$PGUSER;Password=$PGPASSWORD" \
+      dotnet bin/Debug/net8.0/Arcvora.Api.dll >"$LOGS/api-ratelimit.log" 2>&1 ) &
+  local ap=$!; PIDS+=("$ap")
+  if wait_http "http://127.0.0.1:$aport/health" "hız sınırı API" 120; then
+    step "Hız sınırı (kimlik uçları, dakikada 3)" env ARCVORA_API_URL="http://127.0.0.1:$aport" node scripts/e2e/api-ratelimit.mjs
+  else FAIL=1; tail -10 "$LOGS/api-ratelimit.log"; fi
+  stop_pid "$ap"
+}
+ratelimit_phase
+
 [ "$UI" = 1 ] && step "Tarayıcı yolculuğu" env E2E_SHOTS_DIR="$LOGS/ekran-goruntuleri" node scripts/e2e/ui-journey.mjs
 
 echo
