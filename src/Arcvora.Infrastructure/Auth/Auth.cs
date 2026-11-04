@@ -74,7 +74,7 @@ public sealed record WorkspaceSummary(Guid Id, string Name, string Role, bool Ca
 public sealed record UserSummary(Guid Id, string Email, string DisplayName);
 public sealed record AuthResult(string Token, UserSummary User, IReadOnlyList<WorkspaceSummary> Workspaces);
 
-public sealed class AuthService(ArcvoraDbContext db, PasswordHasher hasher, TokenService tokens, TimeProvider clock, AuditLog audit)
+public sealed class AuthService(ArcvoraDbContext db, PasswordHasher hasher, TokenService tokens, TimeProvider clock, AuditLog audit, IOptions<AuthOptions> authOptions)
 {
     private const int MinPasswordLength = 10;
     // Kullanıcı bulunamadığında da aynı maliyetli doğrulamayı yapmak için (zamanlama farkını azaltır).
@@ -96,6 +96,8 @@ public sealed class AuthService(ArcvoraDbContext db, PasswordHasher hasher, Toke
 
     public async Task<AuthResult> RegisterAsync(string? email, string? password, string? displayName, CancellationToken ct)
     {
+        if (!authOptions.Value.RegistrationOpen)
+            throw new AppException(403, "registration_closed", "Yeni kayıtlar kapalı. Mevcut hesabınızla giriş yapabilirsiniz.");
         var normalized = NormalizeEmail(email);
         if (string.IsNullOrEmpty(password) || password.Length < MinPasswordLength)
             throw new RequestValidationException("weak_password", $"Parola en az {MinPasswordLength} karakter olmalı.");
