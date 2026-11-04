@@ -45,6 +45,17 @@ gereksinimler, kararlar, bileşenler ve bunların birbirleriyle ilişkileridir.
   </tr>
 </table>
 
+<details>
+<summary><b>İçindekiler</b></summary>
+
+- [Neden ARCVORA?](#neden-arcvora) · [Hızlı başlangıç](#hızlı-başlangıç) · [Nasıl çalışır?](#nasıl-çalışır)
+- [Neler var?](#neler-var) · [Test güvencesi](#test-güvencesi) · [Yerelde çalıştırma](#yerelde-çalıştırma-adım-adım)
+- [Yapılandırma](#yapılandırma) · [Testler](#testler) · [Depo yapısı](#depo-yapısı)
+- [MVP kabul listesi](#mvp-kabul-listesi-doküman-25--durum) · [Bilinen sınırlar](#bilinen-sınırlar-dürüst-liste)
+- Rehberler: [Kullanım](docs/KULLANIM.md) · [Ücretsiz dağıtım](docs/DEPLOY.md) · [Yerel model](docs/LOCAL_LLM.md) · [Pilot rehberi](docs/PILOT_PLAYBOOK.md)
+
+</details>
+
 ## Neden ARCVORA?
 
 AI'dan mimari önerisi almak kolay; **neyin kimden geldiğini ve neyin onaylandığını kaybetmemek** zor. ARCVORA üç kural üzerine kuruludur:
