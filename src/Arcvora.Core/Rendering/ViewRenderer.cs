@@ -13,6 +13,8 @@ public sealed record RenderedView(ViewKind Kind, string? FlowId, string Title, s
 /// </summary>
 public static class ViewRenderer
 {
+    private static string NonEmpty(string label, string fallback) => label.Length == 0 ? fallback : label;
+
     public static IReadOnlyList<RenderedView> All(ArchitectureModel m)
     {
         var views = new List<RenderedView> { Component(m), Er(m) };
@@ -34,7 +36,7 @@ public static class ViewRenderer
         foreach (var c in live)
         {
             var id = MermaidText.NodeId(c.Id);
-            var label = MermaidText.Label(c.Name);
+            var label = NonEmpty(MermaidText.Label(c.Name), c.Id);   // boş etiket Mermaid'de sözdizimi hatasıdır
             var node = c.Kind switch
             {
                 ComponentKind.Database or ComponentKind.Storage => $"{id}[(\"{label}\")]",
@@ -120,7 +122,7 @@ public static class ViewRenderer
         foreach (var e in live)
         {
             var id = MermaidText.NodeId(e.Id);
-            sb.Append("    ").Append(id).Append("[\"").Append(MermaidText.Label(e.Name)).Append("\"]");
+            sb.Append("    ").Append(id).Append("[\"").Append(NonEmpty(MermaidText.Label(e.Name), e.Id)).Append("\"]");
             if (e.Fields.Count == 0) { sb.Append('\n'); continue; }
             sb.Append(" {\n");
             foreach (var f in e.Fields)
