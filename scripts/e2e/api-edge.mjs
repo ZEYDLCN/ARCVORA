@@ -44,4 +44,18 @@ check('yükü değiştirilmiş (sub) token → 401', (await call('GET', '/api/me
 const wrongScheme = await raw('GET', '/api/me', { headers: { authorization: `Basic ${goodToken}` } });
 check('Bearer olmayan şema → 401', wrongScheme.status === 401, wrongScheme.status);
 
+section('İstek biçimi');
+const badJson = await raw('POST', '/api/auth/login', { body: '{bozuk json', headers: { 'content-type': 'application/json' } });
+check('bozuk JSON → 400 bad_request', badJson.status === 400 && (await badJson.json()).code === 'bad_request');
+const wrongType = await raw('POST', '/api/auth/login', { body: 'x', headers: { 'content-type': 'text/plain' } });
+check('yanlış Content-Type → 415', wrongType.status === 415, wrongType.status);
+const unknownRoute = await raw('GET', '/api/yok-boyle-bir-yol', { token: goodToken });
+check('olmayan yol → 404', unknownRoute.status === 404, unknownRoute.status);
+const badGuid = await raw('GET', '/api/projects/guid-degil', { token: goodToken });
+check('geçersiz GUID yolu → 404 (500 değil)', badGuid.status === 404, badGuid.status);
+const hdrs = (await raw('GET', '/health')).headers;
+check('güvenlik başlıkları: nosniff, DENY, no-referrer',
+  hdrs.get('x-content-type-options') === 'nosniff' && hdrs.get('x-frame-options') === 'DENY' && hdrs.get('referrer-policy') === 'no-referrer',
+  [...hdrs.entries()]);
+
 finish();
