@@ -54,4 +54,15 @@ if (question) {
   check('olmayan soru → 404', missing.status === 404, missing.status);
 }
 
+section('Denetim kaydı');
+const audit = await call('GET', `/api/projects/${pid}/audit`, { token: user.token });
+check('yönetici denetim kaydını okur (200)', audit.status === 200 && Array.isArray(audit.body), audit.status);
+const actions = new Set((audit.body ?? []).map((a) => a.action));
+console.log('  eylemler:', [...actions].join(', '));
+check('kabul, düzenleme ve proje oluşturma izi var', actions.size >= 3, [...actions]);
+check('her kayıtta kim (actor), ne zaman (at) ve hangi nesne bilgisi var', (audit.body ?? []).every((a) => a.actor && !Number.isNaN(Date.parse(a.at)) && a.objectType), audit.body?.[0]);
+check('eylemi yapan kullanıcı e-postası kayıtlı', audit.body?.every((a) => a.actor === user.email), audit.body?.map((a) => a.actor));
+const outsider = await newUser('audit-out');
+check('üye olmayan denetim kaydını göremez → 404', (await call('GET', `/api/projects/${pid}/audit`, { token: outsider.token })).status === 404);
+
 finish();
