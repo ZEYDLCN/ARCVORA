@@ -17,6 +17,9 @@ section('Kimlik ve yetki');
 const email = `e2e-${run}@example.com`;
 const reg = await call('POST', '/api/auth/register', { body: { email, password: 'Parola-12345', displayName: 'E2E Kullanıcı' } });
 check('kayıt 201 + token', reg.status === 201 && !!reg.body?.token, reg);
+if (reg.status === 429) {
+  fatal('kimlik uçlarının hız sınırına takıldı (dakikada RateLimit:AuthPerMinute istek). 1 dakika bekleyin veya API\'yi RateLimit__AuthPerMinute=1000 ile başlatın.');
+}
 if (reg.status !== 201) fatal('kayıt olmadan devam edilemez', reg);
 const token = reg.body.token;
 const workspaceId = reg.body.workspaces?.[0]?.id;
