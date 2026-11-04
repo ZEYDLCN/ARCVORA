@@ -161,4 +161,11 @@ describe('intro.css contract', () => {
   it('uses the brand palette', () => {
     for (const hex of ['#153d46', '#091a20', '#a98af2', '#72bfc0', '#d4e7d2']) expect(css.toLowerCase()).toContain(hex);
   });
+
+  it('marks the English slogan lang="en" so the Turkish uppercase rule does not turn "i" into "İ"', () => {
+    mount(() => {});
+    const tag = host.querySelector('.intro-tag')!;
+    expect(tag.textContent).toBe('Turn intent into architecture');
+    expect(tag.getAttribute('lang')).toBe('en');
+  });
 });
