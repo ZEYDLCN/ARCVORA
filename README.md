@@ -57,6 +57,18 @@ AI'dan mimari önerisi almak kolay; **neyin kimden geldiğini ve neyin onayland�
 
 > Bu bir **konumlandırma hipotezidir**, kanıtlanmış bir üstünlük değil: gerçek pilot ve gerçek model kalitesi ölçümü yapılmadı (bkz. [bilinen sınırlar](#bilinen-sınırlar-dürüst-liste)).
 
+## Hızlı başlangıç
+
+Gerekenler: .NET 8 SDK, Node.js 20+, Docker (PostgreSQL için).
+
+```bash
+git clone https://github.com/ZEYDLCN/ARCVORA.git && cd ARCVORA
+scripts/dev.sh        # PostgreSQL (Docker) + API + web, hepsi tek komutla
+```
+
+Tarayıcıda <http://localhost:5173> → **Kayıt ol** → **Örnek projeyi incele**. Anahtar gerekmez: varsayılan üretici kural tabanlıdır ve arayüzde "AI değil" diye etiketlenir.
+Gerçek bir model için (yerel Qwen/Ollama dahil) [`docs/KULLANIM.md`](docs/KULLANIM.md); internete ücretsiz koymak için [`docs/DEPLOY.md`](docs/DEPLOY.md).
+
 ## Nasıl çalışır?
 
 ```mermaid
