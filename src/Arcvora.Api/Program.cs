@@ -52,6 +52,21 @@ var authLimit = builder.Configuration.GetValue("RateLimit:AuthPerMinute", 10);
 builder.Services.AddRateLimiter(o =>
 {
     o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    // Boş 429 yerine ne olduğunu ve ne kadar beklenmesi gerektiğini söyle (arayüz title'ı olduğu gibi gösterir).
+    o.OnRejected = async (context, ct) =>
+    {
+        var seconds = context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retry) ? (int)Math.Ceiling(retry.TotalSeconds) : 60;
+        seconds = Math.Clamp(seconds, 1, 60);
+        var res = context.HttpContext.Response;
+        res.Headers.RetryAfter = seconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        await res.WriteAsJsonAsync(new
+        {
+            status = 429,
+            code = "rate_limited",
+            title = $"Çok fazla deneme. Lütfen {seconds} saniye sonra yeniden deneyin.",
+            details = (object?)null,
+        }, (System.Text.Json.JsonSerializerOptions?)null, "application/problem+json", ct);
+    };
     o.AddPolicy("auth", ctx => RateLimitPartition.GetFixedWindowLimiter(
         ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = authLimit, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
