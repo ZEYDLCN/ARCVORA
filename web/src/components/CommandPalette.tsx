@@ -24,7 +24,17 @@ export function CommandPalette({ open, onClose, items, placeholder }: { open: bo
   const input = useRef<HTMLInputElement>(null);
   const results = useMemo(() => filterItems(items, query), [items, query]);
 
-  useEffect(() => { if (open) { setQuery(''); setActive(0); setTimeout(() => input.current?.focus(), 0); } }, [open]);
+  useEffect(() => {
+    if (!open) return;
+    setQuery(''); setActive(0);
+    // Paleti açan öğeyi hatırla; kapanınca odağı ona geri ver (WAI-ARIA dialog deseni). Aksi halde odak body'ye düşer.
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const t = setTimeout(() => input.current?.focus(), 0);
+    return () => {
+      clearTimeout(t);
+      if (opener && opener.isConnected && opener !== document.body) opener.focus();
+    };
+  }, [open]);
   useEffect(() => { setActive(0); }, [query]);
 
   if (!open) return null;
