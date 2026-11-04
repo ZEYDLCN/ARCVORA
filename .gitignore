@@ -21,3 +21,4 @@ appsettings.Local.json
 .env
 .env.*
 !.env.example
+src/Arcvora.Api/wwwroot/
