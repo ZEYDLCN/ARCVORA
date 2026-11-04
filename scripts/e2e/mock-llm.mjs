@@ -67,6 +67,10 @@ function extractDraft(prompt) {
 
 function architectureDraft(prompt, { broken = false } = {}) {
   const model = currentModel(prompt);
+  // İyi davranan bir model gibi: kabul edilmiş mimari varsa yeniden üretmez (istemde "mevcut nesneleri yeniden üretme" yazar).
+  if ((model.components ?? []).length > 0 && !broken) {
+    return { summary: 'Mimari zaten kabul edilmiş; yeni nesne önerilmedi (sahte yerel model).', groups: [] };
+  }
   const reqs = model.requirements ?? [];
   const web = 'new-2', api = 'new-3', db = 'new-4';
   const traceLinks = [];
