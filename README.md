@@ -29,6 +29,8 @@ gereksinimler, kararlar, bileşenler ve bunların birbirleriyle ilişkileridir.
 
 ## Yerelde çalıştırma (adım adım)
 
+> macOS + yerel Qwen/Ollama ile baştan sona arayüz yolculuğu için: [`docs/KULLANIM.md`](docs/KULLANIM.md).
+
 ### 0) Bir kez kurulacaklar
 
 | Araç | Sürüm | Not |
@@ -167,6 +169,17 @@ Ortam değişkenleri `__` ile iç içe anahtar yazar (örn. `Ai__Provider`). Ör
 dotnet test                       # birim + entegrasyon; entegrasyon testleri gerçek PostgreSQL ister
 cd web && npm run typecheck && npm test
 ```
+
+Uçtan uca (gerçek PostgreSQL + API + web + isteğe bağlı sahte yerel model; geçici veritabanını kendisi açıp siler):
+
+```bash
+scripts/e2e.sh --no-ui           # API yolculuğu (52 doğrulama)
+scripts/e2e.sh --local --no-ui   # + sahte yerel model: istek biçimi ve onarım turu
+scripts/e2e.sh                   # + tarayıcı yolculuğu (Playwright: cd web && npm i --no-save playwright && npx playwright install chromium)
+```
+
+Sahte model ([`scripts/e2e/mock-llm.mjs`](scripts/e2e/mock-llm.mjs)) ARCVORA'nın `Ai__Provider=local` yolunu sınamak içindir; **gerçek model kalitesi hakkında bir şey söylemez**.
+Uçtan uca testler henüz CI'da çalıştırılmıyor (GitHub Actions'ta denenmedi).
 
 Entegrasyon testleri her sınıf için geçici bir veritabanı oluşturur. Bağlantı için `ARCVORA_TEST_PG`
 (varsayılan: `Host=localhost;Username=postgres;Password=postgres`). CI: [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
