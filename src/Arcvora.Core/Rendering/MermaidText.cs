@@ -72,7 +72,8 @@ public static class MermaidText
                 case '`': sb.Append('\''); break;
                 case '\\': sb.Append('/'); break;
                 case ';': sb.Append(quoted ? ";" : ","); break;
-                case '%' when !quoted: sb.Append("#37;"); break;
+                // Mermaid ön işleyicisi %%{...}%% direktiflerini tırnak içinde bile işler: her bağlamda kaçışlanır.
+                case '%': sb.Append("#37;"); break;
                 default: sb.Append(ch); break;
             }
         }

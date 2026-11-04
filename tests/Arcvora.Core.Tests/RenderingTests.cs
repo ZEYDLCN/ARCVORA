@@ -109,12 +109,26 @@ public class RenderingTests
                 Assert.DoesNotContain("<script", line, StringComparison.OrdinalIgnoreCase);
             }
             Assert.DoesNotContain('`', view.Mermaid);
+            // Mermaid ön işleyicisi %%{init}%% direktiflerini metnin her yerinde işler
+            Assert.DoesNotContain("%%", view.Mermaid);
         }
 
         // Çift tırnak içinde tek bir etiket olarak kalır: tırnak sayısı çifttir.
         var component = ViewRenderer.Component(m).Mermaid;
         foreach (var line in component.Split('\n').Where(l => l.Contains('"')))
             Assert.Equal(0, line.Count(c => c == '"') % 2);
+    }
+
+    [Fact]
+    public void Labels_that_sanitize_to_nothing_fall_back_to_the_object_id()
+    {
+        var m = new ArchitectureModel
+        {
+            Components = [new ArchComponent { Id = "CMP-001", Name = "   ", Kind = ComponentKind.Worker }],
+            Entities = [new DataEntity { Id = "ENT-001", Name = "\n\t" }],
+        };
+        Assert.Contains("CMP_001([\"CMP-001\"])", ViewRenderer.Component(m).Mermaid);
+        Assert.Contains("ENT_001[\"ENT-001\"]", ViewRenderer.Er(m).Mermaid);
     }
 
     [Fact]
