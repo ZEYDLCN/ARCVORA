@@ -35,4 +35,23 @@ check('olmayan bileşene bağlantı → 422 validation_failed', badPatch.status 
 check('hata ayrıntıları kural kimliği (REF-…) içerir', badPatch.body?.details?.some((d) => /^REF-/.test(d.ruleId)), badPatch.body?.details);
 check('geçersiz yama sürüm üretmedi', (await head(user, pid)) === before);
 
+section('Açık soruyu yanıtlama');
+const arch = await waitJob(user.token, (await call('POST', `/api/projects/${pid}/architecture-proposals`, { token: user.token })).body.id);
+check('mimari taslak üretildi', arch.status === 'succeeded', arch);
+const accArch = await call('POST', `/api/projects/${pid}/proposals/${arch.proposalId}/accept`, { token: user.token, body: {} });
+check('taslak kabul edildi', accArch.status === 200, accArch.body);
+const question = (await getModel()).openQuestions?.[0];
+check('modelde en az bir açık soru var', !!question, (await getModel()).openQuestions);
+if (question) {
+  const qBase = await head(user, pid);
+  const stale = await call('PATCH', `/api/projects/${pid}/open-questions/${question.id}`, { token: user.token, body: { baseVersion: qBase - 1, status: 'answered', answer: 'Eski temel' } });
+  check('eski temele dayalı yanıt → 409', stale.status === 409, stale);
+  const ans = await call('PATCH', `/api/projects/${pid}/open-questions/${question.id}`, { token: user.token, body: { baseVersion: qBase, status: 'answered', answer: 'Eşzamanlı en fazla 50 kullanıcı bekleniyor.' } });
+  check('yanıt 200 ve yeni sürüm', ans.status === 200 && ans.body?.version?.number === qBase + 1, ans);
+  const answered = (await getModel()).openQuestions.find((q) => q.id === question.id);
+  check('soru "answered" ve yanıt metni saklandı', answered.status === 'answered' && /50 kullanıcı/.test(answered.answer ?? ''), answered);
+  const missing = await call('PATCH', `/api/projects/${pid}/open-questions/OQ-999`, { token: user.token, body: { baseVersion: await head(user, pid), status: 'answered', answer: 'x' } });
+  check('olmayan soru → 404', missing.status === 404, missing.status);
+}
+
 finish();
