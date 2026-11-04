@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>Arcvora.Worker</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Arcvora.Infrastructure\Arcvora.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>
