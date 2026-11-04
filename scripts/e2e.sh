@@ -92,13 +92,21 @@ FAIL=0
 export ARCVORA_API_URL="http://127.0.0.1:$API_PORT" ARCVORA_WEB_URL="http://127.0.0.1:$WEB_PORT" MOCK_URL="http://127.0.0.1:$MOCK_PORT" MOCK_MODEL="$MODEL"
 step() { local t="$1"; shift; echo; echo "━━ $t"; "$@" || FAIL=1; }
 
+api_extras() {
+  step "Roller ve yetkiler" node scripts/e2e/api-roles.mjs
+  step "Eşzamanlılık (paralel kabul, çakışan düzenleme)" node scripts/e2e/api-concurrency.mjs
+  step "Yaşam döngüsü (düzenleme, yama, açık soru, denetim, silme)" node scripts/e2e/api-lifecycle.mjs
+}
+
 if [ "$MODE" = local ]; then
   step "API yolculuğu (yerel model)" env EXPECT_PROVIDER=local node scripts/e2e/api-journey.mjs
+  api_extras
   step "Yerel sağlayıcı: istek biçimi ve token kaydı" node scripts/e2e/local-llm.mjs
   stop_pid "$MOCK_PID"; start_mock repair || exit 1; PIDS+=("$MOCK_PID")
   step "Yerel sağlayıcı: bozuk taslak → onarım turu" env EXPECT_REPAIR=1 node scripts/e2e/local-llm.mjs
 else
   step "API yolculuğu (buluşsal üretici)" env EXPECT_PROVIDER=heuristic node scripts/e2e/api-journey.mjs
+  api_extras
 fi
 [ "$UI" = 1 ] && step "Tarayıcı yolculuğu" env E2E_SHOTS_DIR="$LOGS/ekran-goruntuleri" node scripts/e2e/ui-journey.mjs
 
