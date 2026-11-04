@@ -116,8 +116,42 @@ try {
   check('hiçbir alert/confirm/prompt iletişim kutusu açılmadı', dialogs.length === 0, dialogs);
   await shot('edge-02-xss');
 
+  section('API kesintisi ve sunucu hataları');
+  const faultFrom = problems.length; // bu bölümde BİLEREK hata enjekte edilir; konsol hataları son denetimden hariç tutulur
+  const outUser = await newUser('outage');
+  const outPid = await newProject(outUser, 'Kesinti testi');
+  await context.addInitScript((t) => localStorage.setItem('arcvora.token', t), outUser.token);
+  // 1) Proje listesi yüklenirken ağ hatası
+  await page.route('**/api/projects', (r) => (r.request().method() === 'GET' ? r.abort('connectionrefused') : r.continue()));
+  await page.goto(WEB);
+  check('proje listesi ağ hatasında sayfa boş kalmaz: anlaşılır hata gösterilir', await visible(page.getByRole('alert'), 10_000), await page.locator('body').innerText());
+  await page.unroute('**/api/projects');
+  // 2) Sunucu 500 döndürürse
+  await page.route('**/api/projects', (r) => (r.request().method() === 'GET'
+    ? r.fulfill({ status: 500, contentType: 'application/problem+json', body: JSON.stringify({ status: 500, code: 'internal_error', title: 'Beklenmeyen bir hata oluştu.' }) })
+    : r.continue()));
+  await page.reload();
+  check('sunucu 500 → hata mesajı gösterilir, yığın izi/ham JSON sızmaz', await visible(page.getByRole('alert'), 10_000) && !/stack|at .*\.cs|Exception/i.test(await alertText()), await alertText());
+  await page.unroute('**/api/projects');
+  // 3) Silinmiş/olmayan proje açılırken
+  await page.route(`**/api/projects/${outPid}`, (r) => r.fulfill({ status: 404, contentType: 'application/problem+json', body: JSON.stringify({ status: 404, code: 'not_found', title: 'Proje bulunamadı.' }) }));
+  await page.reload();
+  await visible(page.getByRole('heading', { name: 'Projeler' }));
+  await page.locator('button.proj-card', { hasText: 'Kesinti testi' }).first().click();
+  check('açılırken 404 alan proje: hata + "← Projeler" geri düğmesi', await visible(page.getByRole('alert')) && await visible(page.getByRole('button', { name: /← Projeler/ })), await page.locator('body').innerText());
+  await page.getByRole('button', { name: /← Projeler/ }).click();
+  check('geri düğmesi proje listesine döner', await visible(page.getByRole('heading', { name: 'Projeler' })));
+  await page.unroute(`**/api/projects/${outPid}`);
+  // 4) Oturum süresi dolarsa (API 401 döndürür) giriş ekranına yönlendirir
+  await page.route('**/api/projects', (r) => (r.request().method() === 'GET' ? r.fulfill({ status: 401, contentType: 'application/problem+json', body: JSON.stringify({ status: 401, code: 'unauthorized', title: 'Oturum geçersiz.' }) }) : r.continue()));
+  await page.reload();
+  check('çalışırken 401 gelirse kullanıcı giriş ekranına döner', await visible(page.getByRole('heading', { name: /Tekrar hoş geldin|Hesap oluştur/ }), 10_000));
+  await page.unroute('**/api/projects');
+  const faultTo = problems.length;
+
   section('Sonuç');
-  check('sayfa/konsol hatası yok (beklenen 4xx istekleri hariç)', problems.filter((p) => !/status of 4\d\d|401|409|422/.test(p)).length === 0, problems.slice(0, 5));
+  const unexpected = problems.filter((p, i) => !(i >= faultFrom && i < faultTo) && !/status of 4\d\d/.test(p));
+  check('beklenmeyen sayfa/konsol hatası yok (bilerek enjekte edilen hatalar ve beklenen 4xx hariç)', unexpected.length === 0, unexpected.slice(0, 5));
 } catch (e) {
   await shot('edge-HATA');
   console.log(`\n✗ Beklenmeyen hata: ${e.message}`);
