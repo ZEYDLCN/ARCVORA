@@ -189,9 +189,10 @@ try {
   await trigger.focus();
   await page.keyboard.press('Enter');
   check('arama düğmesi klavye (Enter) ile paleti açar', await visible(box, 5000));
+  await page.waitForFunction(() => document.activeElement?.getAttribute('role') === 'combobox', null, { timeout: 3000 }).catch(() => {}); // odak kutuya geçsin
   await page.keyboard.press('Escape');
   await gone(palette, 3000);
-  check('Escape sonrası odak, paleti açan düğmeye döner (body\'ye düşmez)', await trigger.evaluate((el) => el === document.activeElement), await page.evaluate(() => document.activeElement?.tagName));
+  check('Escape sonrası odak, paleti açan düğmeye döner (body\'ye düşmez)', await trigger.evaluate((el) => el === document.activeElement), await page.evaluate(() => { const e = document.activeElement; return `${e?.tagName}.${e?.className} role=${e?.getAttribute('role')} dialogs=${document.querySelectorAll('[role=dialog]').length}`; }));
   const unlabeled = await page.evaluate(() => [...document.querySelectorAll('button, [role="tab"], [role="switch"], input, select, textarea')]
     .filter((el) => el.offsetParent !== null)
     .filter((el) => !(el.getAttribute('aria-label') || el.getAttribute('title') || el.innerText?.trim() || (el.labels && el.labels.length) || el.getAttribute('aria-labelledby') || el.getAttribute('placeholder')))
