@@ -31,4 +31,17 @@ check('yanlış parola ve olmayan kullanıcı AYNI yanıtı verir (kullanıcı s
   wrongPw.status === 401 && noUser.status === 401 && wrongPw.body?.code === noUser.body?.code && wrongPw.body?.title === noUser.body?.title, [wrongPw.body, noUser.body]);
 check('null alanlarla giriş → 401 (500 değil)', (await call('POST', '/api/auth/login', { body: { email: null, password: null } })).status === 401);
 
+section('Token güvenliği');
+const goodToken = first.body.token;
+check('geçerli token /me için 200', (await call('GET', '/api/me', { token: goodToken })).status === 200);
+check('bozuk token → 401', (await call('GET', '/api/me', { token: 'abc.def.ghi' })).status === 401);
+check('imzası değiştirilmiş token → 401', (await call('GET', '/api/me', { token: goodToken.slice(0, -3) + 'AAA' })).status === 401);
+const [h, p, sig] = goodToken.split('.');
+const noneAlg = `${Buffer.from('{"alg":"none","typ":"JWT"}').toString('base64url')}.${p}.`;
+check('"alg":"none" token → 401', (await call('GET', '/api/me', { token: noneAlg })).status === 401);
+const forgedPayload = Buffer.from(JSON.stringify({ ...JSON.parse(Buffer.from(p, 'base64url')), sub: '00000000-0000-0000-0000-000000000001' })).toString('base64url');
+check('yükü değiştirilmiş (sub) token → 401', (await call('GET', '/api/me', { token: `${h}.${forgedPayload}.${sig}` })).status === 401);
+const wrongScheme = await raw('GET', '/api/me', { headers: { authorization: `Basic ${goodToken}` } });
+check('Bearer olmayan şema → 401', wrongScheme.status === 401, wrongScheme.status);
+
 finish();
