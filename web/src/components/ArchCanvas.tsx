@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { IconPlus } from './icons';
+import { IconInfo, IconPlus } from './icons';
 import { KindIcons } from './icons';
 import { TechLogo } from './TechLogo';
 import { layoutComponents, NODE_H, NODE_W } from '../lib/canvas';
@@ -76,7 +76,7 @@ export function ArchCanvas({ model, selected, onSelect }: { model: Model; select
       )}
       <div className="zoom" role="group" aria-label="Yakınlaştırma">
         <button className="icon-btn" onClick={() => step(-0.1)} aria-label="Uzaklaştır" title="Uzaklaştır">−</button>
-        <span className="zoom-pct" aria-live="polite">{Math.round(scale * 100)}%</span>
+        <span className="zoom-pct" aria-live="polite">%{Math.round(scale * 100)}</span>
         <button className="icon-btn" onClick={() => step(0.1)} aria-label="Yakınlaştır" title="Yakınlaştır"><IconPlus size={16} /></button>
         <button className="btn small" onClick={() => setZoom(fitAll)} title="Tüm mimariyi genişliğe sığdır">Sığdır</button>
         <button className="btn small" onClick={() => setZoom(null)} title="Okunabilir varsayılan ölçek">Sıfırla</button>
@@ -157,7 +157,7 @@ export function ArchCanvas({ model, selected, onSelect }: { model: Model; select
         <span><i className="swatch sync" /> Eşzamanlı çağrı</span>
         <span><i className="swatch async" /> Eşzamansız / olay</span>
         <span><i className="swatch data" /> Veri erişimi</span>
-        <span className="muted">Ok yönü: isteği başlatandan hedefe. Bir bileşene tıklayınca bağlantıları öne çıkar.</span>
+        <span className="hint"><IconInfo size={16} /> Ok yönü: isteği başlatandan hedefe. Bir bileşene tıklayınca bağlantıları öne çıkar.</span>
       </div>
     </div>
   );

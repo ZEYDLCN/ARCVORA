@@ -84,8 +84,10 @@ export function Shell({ nav, navTitle, user, dark, onTheme, onLogout, searchItem
         </nav>
 
         <div className="sb-foot">
-          <button className="sb-item" onClick={onTheme} title={dark ? 'Açık tema' : 'Koyu tema'}>
-            <span className="ico">{dark ? <IconSun /> : <IconMoon />}</span><span className="label">{dark ? 'Açık tema' : 'Koyu tema'}</span>
+          <button className="sb-item" role="switch" aria-checked={dark} onClick={onTheme} title={dark ? 'Açık temaya geç' : 'Koyu temaya geç'}>
+            <span className="ico">{dark ? <IconSun /> : <IconMoon />}</span>
+            <span className="label">Koyu tema</span>
+            <span className="switch" aria-hidden="true"><i /></span>
           </button>
           <button className="sb-item" onClick={onLogout} title="Çıkış">
             <span className="ico"><IconLogout /></span><span className="label">Çıkış · {user.displayName}</span>
