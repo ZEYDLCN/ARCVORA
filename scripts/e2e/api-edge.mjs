@@ -169,4 +169,18 @@ const v1 = (await vget('/versions/1')).body;
 const v2 = (await vget('/versions/2')).body;
 check('eski sürüm kendi içeriğini korur (v1 gereksinimsiz, v2 gereksinimli)', v1.model.requirements.length === 0 && v2.model.requirements.length > 0, [v1.model.requirements.length, v2.model.requirements.length]);
 
+section('Geri alma uç durumları');
+const hv = await head(vu, vpid);
+const toHead = await call('POST', `/api/projects/${vpid}/versions/${hv}/revert`, { token: vu.token, body: { baseVersion: hv } });
+check('güncel sürüme dönüş → 422 already_head', toHead.status === 422 && toHead.body?.code === 'already_head', toHead);
+check('olmayan sürüme dönüş → 404', (await call('POST', `/api/projects/${vpid}/versions/99/revert`, { token: vu.token, body: { baseVersion: hv } })).status === 404);
+check('eski temelle geri alma → 409 version_conflict', (await call('POST', `/api/projects/${vpid}/versions/1/revert`, { token: vu.token, body: { baseVersion: hv - 1 } })).body?.code === 'version_conflict');
+const rev = await call('POST', `/api/projects/${vpid}/versions/1/revert`, { token: vu.token, body: { baseVersion: hv } });
+check('v1\'e dönüş yeni sürüm üretir (kind=revert)', rev.status === 200 && rev.body.version.number === hv + 1 && rev.body.version.kind === 'revert', rev);
+check('dönülen sürümün içeriği v1 ile aynı özet (hash) taşır', rev.body.version.contentHash === (await vget('/versions/1')).body.info.contentHash, rev.body?.version);
+check('geçmiş silinmedi: v2 hâlâ okunabilir', (await vget('/versions/2')).status === 200);
+const revRev = await call('POST', `/api/projects/${vpid}/versions/2/revert`, { token: vu.token, body: { baseVersion: hv + 1 } });
+check('geri almayı geri alma da yeni sürümdür (v' + (hv + 2) + ')', revRev.status === 200 && revRev.body.version.number === hv + 2, revRev);
+check('gereksinimler geri geldi', (await vget('')).body.model.requirements.length > 0);
+
 finish();
