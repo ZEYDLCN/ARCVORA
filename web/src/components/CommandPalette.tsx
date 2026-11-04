@@ -3,7 +3,9 @@ import { IconSearch } from './icons';
 
 export interface PaletteItem { id: string; label: string; hint?: string; group: string; keywords?: string; onSelect: () => void }
 
-const fold = (s: string) => s.replace(/İ/g, 'i').replace(/I/g, 'ı').toLowerCase();
+// Arama büyük/küçük harf ve aksan duyarsızdır: İ, I, ı hepsi "i" olur (böylece "api", "API" kısaltmasını ve "istanbul", "İstanbul"u bulur;
+// Türkçe kuralıyla I→ı yapmak "API"yi "apı" yapıp "api" aramasını bozuyordu), ç/ş/ğ/ö/ü aksansız karşılıklarına katlanır.
+const fold = (s: string) => s.replace(/[İIı]/g, 'i').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
 export function filterItems(items: PaletteItem[], query: string, limit = 40): PaletteItem[] {
   const q = fold(query.trim());
