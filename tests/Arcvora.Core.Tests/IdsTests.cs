@@ -60,4 +60,62 @@ public class IdsTests
         Assert.False(Ids.IsAcceptanceCriterionId("ac-003"));
         Assert.False(Ids.IsAcceptanceCriterionId(null));
     }
+
+    [Fact]
+    public void ScanForIds_finds_ids_mentioned_inside_free_text()
+    {
+        var found = Ids.ScanForIds("CMP-002, OQ-004 yanıtlanmadan DEC-001 kesinleşmez; (REQ-010) ve AC-001 de etkilenir.").ToList();
+        Assert.Equal(["CMP-002", "OQ-004", "DEC-001", "REQ-010", "AC-001"], found);
+    }
+
+    [Theory]
+    [InlineData("kimlik yok")]
+    [InlineData("XCMP-001")]          // sözcük sınırı: başka bir sözcüğün parçası değil
+    [InlineData("CMP-01")]
+    public void ScanForIds_ignores_look_alikes(string text) => Assert.Empty(Ids.ScanForIds(text));
+
+    [Fact]
+    public void StructuralRefs_returns_only_fields_whose_whole_value_is_an_object_id()
+    {
+        const string json = """
+        {
+          "id": "REL-001", "sourceId": "CMP-001", "targetId": "CMP-002",
+          "description": "CMP-009 hakkında serbest metin anması",
+          "criteria": [ { "id": "AC-001", "text": "x" } ],
+          "participants": ["ACT-001", "CMP-003"],
+          "nested": { "deep": { "ref": "DEC-007" } },
+          "number": 5, "flag": true, "none": null
+        }
+        """;
+        var refs = Ids.StructuralRefs(json);
+        Assert.Equal(["REL-001", "CMP-001", "CMP-002", "ACT-001", "CMP-003", "DEC-007"], refs);
+        Assert.DoesNotContain("CMP-009", refs);   // serbest metin anması yapısal başvuru değildir
+        Assert.DoesNotContain("AC-001", refs);    // iç içe kabul ölçütü kimlikleri sayılmaz
+    }
+
+    [Fact]
+    public void StructuralRefs_rejects_invalid_json() =>
+        Assert.ThrowsAny<System.Text.Json.JsonException>(() => Ids.StructuralRefs("{bozuk"));
+
+    [Fact]
+    public void Next_is_one_more_than_the_highest_number_and_never_reuses_gaps()
+    {
+        Assert.Equal("REQ-001", Ids.Next("REQ", []));
+        Assert.Equal("REQ-004", Ids.Next("REQ", ["REQ-001", "REQ-003"]));         // REQ-002 boşluğu yeniden kullanılmaz
+        Assert.Equal("REQ-011", Ids.Next("REQ", ["REQ-010", "REQ-002"]));
+    }
+
+    [Fact]
+    public void Next_only_looks_at_the_requested_prefix_and_ignores_malformed_ids()
+    {
+        Assert.Equal("CMP-001", Ids.Next("CMP", ["REQ-009", "DEC-004"]));
+        Assert.Equal("CMP-003", Ids.Next("CMP", ["CMP-002", "cmp-099", "new-7", "CMP-x"]));
+    }
+
+    [Fact]
+    public void Next_pads_to_three_digits_and_grows_past_999()
+    {
+        Assert.Equal("REQ-1000", Ids.Next("REQ", ["REQ-999"]));
+        Assert.Equal("REQ-010", Ids.Next("REQ", ["REQ-009"]));
+    }
 }
