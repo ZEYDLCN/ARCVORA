@@ -227,6 +227,10 @@ check('aynı öneriyi tekrar reddetmek zararsız (idempotent 200)', (await pcall
 const accRej = await pcall('POST', `/proposals/${A}/accept`, {});
 check('reddedilmiş öneri kabul edilemez → 409 proposal_rejected', accRej.status === 409 && accRej.body?.code === 'proposal_rejected', accRej);
 check('durum filtresi: rejected yalnız reddedilenleri listeler', (await pcall('GET', '/proposals?status=rejected')).body.every((x) => x.status === 'rejected'));
+const badFilter = await pcall('GET', '/proposals?status=zzz');
+check('sayısal durum filtresi ("1") de reddedilir', (await pcall('GET', '/proposals?status=1')).body?.code === 'invalid_status');
+check('durum filtresi büyük/küçük harfe duyarsız (PENDING geçerli)', (await pcall('GET', '/proposals?status=PENDING')).status === 200);
+check('geçersiz durum filtresi → 422 invalid_status (sessizce yok sayılmaz)', badFilter.status === 422 && badFilter.body?.code === 'invalid_status', badFilter);
 const B = await genArch();
 const accB = await pcall('POST', `/proposals/${B}/accept`, {});
 check('yeni öneri kabul edilir', accB.status === 200, accB);
