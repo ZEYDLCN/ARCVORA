@@ -214,7 +214,7 @@ export function Workspace({ projectId, user, onBack, onLogout, dark, onTheme }: 
           <h1>{detail.summary.name}</h1>
           <div className="row">
             <label htmlFor="ver" className="muted" style={{ margin: 0 }}>Sürüm</label>
-            <select id="ver" style={{ width: 'auto', maxWidth: 420, padding: '5px 12px' }} value={effectiveNo}
+            <select id="ver" style={{ width: 'auto', maxWidth: 'min(420px, 100%)', minWidth: 0, padding: '5px 12px' }} value={effectiveNo}
               onChange={(e) => { const n = Number(e.target.value); setViewNo(n === headNo ? null : n); setSelected(null); }}>
               {versions.map((v) => <option key={v.id} value={v.number}>v{v.number} · {v.summary}{v.number === headNo ? ' (güncel)' : ''}</option>)}
             </select>
