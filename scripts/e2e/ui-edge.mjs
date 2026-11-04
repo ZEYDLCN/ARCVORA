@@ -161,10 +161,18 @@ try {
   await visible(page.locator('svg.canvas g[data-node-id]'), 30_000);
   const palette = page.getByRole('dialog', { name: 'Ara' });
   const box = palette.getByRole('combobox');
+  const focusInBox = () => page.waitForFunction(() => document.activeElement?.getAttribute('role') === 'combobox', null, { timeout: 3000 }).then(() => true, () => false);
   await page.keyboard.press('Control+k');
-  check('Ctrl+K paleti açar ve odak arama kutusundadır', await visible(box, 5000) && await box.evaluate((el) => el === document.activeElement));
+  check('Ctrl+K paleti açar', await visible(box, 5000));
+  check('açılışta odak arama kutusuna geçer', await focusInBox());
   await page.keyboard.press('Escape');
   check('Escape paleti kapatır', await gone(palette, 3000) || (await palette.count()) === 0);
+  await page.keyboard.press('Control+k');
+  await visible(box, 5000);
+  await focusInBox();
+  await page.evaluate(() => document.activeElement.blur()); // odak diyalog dışına düşerse (ör. kutuya odak verilemedi)
+  await page.keyboard.press('Escape');
+  check('odak diyalog dışındayken de Escape paleti kapatır (modal davranışı)', await gone(palette, 3000) || (await palette.count()) === 0);
   await page.keyboard.press('Meta+k');
   check('⌘K (Meta+K) da paleti açar', await visible(box, 5000));
   await box.fill('zzzzzz-yok-boyle-bir-sey');
