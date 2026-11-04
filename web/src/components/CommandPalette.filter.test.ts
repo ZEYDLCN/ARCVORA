@@ -54,4 +54,16 @@ describe('filterItems', () => {
     expect(filterItems(many, 'düğüm', 5)).toHaveLength(5);
     expect(filterItems(many, 'düğüm')).toHaveLength(40);
   });
+
+  it('is accent-insensitive: ASCII typing finds Turkish letters (ç ş ğ ö ü) and vice versa', () => {
+    const tr = [item('1', 'Güvenlik ve kimlik'), item('2', 'Çalışma alanı'), item('3', 'Öneri listesi')];
+    expect(filterItems(tr, 'guvenlik').map((i) => i.id)).toEqual(['1']);
+    expect(filterItems(tr, 'calisma alani').map((i) => i.id)).toEqual(['2']);
+    expect(filterItems(tr, 'öneri').map((i) => i.id)).toEqual(['3']);
+    expect(filterItems(tr, 'ONERI').map((i) => i.id)).toEqual(['3']);
+  });
+
+  it('keeps acronyms searchable in both cases (API / api / Api)', () => {
+    for (const q of ['API', 'api', 'Api']) expect(filterItems(items, q).map((i) => i.id)).toContain('CMP-001');
+  });
 });
