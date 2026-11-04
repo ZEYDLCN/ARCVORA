@@ -23,4 +23,20 @@ check(`proje tek sürüm ilerledi (v${v + 1}); ${N} paralel kabul ${N} sürüm �
 const versions = (await call('GET', `/api/projects/${pid}/versions`, { token: user.token })).body;
 check('sürüm numaraları boşluksuz ve tekrarsız', versions.map((x) => x.number).sort((a, b) => a - b).join() === Array.from({ length: v + 1 }, (_, i) => i + 1).join(), versions.map((x) => x.number));
 
+section('Aynı temele dayalı iki düzenleme');
+const model = (await call('GET', `/api/projects/${pid}`, { token: user.token })).body.model;
+const reqId = model.requirements[0].id;
+const base = await head(user, pid);
+const edits = await Promise.all([
+  call('PATCH', `/api/projects/${pid}/requirements/${reqId}`, { token: user.token, body: { baseVersion: base, text: 'Birinci düzenleme: masraf girişi.' } }),
+  call('PATCH', `/api/projects/${pid}/requirements/${reqId}`, { token: user.token, body: { baseVersion: base, text: 'İkinci düzenleme: masraf girişi.' } }),
+]);
+console.log('  durum kodları:', edits.map((r) => r.status).join(' '), edits.map((r) => r.body?.code ?? '').join(' '));
+check('hiçbir düzenleme 5xx vermedi', edits.every((r) => r.status < 500), edits.map((r) => r.status));
+check('tam olarak biri başarılı, diğeri çakışma bildirir (200 + 409)', edits.filter((r) => r.status === 200).length === 1 && edits.filter((r) => r.status === 409).length === 1, edits.map((r) => [r.status, r.body?.code]));
+check('çakışma sessizce ezmedi: yalnız bir yeni sürüm oluştu', (await head(user, pid)) === base + 1, await head(user, pid));
+const stale = await call('PATCH', `/api/projects/${pid}/requirements/${reqId}`, { token: user.token, body: { baseVersion: base, text: 'Geç kalan düzenleme.' } });
+check('eski sürüme dayalı düzenleme → 409', stale.status === 409, stale);
+check('çakışma yanıtı bir hata kodu içerir', typeof stale.body?.code === 'string' && stale.body.code.length > 0, stale.body);
+
 finish();
