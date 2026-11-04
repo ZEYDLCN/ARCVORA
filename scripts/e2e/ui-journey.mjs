@@ -83,6 +83,9 @@ try {
   await shot('03-tuval');
   const nodeCount = await page.locator('svg.canvas g[data-node-id]').count();
   check('mimari tuvali bileşen düğümlerini çizdi', nodeCount >= 4, nodeCount);
+  const titles = await page.locator('svg.canvas text.ntitle').evaluateAll((els) => els.map((e) => e.textContent ?? ''));
+  check('tuval düğüm adları kırpılmaz: örnek projedeki hiçbir ad "…" ile bitmez (iki satıra sarılır)', titles.length >= 4 && titles.every((t) => !t.includes('…')), titles);
+  check('uzun adlar tam görünür ("Entegrasyon işleyicisi", "Kimlik ve kiracı modülü")', titles.some((t) => /Entegrasyonişleyicisi/.test(t.replace(/\s+/g, ''))) && titles.some((t) => /Kimlikvekiracımodülü/.test(t.replace(/\s+/g, ''))), titles);
   const logoCount = await page.locator('svg.tech-logo').count();
   check('teknoloji logoları görünür (düğümlerde ve yığın şeridinde)', logoCount >= 3, logoCount);
   await page.getByRole('tab', { name: /Bileşenler \(Mermaid\)/ }).click();
