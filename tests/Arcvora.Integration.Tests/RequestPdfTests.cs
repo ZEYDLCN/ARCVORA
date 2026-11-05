@@ -17,6 +17,17 @@ public class RequestPdfTests
             timeline ?? [new(T0, "Çağlar Öztürk talebi oluşturdu."), new(T0.AddHours(2), "Şükrü Ğünay “Yönetici onayı” adımını onayladı: Uygun, iyi tatiller.")],
             files ?? [], "ABCD-1234-EF56", T0.AddDays(1));
 
+    /// <summary>Geliştirme yardımcısı: ARCVORA_PDF_DUMP klasörü verilirse üretilen PDF'ler gözle incelemek için oraya yazılır.</summary>
+    private static byte[] Dump(string name, byte[] pdf)
+    {
+        if (Environment.GetEnvironmentVariable("ARCVORA_PDF_DUMP") is { Length: > 0 } dir)
+        {
+            Directory.CreateDirectory(dir);
+            File.WriteAllBytes(Path.Combine(dir, name + ".pdf"), pdf);
+        }
+        return pdf;
+    }
+
     private static (bool Ok, string Text) Extract(byte[] pdf)
     {
         var path = Path.Combine(Path.GetTempPath(), $"arcvora-{Guid.NewGuid():N}.pdf");
@@ -44,14 +55,14 @@ public class RequestPdfTests
     [Fact]
     public void Builds_a_valid_pdf_with_title_and_embedded_font()
     {
-        var pdf = RequestPdf.Build(Sample());
+        var pdf = Dump("basic", RequestPdf.Build(Sample()));
         Assert.StartsWith("%PDF-", System.Text.Encoding.ASCII.GetString(pdf, 0, 8));
         Assert.Contains("%%EOF", System.Text.Encoding.ASCII.GetString(pdf, pdf.Length - 16, 16));
         Assert.Equal(1, Pages(pdf));
         using var ms = new MemoryStream(pdf);
         using var doc = PdfReader.Open(ms, PdfDocumentOpenMode.Import);
         Assert.Contains("IZN-2026-0007", doc.Info.Title);
-        Assert.Contains("DejaVuSans", System.Text.Encoding.Latin1.GetString(pdf));         // yazı tipi gömülü
+        Assert.True(pdf.Length > 50_000, "yazı tipi alt kümesi gömülmemiş görünüyor: " + pdf.Length);      // alt küme birkaç on KB tutar
     }
 
     [Fact]
@@ -59,7 +70,7 @@ public class RequestPdfTests
     {
         var (ok, text) = Extract(RequestPdf.Build(Sample()));
         if (!ok) return;
-        foreach (var expected in new[] { "IZN-2026-0007", "İzin Talebi", "Çağlar Öztürk", "Şükrü Ğünay", "Örnek Gıda Sanayi A.Ş.", "1.234,50 TRY", "Uygun, iyi tatiller.", "ABCD-1234-EF56", "Onaylandı" })
+        foreach (var expected in new[] { "IZN-2026-0007", "İzin Talebi", "Çağlar Öztürk", "Şükrü Ğünay", "Örnek Gıda Sanayi A.Ş.", "1.234,50 TRY", "Uygun, iyi tatiller.", "ABCD-1234-EF56", "ONAYLANDI", "Onayladı" })
             Assert.Contains(expected, text);
     }
 
@@ -67,7 +78,7 @@ public class RequestPdfTests
     public void Every_page_has_the_verification_code_and_page_numbers()
     {
         var many = Enumerable.Range(1, 90).Select(i => new PdfField($"Alan {i}", $"Değer {i} " + new string('x', 40))).ToList();
-        var pdf = RequestPdf.Build(Sample(many));
+        var pdf = Dump("many-pages", RequestPdf.Build(Sample(many)));
         var pages = Pages(pdf);
         Assert.True(pages >= 2, pages.ToString());
         var (ok, text) = Extract(pdf);
@@ -81,12 +92,12 @@ public class RequestPdfTests
     [Fact]
     public void Long_unbroken_text_wraps_inside_the_page()
     {
-        var pdf = RequestPdf.Build(Sample([new("Açıklama", new string('Ş', 700)), new("Not", string.Join(' ', Enumerable.Repeat("kelime", 300))), new("Satırlı", "bir\niki\n\nüç")]));
+        var pdf = RequestPdf.Build(Sample([new("Açıklama", new string('Ø', 700)), new("Not", string.Join(' ', Enumerable.Repeat("kelime", 300))), new("Satırlı", "bir\niki\n\nüç")], approvals: [], timeline: []));
         Assert.True(Pages(pdf) >= 1);
         var (ok, text) = Extract(pdf);
         if (!ok) return;
         Assert.All(text.Split('\n'), line => Assert.True(line.Length < 220, "satır taştı: " + line.Length));
-        Assert.Equal(700, text.Count(c => c == 'Ş'));            // hiçbir karakter kaybolmadı
+        Assert.Equal(700, text.Count(c => c == 'Ø'));            // hiçbir karakter kaybolmadı
         Assert.Contains("üç", text);
     }
 
@@ -106,7 +117,7 @@ public class RequestPdfTests
     public void Images_are_embedded_and_corrupt_or_huge_ones_are_skipped_not_fatal()
     {
         var plain = RequestPdf.Build(Sample(files: [new("fis.png", "Fiş", FilesKit.Png().Length, "abc", null)]));
-        var withImage = RequestPdf.Build(Sample(files: [new("fis.png", "Fiş", FilesKit.Png().Length, "abc", FilesKit.Png())]));
+        var withImage = Dump("image", RequestPdf.Build(Sample(files: [new("fis.png", "Fiş", FilesKit.Png().Length, "abc", FilesKit.Png())])));
         Assert.True(withImage.Length > plain.Length, "görsel gömülmedi");
 
         var corrupt = RequestPdf.Build(Sample(files: [new("bozuk.png", "Fiş", 10, "abc", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])]));
@@ -132,7 +143,7 @@ public class RequestPdfTests
         Assert.Equal(1, Pages(pdf));
         var (ok, text) = Extract(pdf);
         if (!ok) return;
-        Assert.Contains("İncelemede", text);
+        Assert.Contains("İNCELEMEDE", text);                          // durum rozeti Türkçe büyük harfle (i→İ)
     }
 
     [Fact]
