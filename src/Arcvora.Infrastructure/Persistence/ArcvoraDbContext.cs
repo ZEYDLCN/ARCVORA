@@ -22,6 +22,8 @@ public sealed class ArcvoraDbContext(DbContextOptions<ArcvoraDbContext> options)
     public DbSet<FlowRequest> FlowRequests => Set<FlowRequest>();
     public DbSet<ApprovalTask> ApprovalTasks => Set<ApprovalTask>();
     public DbSet<RequestEvent> RequestEvents => Set<RequestEvent>();
+    public DbSet<AccountingEntry> AccountingEntries => Set<AccountingEntry>();
+    public DbSet<AccountingSettings> AccountingSettings => Set<AccountingSettings>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -127,6 +129,30 @@ public sealed class ArcvoraDbContext(DbContextOptions<ArcvoraDbContext> options)
             e.Property(x => x.DetailJson).HasColumnType("jsonb");
             e.HasIndex(x => new { x.RequestId, x.At });
             e.HasOne<FlowRequest>().WithMany().HasForeignKey(x => x.RequestId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<AccountingEntry>(e =>
+        {
+            e.Property(x => x.Number).HasMaxLength(30);
+            e.Property(x => x.Category).HasMaxLength(40);
+            e.Property(x => x.PayloadJson).HasColumnType("jsonb");
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.LastError).HasMaxLength(500);
+            e.Property(x => x.Note).HasMaxLength(500);
+            e.Property(x => x.RowVersion).HasColumnName("xmin").HasColumnType("xid").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            // Talep başına tek muhasebe kaydı: aynı talep iki kez aktarılmaz.
+            e.HasIndex(x => x.RequestId).IsUnique();
+            e.HasIndex(x => new { x.WorkspaceId, x.Status, x.CreatedAt });
+            e.HasIndex(x => new { x.Status, x.NextAttemptAt });
+            e.HasOne<FlowRequest>().WithMany().HasForeignKey(x => x.RequestId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<AccountingSettings>(e =>
+        {
+            e.HasKey(x => x.WorkspaceId);
+            e.Property(x => x.WebhookUrl).HasMaxLength(500);
+            e.Property(x => x.WebhookSecret).HasMaxLength(200);
+            e.HasOne<Workspace>().WithMany().HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<Project>(e =>

@@ -22,6 +22,9 @@ public static class RequestEventKinds
     public const string Cancelled = "cancelled";
     public const string Completed = "completed";
     public const string AccountingQueued = "accounting_queued";
+    public const string AccountingSent = "accounting_sent";
+    public const string AccountingFailed = "accounting_failed";
+    public const string AccountingProcessed = "accounting_processed";
 }
 
 /// <summary>Bir akış uygulaması. Taslak düzenlenir; yayınlama değişmez bir <see cref="AppVersion"/> üretir.</summary>
@@ -124,4 +127,42 @@ public sealed class RequestEvent
     public Guid? ActorId { get; set; }
     public string Kind { get; set; } = "";
     public string? DetailJson { get; set; }
+}
+
+public enum AccountingStatus { Pending, Sent, Processed, Failed }
+
+/// <summary>
+/// Onaylanan talebin muhasebeye aktarım kaydı (talep başına tek; transactional outbox). Webhook tanımlıysa işçi gönderir
+/// (<c>Pending → Sent</c> veya <c>Failed</c>); muhasebe kullanıcısı <c>Processed</c> olarak işaretler.
+/// </summary>
+public sealed class AccountingEntry
+{
+    public Guid Id { get; set; }
+    public Guid WorkspaceId { get; set; }
+    public Guid RequestId { get; set; }
+    public Guid AppId { get; set; }
+    public string Number { get; set; } = "";
+    public string Category { get; set; } = "";
+    public string PayloadJson { get; set; } = "{}";
+    public AccountingStatus Status { get; set; } = AccountingStatus.Pending;
+    public int Attempts { get; set; }
+    public DateTimeOffset? NextAttemptAt { get; set; }
+    public string? LastError { get; set; }
+    public DateTimeOffset? SentAt { get; set; }
+    public Guid? ProcessedBy { get; set; }
+    public DateTimeOffset? ProcessedAt { get; set; }
+    public string? Note { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public uint RowVersion { get; set; }
+}
+
+/// <summary>Çalışma alanı başına muhasebe ayarı: webhook adresi/gizli anahtarı ve kuyruğu işleyen grup.</summary>
+public sealed class AccountingSettings
+{
+    public Guid WorkspaceId { get; set; }
+    public string? WebhookUrl { get; set; }
+    /// <summary>İstek gövdesini HMAC-SHA256 ile imzalamak için; API yanıtlarında asla döndürülmez.</summary>
+    public string? WebhookSecret { get; set; }
+    public Guid? AccountingGroupId { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
 }
