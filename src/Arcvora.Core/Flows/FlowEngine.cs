@@ -139,7 +139,7 @@ public static class FlowEngine
     }
 }
 
-public enum Decision { Approve, Reject }
+public enum ApprovalDecision { Approve, Reject }
 
 public enum ApprovalStatus { Pending, Approved, Rejected, Skipped }
 
@@ -153,13 +153,13 @@ public sealed record StepDecision(StepOutcome Outcome, IReadOnlyList<Guid> Tasks
 /// <summary>Bir adımın görevleri arasında verilen kararın adımı nasıl sonuçlandırdığını hesaplar.</summary>
 public static class StepEvaluator
 {
-    public static StepDecision Decide(ApprovalMode mode, IReadOnlyList<TaskState> tasks, Guid taskId, Decision decision)
+    public static StepDecision Decide(ApprovalMode mode, IReadOnlyList<TaskState> tasks, Guid taskId, ApprovalDecision decision)
     {
         var task = tasks.FirstOrDefault(t => t.Id == taskId) ?? throw new InvalidOperationException("Görev bu adıma ait değil.");
         if (task.Status != ApprovalStatus.Pending) throw new InvalidOperationException("Görev zaten karara bağlanmış.");
 
         var otherPending = tasks.Where(t => t.Id != taskId && t.Status == ApprovalStatus.Pending).Select(t => t.Id).ToList();
-        if (decision == Decision.Reject) return new StepDecision(StepOutcome.Rejected, otherPending);
+        if (decision == ApprovalDecision.Reject) return new StepDecision(StepOutcome.Rejected, otherPending);
         if (mode == ApprovalMode.Any) return new StepDecision(StepOutcome.Approved, otherPending);
         return otherPending.Count == 0 ? new StepDecision(StepOutcome.Approved, []) : new StepDecision(StepOutcome.Pending, []);
     }
