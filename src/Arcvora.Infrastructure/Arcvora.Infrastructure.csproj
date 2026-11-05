@@ -19,5 +19,10 @@
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
+    <!-- Yazdırılabilir PDF çıktısı: MIT lisanslı, platformdan bağımsız (GDI+/WPF gerektirmez). Yazı tipi aşağıda gömülüdür. -->
+    <PackageReference Include="PDFsharp" Version="6.1.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Documents\Fonts\*.ttf" LogicalName="Fonts.%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>
