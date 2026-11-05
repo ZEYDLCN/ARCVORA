@@ -352,6 +352,36 @@ public class AttachmentTests(ApiFactory factory) : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task The_accounting_csv_lists_file_names_not_ids()
+    {
+        var k = await SetupAsync(accounting: true);
+        var id = await UploadOk(k.Emp, k.App, FilesKit.Pdf(), "Otel Faturası.pdf");
+        var req = await Submit(k.Emp, k.App, new[] { id });
+        var task = await k.Boss.MyPendingTaskAsync(req["summary"].GetProperty("id").GetGuid());
+        await k.Boss.PostAsync($"/api/tasks/{task}/approve");
+
+        var (status, bytes, _) = await k.Admin.DownloadAsync($"/api/workspaces/{k.Admin.WorkspaceId}/accounting/export.csv");
+        Assert.Equal(HttpStatusCode.OK, status);
+        var csv = Encoding.UTF8.GetString(bytes);
+        Assert.Contains("Fiş=Otel Faturası.pdf", csv);
+        Assert.DoesNotContain(id, csv);
+    }
+
+    [Fact]
+    public async Task Maintenance_run_purges_stale_staged_files()
+    {
+        var k = await SetupAsync();
+        var staged = await UploadOk(k.Emp, k.App);
+        var linked = await UploadOk(k.Emp, k.App);
+        await Submit(k.Emp, k.App, new[] { linked });
+
+        var result = await factory.Services.GetRequiredService<Arcvora.Infrastructure.Jobs.MaintenanceService>().RunOnceAsync(CancellationToken.None);
+        Assert.True(result.StagedFilesPurged >= 1);
+        Assert.Equal(HttpStatusCode.NotFound, (await k.Emp.DownloadAsync($"/api/attachments/{staged}")).Status);
+        Assert.Equal(HttpStatusCode.OK, (await k.Emp.DownloadAsync($"/api/attachments/{linked}")).Status);
+    }
+
+    [Fact]
     public async Task Files_stay_available_after_the_request_is_cancelled_or_decided()
     {
         var k = await SetupAsync();
