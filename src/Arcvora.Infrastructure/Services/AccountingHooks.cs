@@ -16,8 +16,9 @@ public sealed class AccountingHooks(ArcvoraDbContext db, TimeProvider clock) : I
         if (def.Completion?.Accounting is not { Enabled: true } acc) return;
 
         var requester = await db.Users.AsNoTracking().FirstAsync(u => u.Id == request.RequesterId, ct);
-        // İzlenen (henüz kaydedilmemiş) görev değişiklikleri sorguda geri döner: az önce verilen karar da dahildir.
-        var approved = await db.ApprovalTasks.Where(t => t.RequestId == request.Id && t.Status == ApprovalStatus.Approved).ToListAsync(ct);
+        // Sorgu süzgeci veritabanında çalışır; az önce verilen (henüz kaydedilmemiş) karar yalnızca izlenen varlıkta görünür.
+        // Bu yüzden talebin tüm görevleri yüklenir ve durum belleğte süzülür.
+        var approved = (await db.ApprovalTasks.Where(t => t.RequestId == request.Id).ToListAsync(ct)).Where(t => t.Status == ApprovalStatus.Approved).ToList();
         var userIds = approved.Where(t => t.DecidedBy != null).Select(t => t.DecidedBy!.Value)
             .Concat(def.Fields.Where(f => f.Type == FieldType.User && values.GetValueOrDefault(f.Key) is string).Select(f => Guid.Parse((string)values[f.Key]!)))
             .Distinct().ToList();
