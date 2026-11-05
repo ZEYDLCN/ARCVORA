@@ -72,11 +72,11 @@ public sealed class TokenService(IOptions<JwtOptions> options, TimeProvider cloc
 
 public sealed record WorkspaceSummary(Guid Id, string Name, string Role, bool CanAccept);
 public sealed record UserSummary(Guid Id, string Email, string DisplayName);
-public sealed record AuthResult(string Token, UserSummary User, IReadOnlyList<WorkspaceSummary> Workspaces);
+public sealed record AuthResult(string Token, UserSummary User, IReadOnlyList<WorkspaceSummary> Workspaces, bool MustChangePassword = false);
 
 public sealed class AuthService(ArcvoraDbContext db, PasswordHasher hasher, TokenService tokens, TimeProvider clock, AuditLog audit, IOptions<AuthOptions> authOptions)
 {
-    private const int MinPasswordLength = 10;
+    public const int MinPasswordLength = 10;
     // Kullanıcı bulunamadığında da aynı maliyetli doğrulamayı yapmak için (zamanlama farkını azaltır).
     private static readonly string DummyHash = new PasswordHasher().Hash("dummy-password-for-timing");
 
@@ -94,19 +94,25 @@ public sealed class AuthService(ArcvoraDbContext db, PasswordHasher hasher, Toke
         return e;
     }
 
+    /// <summary>Parola kuralı tek yerde: kayıt, yönetici tarafından kullanıcı açma ve parola değiştirme aynı kuralı kullanır.</summary>
+    public static void ValidatePassword(string? password)
+    {
+        if (string.IsNullOrEmpty(password) || password.Length < MinPasswordLength)
+            throw new RequestValidationException("weak_password", $"Parola en az {MinPasswordLength} karakter olmalı.");
+    }
+
     public async Task<AuthResult> RegisterAsync(string? email, string? password, string? displayName, CancellationToken ct)
     {
         if (!authOptions.Value.RegistrationOpen)
             throw new AppException(403, "registration_closed", "Yeni kayıtlar kapalı. Mevcut hesabınızla giriş yapabilirsiniz.");
         var normalized = NormalizeEmail(email);
-        if (string.IsNullOrEmpty(password) || password.Length < MinPasswordLength)
-            throw new RequestValidationException("weak_password", $"Parola en az {MinPasswordLength} karakter olmalı.");
+        ValidatePassword(password);
         var name = (displayName ?? "").Trim();
         if (name.Length == 0) name = normalized.Split('@')[0];
         if (name.Length > 200) throw new RequestValidationException("invalid_name", "Ad çok uzun.");
 
         var now = clock.GetUtcNow();
-        var user = new User { Id = Guid.NewGuid(), Email = normalized, DisplayName = name, PasswordHash = hasher.Hash(password), CreatedAt = now };
+        var user = new User { Id = Guid.NewGuid(), Email = normalized, DisplayName = name, PasswordHash = hasher.Hash(password!), CreatedAt = now };
         var ws = new Workspace { Id = Guid.NewGuid(), Name = $"{name} çalışma alanı", CreatedAt = now };
         db.Users.Add(user);
         db.Workspaces.Add(ws);
@@ -130,7 +136,22 @@ public sealed class AuthService(ArcvoraDbContext db, PasswordHasher hasher, Toke
         var ok = hasher.Verify(password ?? "", user?.PasswordHash ?? DummyHash);
         if (user is null || !ok) throw new AppException(401, "invalid_credentials", "E-posta veya parola hatalı.");
 
-        return new AuthResult(tokens.Create(user), new UserSummary(user.Id, user.Email, user.DisplayName), await WorkspacesAsync(user.Id, ct));
+        return new AuthResult(tokens.Create(user), new UserSummary(user.Id, user.Email, user.DisplayName), await WorkspacesAsync(user.Id, ct),
+            user.MustChangePassword);
+    }
+
+    /// <summary>Kullanıcı kendi parolasını değiştirir. Geçici parola bayrağı kalkar.</summary>
+    public async Task ChangePasswordAsync(Guid userId, string? currentPassword, string? newPassword, CancellationToken ct)
+    {
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct) ?? throw new NotFoundException("Kullanıcı bulunamadı.");
+        if (!hasher.Verify(currentPassword ?? "", user.PasswordHash))
+            throw new RequestValidationException("wrong_password", "Mevcut parola hatalı.");
+        ValidatePassword(newPassword);
+        if (newPassword == currentPassword)
+            throw new RequestValidationException("same_password", "Yeni parola mevcut paroladan farklı olmalı.");
+        user.PasswordHash = hasher.Hash(newPassword!);
+        user.MustChangePassword = false;
+        await db.SaveChangesAsync(ct);
     }
 
     public async Task<IReadOnlyList<WorkspaceSummary>> WorkspacesAsync(Guid userId, CancellationToken ct) =>
@@ -139,7 +160,7 @@ public sealed class AuthService(ArcvoraDbContext db, PasswordHasher hasher, Toke
                 where m.UserId == userId
                 orderby w.Name
                 select new { w.Id, w.Name, m.Role, m.CanAccept }).ToListAsync(ct))
-        .Select(x => new WorkspaceSummary(x.Id, x.Name, x.Role.ToString().ToLowerInvariant(), x.Role == WorkspaceRole.Admin || x.CanAccept))
+        .Select(x => new WorkspaceSummary(x.Id, x.Name, RoleNames.ToApi(x.Role), x.Role == WorkspaceRole.Admin || x.CanAccept))
         .ToList();
 }
 
