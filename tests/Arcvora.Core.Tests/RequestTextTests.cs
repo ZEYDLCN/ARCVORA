@@ -3,7 +3,7 @@ using Arcvora.Core.Flows;
 
 namespace Arcvora.Core.Tests;
 
-/// <summary>Zaman çizelgesi cümleleri (PDF ve e-postada kullanılır); web'deki requestText.ts ile aynı metinler.</summary>
+/// <summary>Zaman çizelgesi cümleleri (PDF ve e-postada kullanılır); web'deki requestText.ts ile aynı metinler (yorum varsa kullanıcının yazdığı gibi biter, nokta eklenmez).</summary>
 public class RequestTextTests
 {
     private static readonly Guid Ayse = Guid.Parse("00000000-0000-0000-0000-00000000000a");
@@ -28,8 +28,8 @@ public class RequestTextTests
     {
         Assert.Equal("Ayşe Kaya talebi oluşturdu.", Text("submitted", Ayse));
         Assert.Equal("Mehmet Demir “Yönetici onayı” adımını onayladı.", Text("approved", Mehmet, """{"stepName":"Yönetici onayı"}"""));
-        Assert.Equal("Mehmet Demir “Yönetici onayı” adımını onayladı: Uygun.", Text("approved", Mehmet, """{"stepName":"Yönetici onayı","comment":"Uygun"}"""));
-        Assert.Equal("Mehmet Demir “GM” adımında reddetti: Bütçe yok.", Text("rejected", Mehmet, """{"stepName":"GM","comment":"Bütçe yok"}"""));
+        Assert.Equal("Mehmet Demir “Yönetici onayı” adımını onayladı: Uygun", Text("approved", Mehmet, """{"stepName":"Yönetici onayı","comment":"Uygun"}"""));
+        Assert.Equal("Mehmet Demir “GM” adımında reddetti: Bütçe yok", Text("rejected", Mehmet, """{"stepName":"GM","comment":"Bütçe yok"}"""));
         Assert.Equal("Ayşe Kaya talebi iptal etti.", Text("cancelled", Ayse));
     }
 
@@ -58,7 +58,7 @@ public class RequestTextTests
         Assert.Equal("Muhasebe kuyruğuna eklendi.", Text("accounting_queued"));
         Assert.Equal("Muhasebe sistemine gönderildi.", Text("accounting_sent"));
         Assert.StartsWith("Muhasebe sistemine gönderilemedi", Text("accounting_failed"));
-        Assert.Equal("Ayşe Kaya muhasebede işledi: Logo'ya girildi.", Text("accounting_processed", Ayse, """{"note":"Logo'ya girildi"}"""));
+        Assert.Equal("Ayşe Kaya muhasebede işledi: Logo'ya girildi", Text("accounting_processed", Ayse, """{"note":"Logo'ya girildi"}"""));
         Assert.Equal("Ayşe Kaya muhasebede işledi.", Text("accounting_processed", Ayse));
     }
 
