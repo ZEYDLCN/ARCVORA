@@ -57,13 +57,15 @@ try {
   const bossMail = `yonetici-${uniq}@example.com`, workerMail = `calisan-${uniq}@example.com`;
   const bossTemp = await addUser('Yonetici Kisi', bossMail);
   const workerTemp = await addUser('Calisan Kisi', workerMail, 'Yonetici Kisi');
+  // Satırı ilk hücresindeki ada göre bul: diğer satırların "yönetici" seçicisi de bu adı seçenek olarak içerir (hasText yanıltır).
+  const userRow = (name) => A.locator('table tbody tr').filter({ has: A.locator('td:first-child', { hasText: name }) });
   // Tablo, kullanıcı oluşturulduktan sonra eşzamansız yenilenir: satırların gelmesini bekle (admin + 2 kullanıcı).
-  check('kullanıcı tablosunda ikisi de görünür', await adminS.visible(A.locator('table tbody tr').nth(2)) && (await A.locator('table tbody tr', { hasText: 'Calisan Kisi' }).count()) === 1);
+  check('kullanıcı tablosunda ikisi de görünür', await adminS.visible(A.locator('table tbody tr').nth(2)) && (await userRow('Calisan Kisi').count()) === 1 && (await userRow('Yonetici Kisi').count()) === 1);
   check('geçici parola rozeti görünür', (await A.locator('.badge.warn', { hasText: 'geçici parola' }).count()) === 2);
   check('Parola sıfırla yalnızca admin\'in açtığı hesaplarda görünür (kendi hesabında yok)', (await A.getByRole('button', { name: 'Parola sıfırla' }).count()) === 2
-    && (await A.locator('table tbody tr', { hasText: 'Master Admin' }).getByRole('button', { name: 'Parola sıfırla' }).count()) === 0);
+    && (await userRow('Master Admin').getByRole('button', { name: 'Parola sıfırla' }).count()) === 0);
   A.once('dialog', (d) => d.accept());
-  await A.locator('table tbody tr', { hasText: 'Calisan Kisi' }).getByRole('button', { name: 'Parola sıfırla' }).click();
+  await userRow('Calisan Kisi').getByRole('button', { name: 'Parola sıfırla' }).click();
   check('parola sıfırlandı: yeni geçici parola gösterilir', await adminS.visible(A.locator('.notice[role="status"]', { hasText: 'Parola sıfırlandı' })));
   const resetTemp = (await A.locator('.notice[role="status"] .mono').innerText()).split(' · ')[1];
   check('üretilen geçici parola en az 10 karakter', resetTemp.length >= 10, resetTemp);
