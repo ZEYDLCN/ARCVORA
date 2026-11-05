@@ -1,14 +1,27 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, getToken, setSessionToken, setToken } from './api';
+import { AppsShell, go } from './components/AppsShell';
 import { Intro } from './components/Intro';
 import { safeSessionStorage, shouldShowIntro } from './lib/intro';
+import { canAccess, defaultRoute, parseRoute } from './lib/session';
+import { Accounting } from './pages/apps/Accounting';
+import { Admin } from './pages/apps/Admin';
+import { AppForm } from './pages/apps/AppForm';
+import { DesignList } from './pages/apps/DesignList';
+import { Designer } from './pages/apps/Designer';
+import { Inbox } from './pages/apps/Inbox';
+import { MyApps } from './pages/apps/MyApps';
+import { MyRequests } from './pages/apps/MyRequests';
+import { RequestDetail } from './pages/apps/RequestDetail';
 import { Auth } from './pages/Auth';
+import { ChangePassword } from './pages/ChangePassword';
 import { Projects } from './pages/Projects';
 import { Workspace } from './pages/Workspace';
 import { ThemeContext } from './theme';
 import type { AuthResult } from './types';
 
 type Theme = 'dark' | 'light';
+type Session = { user: AuthResult['user']; workspaces: AuthResult['workspaces']; mustChangePassword: boolean };
 
 function readTheme(): Theme {
   try {
@@ -18,16 +31,11 @@ function readTheme(): Theme {
   return window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
 }
 
-function route(): { projectId: string | null } {
-  const m = /^#\/p\/([0-9a-f-]{36})/i.exec(window.location.hash);
-  return { projectId: m ? m[1] : null };
-}
-
 export function App() {
-  const [session, setSession] = useState<{ user: AuthResult['user']; workspaces: AuthResult['workspaces'] } | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [booting, setBooting] = useState(Boolean(getToken()));
   const [theme, setTheme] = useState<Theme>(readTheme);
-  const [current, setCurrent] = useState(route);
+  const [hash, setHash] = useState(window.location.hash);
   // Açılış animasyonu: oturum başına bir kez (SPA içi gezinmede veya yenilemede tekrarlanmaz); ?intro ile zorlanır
   const [intro, setIntro] = useState(() => shouldShowIntro(window.location.search, safeSessionStorage()));
   // Animasyon gösterilmeyecekse index.html'in koyu önyükleme zemini kalmasın
@@ -39,7 +47,7 @@ export function App() {
   }, [theme]);
 
   useEffect(() => {
-    const onHash = () => setCurrent(route());
+    const onHash = () => setHash(window.location.hash);
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
@@ -57,12 +65,12 @@ export function App() {
     const t = getToken();
     if (!t) return;
     setSessionToken(t);
-    api.me().then((r) => setSession(r)).catch(() => logout()).finally(() => setBooting(false));
+    api.me().then((r) => setSession({ user: r.user, workspaces: r.workspaces, mustChangePassword: r.mustChangePassword === true })).catch(() => logout()).finally(() => setBooting(false));
   }, [logout]);
 
   const onAuth = (r: AuthResult) => {
     setToken(r.token); setSessionToken(r.token);
-    setSession({ user: r.user, workspaces: r.workspaces });
+    setSession({ user: r.user, workspaces: r.workspaces, mustChangePassword: r.mustChangePassword === true });
   };
   const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
 
@@ -76,10 +84,40 @@ export function App() {
 
   if (booting) return wrap(<><div className="bg" aria-hidden="true" /><div className="auth"><div className="auth-form"><p className="muted">Yükleniyor…</p></div></div></>);
   if (!session) return wrap(<Auth onAuth={onAuth} />);
-  if (current.projectId) {
-    return wrap(<Workspace key={current.projectId} projectId={current.projectId} user={session.user} dark={dark} onTheme={toggleTheme}
-      onLogout={logout} onBack={() => { window.location.hash = '#/'; }} />);
+  if (session.mustChangePassword)
+    return wrap(<ChangePassword forced onLogout={logout} onDone={() => setSession({ ...session, mustChangePassword: false })} />);
+
+  const ws = session.workspaces[0];
+  if (!ws) return wrap(<div className="auth"><div className="auth-form"><h2>Çalışma alanı yok</h2><p className="muted">Hesabınız henüz bir çalışma alanına eklenmemiş. Master admin ile görüşün.</p><button className="btn" onClick={logout}>Çıkış yap</button></div></div>);
+
+  // Ana sayfa role göre: app kullanıcısı uygulamalarına, mimari ekibi projelerine gider.
+  const parsed = parseRoute(hash);
+  const route = parsed.name === 'home' ? defaultRoute(ws) : parsed;
+  const common = { user: session.user, workspace: ws, dark, onTheme: toggleTheme, onLogout: logout };
+
+  if (route.name === 'project' && route.id && canAccess(route, ws)) {
+    return wrap(<Workspace key={route.id} projectId={route.id} user={session.user} dark={dark} onTheme={toggleTheme}
+      onLogout={logout} onBack={() => { go({ name: 'projects' }); }} />);
   }
-  return wrap(<Projects user={session.user} workspaces={session.workspaces} dark={dark} onTheme={toggleTheme}
-    onOpen={(id) => { window.location.hash = `#/p/${id}`; }} onLogout={logout} />);
+  if (route.name === 'projects' && canAccess(route, ws)) {
+    return wrap(<Projects {...common} workspaces={session.workspaces} onOpen={(id) => { go({ name: 'project', id }); }} />);
+  }
+
+  const page = (() => {
+    switch (route.name) {
+      case 'apps': return <MyApps />;
+      case 'app': return <AppForm key={route.id} id={route.id!} {...common} />;
+      case 'requests': return <MyRequests workspace={ws} />;
+      case 'request': return <RequestDetail key={route.id} id={route.id!} />;
+      case 'inbox': return <Inbox />;
+      case 'accounting': return <Accounting {...common} />;
+      case 'design': return <DesignList {...common} />;
+      case 'designer': return <Designer key={route.id} id={route.id!} {...common} />;
+      case 'admin': return <Admin sub={route.sub ?? 'users'} {...common} />;
+      case 'account': return <ChangePassword onDone={() => { /* parola değişti; oturum açık kalır */ }} />;
+      default: return null;
+    }
+  })();
+
+  return wrap(<AppsShell route={route} {...common}>{page}</AppsShell>);
 }
