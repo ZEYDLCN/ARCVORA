@@ -40,6 +40,7 @@ public static class DependencyInjection
         services.AddScoped<ExportService>();
         services.AddScoped<SampleService>();
         services.AddScoped<MemberService>();
+        services.AddScoped<GroupService>();
         services.AddScoped<GenerationJobHandler>();
         services.AddSingleton<JobRunner>();
 

@@ -44,17 +44,41 @@ public static class Endpoints
             var id = UserId(u);
             var user = await db.Users.FindAsync([id], ct);
             return user is null ? Results.Unauthorized()
-                : Results.Ok(new { user = new UserSummary(user.Id, user.Email, user.DisplayName), workspaces = await s.WorkspacesAsync(id, ct) });
+                : Results.Ok(new { user = new UserSummary(user.Id, user.Email, user.DisplayName), workspaces = await s.WorkspacesAsync(id, ct), mustChangePassword = user.MustChangePassword });
         });
+        secured.MapPost("/me/password", async (ChangePasswordRequest r, ClaimsPrincipal u, AuthService s, CancellationToken ct) =>
+        {
+            await s.ChangePasswordAsync(UserId(u), r.CurrentPassword, r.NewPassword, ct);
+            return Results.NoContent();
+        }).RequireRateLimiting("auth");
 
         // ----------------------------------------------------- çalışma alanı üyeleri
         secured.MapGet("/workspaces/{id:guid}/members", async (Guid id, ClaimsPrincipal u, MemberService s, CancellationToken ct) =>
             Results.Ok(await s.ListAsync(UserId(u), id, ct)));
         secured.MapPost("/workspaces/{id:guid}/members", async (Guid id, AddMemberRequest r, ClaimsPrincipal u, MemberService s, CancellationToken ct) =>
             Results.Ok(await s.UpsertAsync(UserId(u), id, r, ct)));
+        secured.MapPost("/workspaces/{id:guid}/users", async (Guid id, CreateUserRequest r, ClaimsPrincipal u, MemberService s, CancellationToken ct) =>
+            Results.Created($"/api/workspaces/{id}/members", await s.CreateUserAsync(UserId(u), id, r, ct)));
+        secured.MapPatch("/workspaces/{id:guid}/members/{userId:guid}", async (Guid id, Guid userId, UpdateMemberRequest r, ClaimsPrincipal u, MemberService s, CancellationToken ct) =>
+            Results.Ok(await s.UpdateAsync(UserId(u), id, userId, r, ct)));
         secured.MapDelete("/workspaces/{id:guid}/members/{userId:guid}", async (Guid id, Guid userId, ClaimsPrincipal u, MemberService s, CancellationToken ct) =>
         {
             await s.RemoveAsync(UserId(u), id, userId, ct);
+            return Results.NoContent();
+        });
+
+        // ---------------------------------------------------------------- gruplar
+        secured.MapGet("/workspaces/{id:guid}/groups", async (Guid id, ClaimsPrincipal u, GroupService s, CancellationToken ct) =>
+            Results.Ok(await s.ListAsync(UserId(u), id, ct)));
+        secured.MapPost("/workspaces/{id:guid}/groups", async (Guid id, GroupNameRequest r, ClaimsPrincipal u, GroupService s, CancellationToken ct) =>
+            Results.Created($"/api/workspaces/{id}/groups", await s.CreateAsync(UserId(u), id, r.Name, ct)));
+        secured.MapPatch("/workspaces/{id:guid}/groups/{groupId:guid}", async (Guid id, Guid groupId, GroupNameRequest r, ClaimsPrincipal u, GroupService s, CancellationToken ct) =>
+            Results.Ok(await s.RenameAsync(UserId(u), id, groupId, r.Name, ct)));
+        secured.MapPut("/workspaces/{id:guid}/groups/{groupId:guid}/members", async (Guid id, Guid groupId, GroupMembersRequest r, ClaimsPrincipal u, GroupService s, CancellationToken ct) =>
+            Results.Ok(await s.SetMembersAsync(UserId(u), id, groupId, r.UserIds, ct)));
+        secured.MapDelete("/workspaces/{id:guid}/groups/{groupId:guid}", async (Guid id, Guid groupId, ClaimsPrincipal u, GroupService s, CancellationToken ct) =>
+        {
+            await s.DeleteAsync(UserId(u), id, groupId, ct);
             return Results.NoContent();
         });
 
