@@ -13,12 +13,14 @@ describe('parseRoute', () => {
     expect(parseRoute(`#/p/${id}`)).toEqual({ name: 'project', id });
     expect(parseRoute(`#/design/${id}`)).toEqual({ name: 'designer', id });
     expect(parseRoute('#/inbox')).toEqual({ name: 'inbox' });
+    expect(parseRoute('#/account')).toEqual({ name: 'account' });
     expect(parseRoute('#/projects/')).toEqual({ name: 'projects' });
   });
   it('yönetim alt sekmeleri vardır, varsayılan kullanıcılardır', () => {
     expect(parseRoute('#/admin')).toEqual({ name: 'admin', sub: 'users' });
     expect(parseRoute('#/admin/groups')).toEqual({ name: 'admin', sub: 'groups' });
     expect(parseRoute('#/admin/ACCOUNTING')).toEqual({ name: 'admin', sub: 'accounting' });
+    expect(parseRoute('#/admin/requests')).toEqual({ name: 'admin', sub: 'requests' });
     expect(parseRoute('#/admin/baska')).toEqual({ name: 'home' });
   });
   it('geçersiz kimlik, boş ve bilinmeyen yol home olur', () => {
@@ -30,7 +32,7 @@ describe('parseRoute', () => {
   });
   it('routeHash ile gidiş-dönüş tutarlıdır', () => {
     for (const r of [{ name: 'apps' }, { name: 'app', id }, { name: 'request', id }, { name: 'project', id }, { name: 'designer', id },
-      { name: 'admin', sub: 'groups' }, { name: 'inbox' }, { name: 'accounting' }, { name: 'design' }, { name: 'projects' }, { name: 'requests' }] as const)
+      { name: 'admin', sub: 'groups' }, { name: 'admin', sub: 'requests' }, { name: 'account' }, { name: 'inbox' }, { name: 'accounting' }, { name: 'design' }, { name: 'projects' }, { name: 'requests' }] as const)
       expect(parseRoute(routeHash(r))).toEqual(r);
   });
 });
@@ -46,7 +48,7 @@ describe('roller', () => {
     const u = ws('app_user');
     for (const n of ['projects', 'design', 'admin', 'accounting'] as const) expect(canAccess({ name: n }, u)).toBe(false);
     expect(canAccess({ name: 'project', id }, u)).toBe(false);
-    for (const n of ['apps', 'requests', 'inbox'] as const) expect(canAccess({ name: n }, u)).toBe(true);
+    for (const n of ['apps', 'requests', 'inbox', 'account'] as const) expect(canAccess({ name: n }, u)).toBe(true);
   });
   it('muhasebe üyesi muhasebeye girer ama tasarıma giremez; admin her yere girer', () => {
     expect(canAccess({ name: 'accounting' }, ws('app_user', true))).toBe(true);

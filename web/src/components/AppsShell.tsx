@@ -3,7 +3,7 @@ import { api } from '../api';
 import { canAccess, canUseAccounting, canUseArchitecture, isAdmin, routeHash, type Route } from '../lib/session';
 import type { WorkspaceInfo } from '../types';
 import type { PaletteItem } from './CommandPalette';
-import { IconChecklist, IconDiagram, IconFile, IconFolder, IconInbox, IconPackage, IconShield } from './icons';
+import { IconChecklist, IconDiagram, IconFile, IconFolder, IconInbox, IconLogout, IconPackage, IconShield } from './icons';
 import { Shell, type NavGroup, type NavItem } from './Shell';
 
 export interface PageProps {
@@ -64,6 +64,7 @@ export function AppsShell({ user, workspace, dark, onTheme, onLogout, route, arc
         item({ name: 'admin', sub: 'users' }, 'Kullanıcılar ve yetkiler', <IconShield />),
       ],
     });
+    out.push({ id: 'account', title: 'Hesap', items: [item({ name: 'account' }, 'Parolamı değiştir', <IconLogout />)] });
     return out;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspace, pending, route.name, archItems]);
