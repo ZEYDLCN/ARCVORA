@@ -15,6 +15,13 @@ public sealed class ArcvoraDbContext(DbContextOptions<ArcvoraDbContext> options)
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<Group> Groups => Set<Group>();
     public DbSet<GroupMember> GroupMembers => Set<GroupMember>();
+    public DbSet<AppDefinition> Apps => Set<AppDefinition>();
+    public DbSet<AppVersion> AppVersions => Set<AppVersion>();
+    public DbSet<AppGrant> AppGrants => Set<AppGrant>();
+    public DbSet<RequestCounter> RequestCounters => Set<RequestCounter>();
+    public DbSet<FlowRequest> FlowRequests => Set<FlowRequest>();
+    public DbSet<ApprovalTask> ApprovalTasks => Set<ApprovalTask>();
+    public DbSet<RequestEvent> RequestEvents => Set<RequestEvent>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -49,6 +56,77 @@ public sealed class ArcvoraDbContext(DbContextOptions<ArcvoraDbContext> options)
             e.HasIndex(x => x.UserId);
             e.HasOne<Group>().WithMany().HasForeignKey(x => x.GroupId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<AppDefinition>(e =>
+        {
+            e.ToTable("Apps");
+            e.Property(x => x.Name).HasMaxLength(200);
+            e.Property(x => x.Description).HasMaxLength(1000);
+            e.Property(x => x.Icon).HasMaxLength(30);
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.DraftJson).HasColumnType("jsonb");
+            e.HasIndex(x => new { x.WorkspaceId, x.Status });
+            e.HasOne<Workspace>().WithMany().HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<AppVersion>(e =>
+        {
+            e.Property(x => x.DefinitionJson).HasColumnType("jsonb");
+            e.Property(x => x.Hash).HasMaxLength(64);
+            e.HasIndex(x => new { x.AppId, x.Number }).IsUnique();
+            e.HasOne<AppDefinition>().WithMany().HasForeignKey(x => x.AppId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<AppGrant>(e =>
+        {
+            e.HasKey(x => new { x.AppId, x.Kind, x.SubjectId });
+            e.Property(x => x.Kind).HasMaxLength(10);
+            e.HasIndex(x => new { x.Kind, x.SubjectId });
+            e.HasOne<AppDefinition>().WithMany().HasForeignKey(x => x.AppId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<RequestCounter>(e =>
+        {
+            e.HasKey(x => new { x.WorkspaceId, x.Prefix, x.Year });
+            e.Property(x => x.Prefix).HasMaxLength(10);
+        });
+
+        b.Entity<FlowRequest>(e =>
+        {
+            e.Property(x => x.Number).HasMaxLength(30);
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.DataJson).HasColumnType("jsonb");
+            e.Property(x => x.Summary).HasMaxLength(400);
+            e.Property(x => x.IdempotencyKey).HasMaxLength(100);
+            e.Property(x => x.RowVersion).HasColumnName("xmin").HasColumnType("xid").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            e.HasIndex(x => new { x.WorkspaceId, x.Number }).IsUnique();
+            e.HasIndex(x => new { x.WorkspaceId, x.RequesterId, x.CreatedAt });
+            e.HasIndex(x => new { x.WorkspaceId, x.Status, x.CreatedAt });
+            // Aynı istemci anahtarıyla ikinci talep oluşmaz (çift tıklama / ağ tekrarı).
+            e.HasIndex(x => new { x.RequesterId, x.IdempotencyKey }).IsUnique().HasFilter("\"IdempotencyKey\" IS NOT NULL");
+            e.HasOne<AppDefinition>().WithMany().HasForeignKey(x => x.AppId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<ApprovalTask>(e =>
+        {
+            e.Property(x => x.StepId).HasMaxLength(20);
+            e.Property(x => x.StepName).HasMaxLength(100);
+            e.Property(x => x.Mode).HasConversion<string>().HasMaxLength(10);
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Comment).HasMaxLength(1000);
+            e.Property(x => x.Fallback).HasMaxLength(40);
+            e.HasIndex(x => new { x.AssigneeId, x.Status, x.CreatedAt });
+            e.HasIndex(x => new { x.RequestId, x.StepIndex });
+            e.HasOne<FlowRequest>().WithMany().HasForeignKey(x => x.RequestId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<RequestEvent>(e =>
+        {
+            e.Property(x => x.Kind).HasMaxLength(30);
+            e.Property(x => x.DetailJson).HasColumnType("jsonb");
+            e.HasIndex(x => new { x.RequestId, x.At });
+            e.HasOne<FlowRequest>().WithMany().HasForeignKey(x => x.RequestId).OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<Project>(e =>
