@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace Arcvora.Core.Flows;
 
-public enum FieldType { Text, LongText, Number, Money, Date, Select, MultiSelect, Checkbox, User }
+public enum FieldType { Text, LongText, Number, Money, Date, Select, MultiSelect, Checkbox, User, File }
 
 public enum ApproverType { Manager, User, Group, Admin }
 
@@ -37,6 +37,8 @@ public sealed record FlowField
     public FlowComputed? Computed { get; init; }
     /// <summary>Yalnızca <c>money</c> için para birimi etiketi (varsayılan TRY).</summary>
     public string? Currency { get; init; }
+    /// <summary>Yalnızca <c>file</c> için: bir talebe eklenebilecek en fazla dosya (1–10, varsayılan 3).</summary>
+    public int? MaxFiles { get; init; }
 }
 
 public sealed record ApproverSpec
