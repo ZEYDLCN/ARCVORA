@@ -70,10 +70,10 @@ Bir app, sürümlenmiş bir **akış tanımıdır**. Taslak düzenlenir; **yayı
   "fields": [
     { "key": "start", "label": "Başlangıç", "type": "date", "required": true },
     { "key": "end",   "label": "Bitiş",     "type": "date", "required": true, "notBefore": "start" },
-    { "key": "days",  "label": "Gün",       "type": "number", "computed": { "op": "calendarDays", "from": "start", "to": "end" } },
+    { "key": "days",  "label": "Gün",       "type": "number", "computed": { "op": "calendar_days", "from": "start", "to": "end" } },
     { "key": "kind",  "label": "Tür",       "type": "select", "required": true, "options": ["Yıllık", "Mazeret", "Ücretsiz"] },
     { "key": "proxy", "label": "Vekil",     "type": "user" },
-    { "key": "note",  "label": "Açıklama",  "type": "longtext", "maxLength": 1000 }
+    { "key": "note",  "label": "Açıklama",  "type": "long_text", "maxLength": 1000 }
   ],
   "steps": [
     { "id": "s1", "name": "Yönetici onayı", "approvers": { "type": "manager" } },
@@ -84,9 +84,10 @@ Bir app, sürümlenmiş bir **akış tanımıdır**. Taslak düzenlenir; **yayı
 }
 ```
 
-- **Alan tipleri:** `text`, `longtext`, `number`, `money`, `date`, `select`, `multiselect`, `checkbox`, `user`. Kurallar: `required`, `min`, `max`, `maxLength`, `options`, `notBefore` (başka bir tarih alanından önce olamaz), `computed` (`calendarDays`, `weekdays`).
+- **Alan tipleri:** `text`, `long_text`, `number`, `money`, `date`, `select`, `multi_select`, `checkbox`, `user`. Kurallar: `required`, `min`, `max`, `maxLength`, `options`, `notBefore` (başka bir tarih alanından önce olamaz), `computed` (`calendar_days`, `weekdays`). Sayı/tutar en fazla 10¹² ve tutar en fazla 2 ondalıklıdır; `money` varsayılan olarak negatif olamaz.
 - **Onaylayıcı tipleri:** `manager` (talep edenin doğrudan yöneticisi), `user` (belirli kişi), `group` (grup; `mode`: `any` = biri onaylasa yeter, `all` = hepsi onaylamalı), `admin` (master admin'ler).
-- **Çözülemeyen onaylayıcı** (yöneticisi tanımsız, grup boş): görev master admin'lere düşer ve olay kaydına yazılır. Talep sessizce takılmaz.
+- **Çözülemeyen onaylayıcı** (yöneticisi tanımsız, grup boş, kişi bulunamadı): görev master admin'lere düşer ve olay kaydına/görev rozetine nedeniyle yazılır. Talep sessizce takılmaz.
+- **Çıkarılan onaylayıcı:** çalışma alanından çıkarılan kişinin bekleyen görevleri, adımda başka bekleyen onaylayıcı yoksa master admin'e (`assignee_removed`) devredilir; varsa o devam eder. “Hepsi onaylamalı” adımlarında kişinin yerine tek bir master admin onayı beklenir.
 - **Koşullar:** `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`; hepsi sağlanırsa adım çalışır, aksi hâlde atlanır. Tüm adımlar atlanırsa talep otomatik onaylanır.
 - **Doğrulama:** Yayınlamadan önce tanım doğrulanır (tekrarlanan anahtar, bilinmeyen alan referansı, boş adım adı, döngüsel hesap, grup/kullanıcı varlığı).
 
@@ -103,7 +104,7 @@ Bir app, sürümlenmiş bir **akış tanımıdır**. Taslak düzenlenir; **yayı
 
 - Karar yalnızca görev **atanan kişi** tarafından, görev `pending` iken verilir; ikinci karar `409`.
 - Red için gerekçe zorunludur. Onayda yorum isteğe bağlıdır.
-- Talep eden kendi talebini onaylayamaz (atanan kişi talep eden ise o görev bir sonraki çözümlemeyle master admin'e yönlenir).
+- Talep eden kendi talebini onaylamaz; tek onaylayıcı kendisiyse görev master admin'e yönlenir. Yalnızca talep edenin kendisi tek master admin ise onaylayabilir ve bu `only_approver_is_requester` olarak işaretlenir.
 - Her geçiş değişmez **olay kaydı** üretir (zaman çizelgesi).
 - Onay sonrası tek işlemde (transactional outbox) muhasebe kaydı oluşturulur; teslim ayrı bir işçi tarafından yapılır.
 
@@ -124,14 +125,19 @@ Tüm yeni kayıtlar `WorkspaceId` taşır; başka çalışma alanı kaydına her
 
 ## 9) API özeti
 
-| Alan | Uç noktalar (özet) |
+| Alan | Uç noktalar |
 |---|---|
-| Kullanıcı/grup | `POST /workspaces/{id}/users`, `PATCH …/users/{userId}`, `POST /me/password`, `GET/POST/PATCH/DELETE /workspaces/{id}/groups` |
-| App tasarımı | `GET/POST /workspaces/{id}/apps`, `GET/PUT /apps/{id}` (taslak), `POST /apps/{id}/publish`, `POST /apps/{id}/archive`, `GET/PUT /apps/{id}/grants` |
-| Kullanım | `GET /my/apps`, `GET /apps/{id}/form`, `POST /apps/{id}/requests` |
-| Talepler | `GET /my/requests`, `GET /requests/{id}`, `POST /requests/{id}/cancel` |
-| Onay | `GET /my/tasks`, `POST /tasks/{id}/approve`, `POST /tasks/{id}/reject` |
-| Muhasebe | `GET /workspaces/{id}/accounting/entries`, `POST …/{entryId}/process`, `POST …/{entryId}/retry`, `GET …/export.csv`, `GET/PUT …/settings` |
+| Hesap | `POST /me/password` (kendi parolası); `GET /me` → `mustChangePassword`, çalışma alanında `role` ve `isAccounting` |
+| Kullanıcı | `POST /workspaces/{id}/users` · `PATCH …/members/{userId}` (rol, yönetici) · `POST …/members/{userId}/reset-password` (yalnız admin'in açtığı hesaplar) · `DELETE …/members/{userId}` |
+| Grup | `GET/POST /workspaces/{id}/groups` · `PATCH …/groups/{gid}` · `PUT …/groups/{gid}/members` · `DELETE …/groups/{gid}` |
+| Dizin | `GET /workspaces/{id}/directory` (her üye; kişi seçicileri için) |
+| Tasarım (admin) | `GET/POST /workspaces/{id}/apps` · `GET/PUT /apps/{id}` (taslak, `baseRevision`) · `POST /apps/{id}/publish` · `…/archive` · `…/restore` · `DELETE /apps/{id}` · `GET/PUT /apps/{id}/grants` |
+| Kullanım | `GET /my/apps` · `GET /apps/{id}/form` · `POST /apps/{id}/requests` (`Idempotency-Key`) |
+| Talepler | `GET /my/requests?status=` · `GET /workspaces/{id}/requests?status=&appId=` (admin) · `GET /requests/{id}` · `POST /requests/{id}/cancel` |
+| Onay | `GET /my/tasks?done=` · `POST /tasks/{id}/approve` · `POST /tasks/{id}/reject` (gerekçe zorunlu) |
+| Muhasebe | `GET/PUT /workspaces/{id}/accounting/settings` (admin) · `GET …/accounting/entries?status=&from=&to=` · `POST …/entries/{eid}/process` · `POST …/entries/{eid}/retry` · `GET …/accounting/export.csv?delimiter=` |
+
+Hata biçimi: `application/problem+json` `{ status, code, title, details }`. Formda `422 invalid_request` + `details: [{code, path, message}]` (path `data.<alan>`).
 
 ## 10) Arayüz
 
@@ -152,19 +158,31 @@ Oturum açan herkes aynı kabuğu görür; menü role göre sadeleşir.
 
 ## 12) Fazlar ve bitiş ölçütleri
 
-| Faz | Teslim | Bitiş ölçütü (kanıt) |
+| Faz | Teslim | Durum ve kanıt |
 |---|---|---|
-| **A** | `app_user` rolü; kullanıcı oluşturma; parola değiştirme; gruplar; doğrudan yönetici; `app_user` için mimari projelere erişim kapalı | Entegrasyon testi: app kullanıcısı proje listesinde/erişiminde 404/403; admin kullanıcı açar; yeni kullanıcı girer ve parolasını değiştirir |
-| **B** | Akış tanımı modeli, doğrulayıcı, form doğrulama, hesaplanan alanlar, onaylayıcı çözümleyici, durum makinesi (Core) | Birim testleri: alan kuralları, koşullar, atlanan adımlar, `any`/`all`, çözülemeyen onaylayıcı, reddet/iptal |
-| **C** | Kalıcılık + API: tasarım/yayın/sürüm, yetki, talep, onay, iptal, zaman çizelgesi, onay kutusu | Entegrasyon testleri: yetkisiz erişim, çalışma alanı yalıtımı, paralel karar tek sonuç, sürümlü talep |
-| **D** | Muhasebe kuyruğu, webhook işçisi (HMAC, idempotent, yeniden deneme), CSV, işlendi işareti | Entegrasyon testleri: onay → tek kayıt; webhook başarısız → yeniden deneme → `failed`; imza doğru |
-| **E** | Web: portal, form, taleplerim, onay kutusu, tasarlayıcı, yönetim, muhasebe; rol bazlı menü | Vitest + tarayıcı yolculuğu (izin akışı uçtan uca) |
-| **F** | Şablonlar (İzin, Avans, Masraf); uçtan uca betikler; şirket dağıtım dokümanı | `scripts/e2e.sh --apps` geçer; belgeler |
-| **G** | (Sonra) ekler, e-posta bildirimi, izin bakiyesi, PDF çıktı, ARCVORA akışından taslak, SSO | — |
+| **A** | `app_user` rolü; kullanıcı oluşturma; parola değiştirme/sıfırlama; gruplar; doğrudan yönetici; `app_user` için mimari projelere erişim kapalı | ✅ `UserManagementTests`, `GroupTests`, `PasswordResetTests` |
+| **B** | Akış tanımı modeli, doğrulayıcı, form doğrulama, hesaplanan alanlar, onaylayıcı çözümleyici, durum makinesi (Core) | ✅ Core birim testleri (200) |
+| **C** | Kalıcılık + API: tasarım/yayın/sürüm, yetki, talep, onay, iptal, zaman çizelgesi, onay kutusu | ✅ `AppsDesignTests`, `AppsRuntimeTests` (paralel karar, sürüm sürekliliği, yalıtım), `RemovedApproverTests` |
+| **D** | Muhasebe kuyruğu, webhook işçisi (HMAC, idempotent, yeniden deneme), CSV, işlendi işareti | ✅ `AccountingTests` (imza, yeniden deneme, eşzamanlı işçi, CSV enjeksiyonu) |
+| **E** | Web: portal, form, taleplerim, onay kutusu, tasarlayıcı, yönetim, muhasebe; rol bazlı menü | ✅ vitest (140) + tarayıcı yolculuğu `apps-ui.mjs` |
+| **F** | Şablonlar (İzin, Avans, Masraf); uçtan uca betikler; şirket dağıtım dokümanı | ✅ `TemplatesTests` (gerçek sunucu), `apps-journey.mjs`, `apps-ui.mjs`; ⬜ `Dockerfile` derlenmedi |
+| **G** | (Sonra) ekler/fiş yükleme, e-posta bildirimi, izin bakiyesi, PDF çıktı, ARCVORA akışından taslak, SSO, raporlar | ⬜ |
 
 ## 13) Riskler
 
 - **Muhasebe sistemi bilinmiyor:** genel webhook/CSV çözümü gerçek sisteme uymayabilir; bağlayıcı ayrı bir iş olur.
 - **Hukuki/ticari:** kodun sahipliği ve gizliliği teknik değil, sözleşme konusudur; geliştirmeye başlamadan netleştirilmelidir.
-- **Dockerfile** henüz derlenmedi; ilk kurulumda sorun çıkabilir.
+- **Dockerfile** henüz derlenmedi; ilk kurulumda sorun çıkabilir. Dağıtım adımları: [`DEPLOY_COMPANY.md`](DEPLOY_COMPANY.md).
 - **Kullanıcı deneyimi** gerçek çalışanlarla denenmedi; izin formu şirketin gerçek evrakına göre uyarlanmalı.
+
+## 14) Gerçekleşen kapsam ve dürüst sınırlar
+
+Kod, test ve belgeler bu fazlandırmaya göre tamamlandı; kullanım için bkz. [`APPS_KULLANIM.md`](APPS_KULLANIM.md). Aşağıdakiler **yapılmadı veya doğrulanmadı**:
+
+- Gerçek bir muhasebe yazılımına bağlantı (yalnızca imzalı genel webhook + CSV + elle işleme).
+- Gerçek çalışanlarla kullanılabilirlik denemesi; izin formu şirketin gerçek evrakına göre uyarlanmalıdır.
+- `Dockerfile` derlemesi ve şirket sunucusunda kurulum.
+- Fiş/belge yükleme, e-posta/WhatsApp bildirimi, izin bakiyesi/resmî tatil, PDF çıktı, SSO (faz G).
+- Yük/performans denemesi: veri modeli yüzlerce çalışan için uygundur ama ölçülmedi.
+- Webhook gizli anahtarı veritabanında düz metindir (imza üretmek için); yedekleri koruyun.
+- Parola sıfırlama e-postayla değil, master admin eliyledir; yalnızca master admin'in açtığı hesaplar sıfırlanabilir.
