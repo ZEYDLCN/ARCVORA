@@ -26,6 +26,7 @@ const fallbackText: Record<string, string> = {
   admin_missing: 'master admin bulunamadığı için',
   only_approver_is_requester: 'tek onaylayıcı talep edenin kendisi olduğu için',
   no_approver: 'onaylayıcı bulunamadığı için',
+  assignee_removed: 'önceki onaylayıcı çalışma alanından çıkarıldığı için',
 };
 
 export function fallbackLabel(reason: string | undefined): string | null {
@@ -50,6 +51,11 @@ export function eventText(e: RequestEventInfo, people: Record<string, string>): 
     case 'approved': return `${who} “${step}” adımını onayladı${str(d.comment) ? `: ${str(d.comment)}` : '.'}`;
     case 'rejected': return `${who} “${step}” adımında reddetti${str(d.comment) ? `: ${str(d.comment)}` : '.'}`;
     case 'cancelled': return `${who} talebi iptal etti.`;
+    case 'approver_removed': {
+      const removed = typeof d.removedId === 'string' ? (people[d.removedId] ?? 'Bir onaylayıcı') : 'Bir onaylayıcı';
+      const handed = Array.isArray(d.replacements) && d.replacements.length > 0;
+      return `${removed} çalışma alanından çıkarıldığı için “${step}” adımı ${handed ? 'master admin’e yönlendirildi' : 'kalan onaylayıcılara bırakıldı'}.`;
+    }
     case 'completed': return 'Talep onaylandı.';
     case 'accounting_queued': return 'Muhasebe kuyruğuna eklendi.';
     case 'accounting_sent': return 'Muhasebe sistemine gönderildi.';

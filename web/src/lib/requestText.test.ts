@@ -25,6 +25,14 @@ describe('eventText', () => {
     expect(eventText(ev('accounting_queued'), people)).toBe('Muhasebe kuyruğuna eklendi.');
     expect(eventText(ev('accounting_processed', { note: 'girildi' }, 'b'), people)).toBe('Burak muhasebede işledi: girildi');
   });
+  it('çıkarılan onaylayıcının görevinin devrini anlatır', () => {
+    const handed = eventText(ev('approver_removed', { stepName: 'Yönetici onayı', removedId: 'b', replacements: ['a'] }), people);
+    expect(handed).toBe('Burak çalışma alanından çıkarıldığı için “Yönetici onayı” adımı master admin’e yönlendirildi.');
+    const left = eventText(ev('approver_removed', { stepName: 'GM', removedId: 'b', replacements: [] }), people);
+    expect(left).toContain('kalan onaylayıcılara bırakıldı');
+    expect(eventText(ev('approver_removed', { stepName: 'X', removedId: 'zzz', replacements: [] }), people)).toContain('Bir onaylayıcı');
+    expect(fallbackLabel('assignee_removed')).toBe('önceki onaylayıcı çalışma alanından çıkarıldığı için');
+  });
   it('bilinmeyen kişi ve olay türünde çökmez', () => {
     expect(eventText(ev('cancelled', {}, 'zzz'), people)).toBe('Bir kullanıcı talebi iptal etti.');
     expect(eventText(ev('yeni_tur'), people)).toBe('yeni_tur');
