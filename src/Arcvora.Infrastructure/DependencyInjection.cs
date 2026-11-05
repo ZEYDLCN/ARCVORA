@@ -41,6 +41,10 @@ public static class DependencyInjection
         services.AddScoped<SampleService>();
         services.AddScoped<MemberService>();
         services.AddScoped<GroupService>();
+        services.AddScoped<AppAccessService>();
+        services.AddScoped<AppDesignService>();
+        services.AddScoped<RequestService>();
+        services.AddScoped<IRequestHooks, NoOpRequestHooks>();
         services.AddScoped<GenerationJobHandler>();
         services.AddSingleton<JobRunner>();
 

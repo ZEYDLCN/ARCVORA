@@ -17,7 +17,7 @@ public sealed record RevertBody(int? BaseVersion);
 
 public static class Endpoints
 {
-    private static Guid UserId(ClaimsPrincipal u) =>
+    internal static Guid UserId(ClaimsPrincipal u) =>
         Guid.Parse(u.FindFirstValue(JwtRegisteredClaimNames.Sub) ?? throw new UnauthorizedAccessException());
 
     public static void MapArcvoraApi(this IEndpointRouteBuilder app)
@@ -51,6 +51,8 @@ public static class Endpoints
             await s.ChangePasswordAsync(UserId(u), r.CurrentPassword, r.NewPassword, ct);
             return Results.NoContent();
         }).RequireRateLimiting("auth");
+
+        secured.MapAppsApi();
 
         // ----------------------------------------------------- çalışma alanı üyeleri
         secured.MapGet("/workspaces/{id:guid}/members", async (Guid id, ClaimsPrincipal u, MemberService s, CancellationToken ct) =>
