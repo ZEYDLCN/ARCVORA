@@ -19,6 +19,7 @@ public static class DependencyInjection
         services.Configure<AiOptions>(config.GetSection("Ai"));
         services.Configure<JobOptions>(config.GetSection("Jobs"));
         services.Configure<AuthOptions>(config.GetSection("Auth"));
+        services.Configure<AccountingOptions>(config.GetSection("Accounting"));
 
         // DATABASE_URL, barındırıcıların (Render, Koyeb, Fly…) yerleşik kuralıdır ve verilmişse önceliklidir; postgres:// adresi de kabul edilir.
         var connection = ConnectionStringNormalizer.Normalize(
@@ -44,7 +45,10 @@ public static class DependencyInjection
         services.AddScoped<AppAccessService>();
         services.AddScoped<AppDesignService>();
         services.AddScoped<RequestService>();
-        services.AddScoped<IRequestHooks, NoOpRequestHooks>();
+        services.AddScoped<IRequestHooks, AccountingHooks>();
+        services.AddScoped<AccountingService>();
+        services.AddHttpClient(AccountingDispatcher.ClientName, c => c.Timeout = TimeSpan.FromSeconds(config.GetValue("Accounting:TimeoutSeconds", 15)));
+        services.AddSingleton<AccountingDispatcher>();
         services.AddScoped<GenerationJobHandler>();
         services.AddSingleton<JobRunner>();
 

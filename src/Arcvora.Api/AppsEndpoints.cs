@@ -62,6 +62,23 @@ public static class AppsEndpoints
         secured.MapPost("/requests/{id:guid}/cancel", async (Guid id, ClaimsPrincipal u, RequestService s, CancellationToken ct) =>
             Results.Ok(await s.CancelAsync(Endpoints.UserId(u), id, ct)));
 
+        // ------------------------------------------------------------------ muhasebe
+        secured.MapGet("/workspaces/{id:guid}/accounting/settings", async (Guid id, ClaimsPrincipal u, AccountingService s, CancellationToken ct) =>
+            Results.Ok(await s.GetSettingsAsync(Endpoints.UserId(u), id, ct)));
+        secured.MapPut("/workspaces/{id:guid}/accounting/settings", async (Guid id, UpdateAccountingSettingsRequest r, ClaimsPrincipal u, AccountingService s, CancellationToken ct) =>
+            Results.Ok(await s.UpdateSettingsAsync(Endpoints.UserId(u), id, r, ct)));
+        secured.MapGet("/workspaces/{id:guid}/accounting/entries", async (Guid id, string? status, string? from, string? to, ClaimsPrincipal u, AccountingService s, CancellationToken ct) =>
+            Results.Ok(await s.ListAsync(Endpoints.UserId(u), id, status, from, to, ct)));
+        secured.MapPost("/workspaces/{id:guid}/accounting/entries/{entryId:guid}/process", async (Guid id, Guid entryId, ProcessEntryRequest? r, ClaimsPrincipal u, AccountingService s, CancellationToken ct) =>
+            Results.Ok(await s.ProcessAsync(Endpoints.UserId(u), id, entryId, r?.Note, ct)));
+        secured.MapPost("/workspaces/{id:guid}/accounting/entries/{entryId:guid}/retry", async (Guid id, Guid entryId, ClaimsPrincipal u, AccountingService s, CancellationToken ct) =>
+            Results.Ok(await s.RetryAsync(Endpoints.UserId(u), id, entryId, ct)));
+        secured.MapGet("/workspaces/{id:guid}/accounting/export.csv", async (Guid id, string? status, string? from, string? to, string? delimiter, ClaimsPrincipal u, AccountingService s, CancellationToken ct) =>
+        {
+            var (data, name) = await s.ExportCsvAsync(Endpoints.UserId(u), id, status, from, to, delimiter, ct);
+            return Results.File(data, "text/csv; charset=utf-8", name);
+        });
+
         // --------------------------------------------------------------------- onay
         secured.MapGet("/my/tasks", async (bool? done, ClaimsPrincipal u, RequestService s, CancellationToken ct) =>
             Results.Ok(await s.MyTasksAsync(Endpoints.UserId(u), done ?? false, ct)));

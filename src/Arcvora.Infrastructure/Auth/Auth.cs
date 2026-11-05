@@ -70,7 +70,7 @@ public sealed class TokenService(IOptions<JwtOptions> options, TimeProvider cloc
     }
 }
 
-public sealed record WorkspaceSummary(Guid Id, string Name, string Role, bool CanAccept);
+public sealed record WorkspaceSummary(Guid Id, string Name, string Role, bool CanAccept, bool IsAccounting = false);
 public sealed record UserSummary(Guid Id, string Email, string DisplayName);
 public sealed record AuthResult(string Token, UserSummary User, IReadOnlyList<WorkspaceSummary> Workspaces, bool MustChangePassword = false);
 
@@ -154,14 +154,21 @@ public sealed class AuthService(ArcvoraDbContext db, PasswordHasher hasher, Toke
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task<IReadOnlyList<WorkspaceSummary>> WorkspacesAsync(Guid userId, CancellationToken ct) =>
-        (await (from m in db.Memberships.AsNoTracking()
-                join w in db.Workspaces.AsNoTracking() on m.WorkspaceId equals w.Id
-                where m.UserId == userId
-                orderby w.Name
-                select new { w.Id, w.Name, m.Role, m.CanAccept }).ToListAsync(ct))
-        .Select(x => new WorkspaceSummary(x.Id, x.Name, RoleNames.ToApi(x.Role), x.Role == WorkspaceRole.Admin || x.CanAccept))
-        .ToList();
+    public async Task<IReadOnlyList<WorkspaceSummary>> WorkspacesAsync(Guid userId, CancellationToken ct)
+    {
+        var rows = await (from m in db.Memberships.AsNoTracking()
+                          join w in db.Workspaces.AsNoTracking() on m.WorkspaceId equals w.Id
+                          where m.UserId == userId
+                          orderby w.Name
+                          select new { w.Id, w.Name, m.Role, m.CanAccept }).ToListAsync(ct);
+        // Muhasebe kuyruğuna erişim: master admin veya ayarlarda tanımlı muhasebe grubunun üyesi.
+        var accounting = (await (from s in db.AccountingSettings.AsNoTracking()
+                                 join gm in db.GroupMembers.AsNoTracking() on s.AccountingGroupId equals (Guid?)gm.GroupId
+                                 where gm.UserId == userId
+                                 select s.WorkspaceId).ToListAsync(ct)).ToHashSet();
+        return rows.Select(x => new WorkspaceSummary(x.Id, x.Name, RoleNames.ToApi(x.Role), x.Role == WorkspaceRole.Admin || x.CanAccept,
+            x.Role == WorkspaceRole.Admin || accounting.Contains(x.Id))).ToList();
+    }
 }
 
 /// <summary>Roller değişiklikleri dahil denetim kaydı (§19). SaveChanges çağıran işlemde yapılır.</summary>

@@ -5,6 +5,7 @@ using Arcvora.Infrastructure.Jobs;
 var builder = Host.CreateApplicationBuilder(args);
 builder.Services.AddArcvoraInfrastructure(builder.Configuration);
 builder.Services.AddHostedService<JobWorkerService>();
+builder.Services.AddHostedService<AccountingWorkerService>();
 
 using var host = builder.Build();
 await host.RunAsync();
