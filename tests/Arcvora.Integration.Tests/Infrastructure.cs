@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using Arcvora.Core.Ai;
 using Arcvora.Infrastructure.Jobs;
+using Arcvora.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -72,6 +73,30 @@ public sealed class ThrowingGenerator(Func<Exception> make) : IArchitectureGener
         Task.FromResult<GeneratorOutput?>(null);
 }
 
+/// <summary>Muhasebe webhook'unu taklit eder: gelen çağrıları kaydeder; durum kodu veya hata ayarlanabilir.</summary>
+public sealed class FakeWebhook : HttpMessageHandler
+{
+    public sealed record Call(string Url, string Body, IReadOnlyDictionary<string, string> Headers);
+
+    private readonly List<Call> _calls = [];
+    public volatile int StatusCode = 200;
+    public volatile int DelayMs;
+    public Exception? Throw { get; set; }
+    public IReadOnlyList<Call> Calls { get { lock (_calls) return [.. _calls]; } }
+
+    public void Reset() { lock (_calls) _calls.Clear(); StatusCode = 200; Throw = null; DelayMs = 0; }
+
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        var body = request.Content is null ? "" : await request.Content.ReadAsStringAsync(cancellationToken);
+        var headers = request.Headers.ToDictionary(h => h.Key, h => string.Join(",", h.Value), StringComparer.OrdinalIgnoreCase);
+        lock (_calls) _calls.Add(new Call(request.RequestUri!.ToString(), body, headers));
+        if (DelayMs > 0) await Task.Delay(DelayMs, cancellationToken);
+        if (Throw is { } ex) throw ex;
+        return new HttpResponseMessage((HttpStatusCode)StatusCode);
+    }
+}
+
 /// <summary>Her test sınıfı kendi geçici PostgreSQL veritabanını alır.</summary>
 public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
@@ -79,6 +104,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
                                    ?? "Host=localhost;Username=postgres;Password=postgres";
     private readonly string _db = "arcvora_test_" + Guid.NewGuid().ToString("N");
     public SwitchableGenerator Generator { get; } = new();
+    public FakeWebhook Webhook { get; } = new();
     public string ConnectionString => $"{Admin};Database={_db}";
 
     public async Task InitializeAsync()
@@ -113,13 +139,25 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             ["Jobs:LeaseSeconds"] = "3",
             ["Jobs:RetryBaseSeconds"] = "1",
             ["Ai:Provider"] = "heuristic",
+            ["Accounting:RetryBaseSeconds"] = "0",      // yeniden denemeler beklemeden, deterministik
+            ["Accounting:MaxAttempts"] = "3",
         };
         foreach (var (k, v) in settings) builder.UseSetting(k, v);
         builder.ConfigureServices(s =>
         {
             s.RemoveAll<IArchitectureGenerator>();
             s.AddSingleton<IArchitectureGenerator>(Generator);
+            s.AddHttpClient(AccountingDispatcher.ClientName).ConfigurePrimaryHttpMessageHandler(() => Webhook);
         });
+    }
+
+    /// <summary>Muhasebe kuyruğunda gönderilecek kayıt kalmayana kadar çalıştırır; yapılan deneme sayısını döndürür.</summary>
+    public async Task<int> RunAccountingAsync(int max = 20)
+    {
+        var d = Services.GetRequiredService<AccountingDispatcher>();
+        var n = 0;
+        while (n < max && await d.RunOnceAsync(CancellationToken.None)) n++;
+        return n;
     }
 
     /// <summary>Kuyruktaki bütün işleri bitene kadar çalıştırır.</summary>

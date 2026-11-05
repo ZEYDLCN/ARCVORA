@@ -30,6 +30,27 @@ public static class AppsKit
         };
     }
 
+    /// <summary>Masraf akışı: tutar + açıklama, yönetici onayı, onay sonrası muhasebe kaydı.</summary>
+    public static object ExpenseDef(string prefix = "MSR", string category = "masraf", bool accounting = true, decimal? approvalAbove = null)
+    {
+        var s1 = new { id = "s1", name = "Yönetici onayı", approvers = new { type = "manager" } };
+        var conditional = approvalAbove is { } limit
+            ? new { id = "s1", name = "Yönetici onayı", approvers = new { type = "manager" }, conditions = new[] { new { field = "amount", op = "gt", value = limit } } }
+            : null;
+        return new
+        {
+            schema = 1, prefix, summaryFields = new[] { "amount", "description" },
+            fields = new object[]
+            {
+                new { key = "amount", label = "Tutar", type = "money", required = true },
+                new { key = "description", label = "Açıklama", type = "text" },
+                new { key = "owner", label = "İlgili kişi", type = "user" },
+            },
+            steps = new object[] { (object?)conditional ?? s1 },
+            completion = accounting ? new { accounting = new { enabled = true, category } } : null,
+        };
+    }
+
     public static object Leave(string start = "2026-11-10", string end = "2026-11-14", string kind = "Yıllık", Guid? proxy = null) =>
         proxy is null ? new { start, end, kind } : new { start, end, kind, proxy };
 
