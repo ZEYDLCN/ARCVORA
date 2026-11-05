@@ -58,3 +58,19 @@ export function eventText(e: RequestEventInfo, people: Record<string, string>): 
     default: return e.kind;
   }
 }
+
+export type StepState = 'done' | 'current' | 'rejected' | 'skipped' | 'upcoming';
+
+/**
+ * Akış şeridi için adım durumları: görevi olan adım görevlerine göre (bekliyor → sırada, onay → tamam, ret → reddedildi),
+ * hiç görevi olmayan adım talep sonuçlandıysa atlandı, sonuçlanmadıysa sırada bekleyen (gelecek) adımdır.
+ */
+export function stepStates(steps: readonly { id: string }[], tasks: readonly { stepId: string; status: TaskStatus }[], status: RequestStatus): StepState[] {
+  return steps.map((s) => {
+    const mine = tasks.filter((t) => t.stepId === s.id);
+    if (mine.some((t) => t.status === 'rejected')) return 'rejected';
+    if (mine.some((t) => t.status === 'pending')) return 'current';
+    if (mine.some((t) => t.status === 'approved')) return 'done';
+    return status === 'in_review' ? 'upcoming' : 'skipped';
+  });
+}

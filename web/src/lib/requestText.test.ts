@@ -46,3 +46,22 @@ describe('tonlar ve geri düşüş', () => {
     expect(fallbackLabel('yeni_neden')).toBe('yeni_neden');
   });
 });
+
+import { stepStates } from './requestText';
+
+describe('stepStates', () => {
+  const steps = [{ id: 's1' }, { id: 's2' }, { id: 's3' }];
+  it('görevlere göre tamam / sırada / gelecek', () => {
+    expect(stepStates(steps, [{ stepId: 's1', status: 'approved' }, { stepId: 's2', status: 'pending' }], 'in_review')).toEqual(['done', 'current', 'upcoming']);
+  });
+  it('ret ve atlanan adımlar', () => {
+    expect(stepStates(steps, [{ stepId: 's1', status: 'approved' }, { stepId: 's2', status: 'rejected' }], 'rejected')).toEqual(['done', 'rejected', 'skipped']);
+    expect(stepStates(steps, [{ stepId: 's1', status: 'approved' }], 'approved')).toEqual(['done', 'skipped', 'skipped']);
+  });
+  it('any modunda diğer görev atlanmış olsa da adım tamam sayılır', () => {
+    expect(stepStates([{ id: 's1' }], [{ stepId: 's1', status: 'approved' }, { stepId: 's1', status: 'skipped' }], 'approved')).toEqual(['done']);
+  });
+  it('iptal edilen talepte bekleyen adım atlanmış görünür', () => {
+    expect(stepStates(steps, [{ stepId: 's1', status: 'skipped' }], 'cancelled')).toEqual(['skipped', 'skipped', 'skipped']);
+  });
+});
