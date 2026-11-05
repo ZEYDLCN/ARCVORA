@@ -142,3 +142,6 @@ export interface AccountingEntry {
 export interface AccountingSettings { webhookUrl?: string; hasSecret: boolean; accountingGroupId?: string }
 
 export interface VerifyResult { valid: boolean; number?: string; status?: RequestStatus; statusLabel?: string; completedAt?: string; appName?: string }
+export interface DemoStatus { present: boolean; users: number; groups: number; apps: number; requests: number; attachments: number }
+export interface DemoUser { id: string; email: string; displayName: string; title: string; temporaryPassword: string }
+export interface DemoSeed { users: DemoUser[]; groups: number; apps: number; requests: number; attachments: number }

@@ -1,5 +1,5 @@
 import type {
-  AccountingEntry, AccountingSettings, AppDetail, AttachmentInfo, AppForm, AppGrants, AppSummary, Artifact, AuthResult, DirectoryEntry, FlowDefinition,
+  AccountingEntry, AccountingSettings, AppDetail, AttachmentInfo, DemoSeed, DemoStatus, AppForm, AppGrants, AppSummary, Artifact, AuthResult, DirectoryEntry, FlowDefinition,
   GroupInfo, Job, Member, MyApp, MyTask, ProfileInfo, ProjectDetail, ProjectSummary, ProposalDetail, ProposalSummary, RequestDetail,
   RequestSummary, VerifyResult, View, Finding, Model, VersionInfo, WorkspaceInfo,
 } from './types';
@@ -135,6 +135,9 @@ export const api = {
     request<Member>('POST', `/workspaces/${ws}/users`, b),
   updateMember: (ws: string, userId: string, b: Record<string, unknown>) => request<Member>('PATCH', `/workspaces/${ws}/members/${userId}`, b),
   removeMember: (ws: string, userId: string) => request<void>('DELETE', `/workspaces/${ws}/members/${userId}`),
+  demoStatus: (ws: string) => request<DemoStatus>('GET', `/workspaces/${ws}/demo-data`),
+  seedDemo: (ws: string) => request<DemoSeed>('POST', `/workspaces/${ws}/demo-data`, {}),
+  removeDemo: (ws: string) => request<void>('DELETE', `/workspaces/${ws}/demo-data`),
   resetPassword: (ws: string, userId: string, password: string) => request<Member>('POST', `/workspaces/${ws}/members/${userId}/reset-password`, { password }),
   groups: (ws: string) => request<GroupInfo[]>('GET', `/workspaces/${ws}/groups`),
   createGroup: (ws: string, name: string) => request<GroupInfo>('POST', `/workspaces/${ws}/groups`, { name }),
