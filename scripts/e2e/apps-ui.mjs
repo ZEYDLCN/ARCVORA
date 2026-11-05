@@ -6,6 +6,7 @@ import { check, finish, section } from './lib.mjs';
 
 const uniq = `${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`;
 const problemsAll = [];
+const workerTempOverride = { value: null };      // yönetici çalışanın parolasını sıfırladığında yeni geçici parola burada tutulur
 const sessions = [];
 const open = async (opts) => { const s = await openSession(opts); sessions.push(s); return s; };
 
@@ -59,6 +60,14 @@ try {
   // Tablo, kullanıcı oluşturulduktan sonra eşzamansız yenilenir: satırların gelmesini bekle (admin + 2 kullanıcı).
   check('kullanıcı tablosunda ikisi de görünür', await adminS.visible(A.locator('table tbody tr').nth(2)) && (await A.locator('table tbody tr', { hasText: 'Calisan Kisi' }).count()) === 1);
   check('geçici parola rozeti görünür', (await A.locator('.badge.warn', { hasText: 'geçici parola' }).count()) === 2);
+  check('Parola sıfırla yalnızca admin\'in açtığı hesaplarda görünür (kendi hesabında yok)', (await A.getByRole('button', { name: 'Parola sıfırla' }).count()) === 2
+    && (await A.locator('table tbody tr', { hasText: 'Master Admin' }).getByRole('button', { name: 'Parola sıfırla' }).count()) === 0);
+  A.once('dialog', (d) => d.accept());
+  await A.locator('table tbody tr', { hasText: 'Calisan Kisi' }).getByRole('button', { name: 'Parola sıfırla' }).click();
+  check('parola sıfırlandı: yeni geçici parola gösterilir', await adminS.visible(A.locator('.notice[role="status"]', { hasText: 'Parola sıfırlandı' })));
+  const resetTemp = (await A.locator('.notice[role="status"] .mono').innerText()).split(' · ')[1];
+  check('üretilen geçici parola en az 10 karakter', resetTemp.length >= 10, resetTemp);
+  workerTempOverride.value = resetTemp;
 
   await A.goto(`${WEB}/#/design`);
   check('tasarım sayfası: 3 şablon', await adminS.visible(A.getByRole('heading', { name: 'Uygulama tasarla' })) && (await A.locator('.template-grid .proj-card').count()) === 3);
@@ -90,8 +99,11 @@ try {
   section('Çalışan: geçici parolasını değiştirir, yalnızca Uygulamalar menüsünü görür, izin talebi açar');
   const workerS = await open();
   const { page: W } = workerS;
-  await login(W, workerMail, workerTemp);
-  await setFirstPassword(workerS, workerTemp, 'Calisan-Yeni-Parola-1');
+  // Eski geçici parola artık geçersiz; sıfırlamayla verilen yeni geçici parola kullanılır.
+  const oldTry = await W.evaluate(async ([email, password]) => (await fetch('/api/auth/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, password }) })).status, [workerMail, workerTemp]);
+  check('sıfırlanmadan önceki geçici parola artık geçersiz', oldTry === 401, oldTry);
+  await login(W, workerMail, workerTempOverride.value);
+  await setFirstPassword(workerS, workerTempOverride.value, 'Calisan-Yeni-Parola-1');
   check('çalışan Uygulamalarım sayfasına yönlendirildi', await workerS.visible(W.getByRole('heading', { name: 'Uygulamalarım' })));
   const wNav = await navLabels(W);
   check('çalışan menüsü yalnızca Uygulamalar ve Hesap', wNav.join('|') === 'Uygulamalarım|Taleplerim|Onay kutusu|Parolamı değiştir', wNav.join('|'));

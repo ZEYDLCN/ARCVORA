@@ -72,6 +72,24 @@ try {
   check('yeni parolayla giriş; geçici parola bayrağı kalktı', relog.status === 200 && relog.mustChangePassword !== true);
   worker.token = relog.token;
 
+  section('Parola sıfırlama: yalnızca master admin\'in açtığı hesaplar');
+  const reset = await call('POST', wsUrl(`/members/${worker.id}/reset-password`), { ...A, body: { password: 'Sifirlanan-Parola-1' } });
+  check('admin çalışanın parolasını sıfırladı', reset.status === 200 && reset.body.mustChangePassword === true, jsonOf(reset));
+  check('kullanıcının kendi parolası artık geçersiz', (await login(worker.email, 'Yeni-Parola-12345')).status === 401);
+  const afterReset = await login(worker.email, 'Sifirlanan-Parola-1');
+  check('sıfırlanan geçici parolayla giriş; yeniden değiştirmeye çağrılır', afterReset.status === 200 && afterReset.mustChangePassword === true);
+  worker.token = afterReset.token;
+  check('admin kendi hesabını sıfırlayamaz (not_managed)', (await call('POST', wsUrl(`/members/${admin.id}/reset-password`), { ...A, body: { password: 'Baska-Parola-12345' } })).body?.code === 'not_managed');
+  const indep = await call('POST', '/api/auth/register', { body: { email: `bagimsiz-${uniq}@example.com`, password: 'Bagimsiz-Parola-123', displayName: 'Bağımsız' } });
+  await call('POST', wsUrl('/members'), { ...A, body: { email: `bagimsiz-${uniq}@example.com`, role: 'reader' } });
+  const hijack = await call('POST', wsUrl(`/members/${indep.body.user.id}/reset-password`), { ...A, body: { password: 'Ele-Gecirilen-123' } });
+  check('kendi kaydıyla açılmış (başka şirkete de üye olabilecek) hesap sıfırlanamaz', hijack.status === 409 && hijack.body.code === 'not_managed', jsonOf(hijack));
+  check('o hesabın parolası değişmedi', (await login(`bagimsiz-${uniq}@example.com`, 'Bagimsiz-Parola-123')).status === 200);
+  check('çalışan sıfırlama yapamaz (403)', (await call('POST', wsUrl(`/members/${boss.id}/reset-password`), { token: stranger.token, body: { password: 'Yetkisiz-Parola-1' } })).status === 403);
+  // sonraki bölümler çalışanın parolasını değiştirmiş gibi devam eder
+  const pw = await call('POST', '/api/me/password', { token: worker.token, body: { currentPassword: 'Sifirlanan-Parola-1', newPassword: 'Yeni-Parola-12345' } });
+  check('çalışan sıfırlanan parolasını kendi parolasıyla değiştirdi', pw.status === 204);
+
   section('Rol yalıtımı: app kullanıcısı mimari projeleri göremez');
   const sample = await call('POST', '/api/samples/expense-management', { ...A, body: { workspaceId: admin.ws } });
   check('admin örnek proje oluşturdu', sample.status === 201, jsonOf(sample));
@@ -154,6 +172,20 @@ try {
   const mine = await call('GET', '/api/my/requests', { token: worker.token });
   check('taleplerim: 4 talep (onaylı, onaylı, reddedilmiş, iptal)', mine.body.length === 4, mine.body.map?.((r) => r.status).join());
   check('durum filtresi', (await call('GET', '/api/my/requests?status=approved', { token: worker.token })).body.length === 2);
+
+  section('Onaylayıcı çalışma alanından çıkarılırsa bekleyen görevi master admin\'e devredilir');
+  const boss2 = await mk('Yonetici2', 'app_user');
+  const worker2 = await mk('Calisan2', 'app_user', boss2.id);
+  await call('PUT', `/api/apps/${apps.leave}/grants`, { ...A, body: { userIds: [worker.id, boss.id, worker2.id], groupIds: [] } });
+  const orphan = await call('POST', `/api/apps/${apps.leave}/requests`, { token: worker2.token, body: { data: { kind: 'Rapor', start: '2027-03-01', end: '2027-03-02' } } });
+  check('talep açıldı, yeni yönetici bekliyor', orphan.status === 201 && orphan.body.tasks[0].assigneeId === boss2.id, jsonOf(orphan));
+  check('yönetici çalışma alanından çıkarıldı (204)', (await call('DELETE', wsUrl(`/members/${boss2.id}`), A)).status === 204);
+  const handed = await call('GET', `/api/requests/${orphan.body.summary.id}`, A);
+  const pendingTask = handed.body.tasks.find((t) => t.status === 'pending');
+  check('bekleyen görev master admin\'e devredildi ve nedeni yazıldı', pendingTask?.assigneeId === admin.id && pendingTask?.fallback === 'assignee_removed', jsonOf(handed));
+  check('zaman çizelgesinde approver_removed olayı', handed.body.events.some((e) => e.kind === 'approver_removed'));
+  const doneOrphan = await call('POST', `/api/tasks/${pendingTask.id}/approve`, { ...A, body: {} });
+  check('master admin onaylayınca talep tamamlandı', doneOrphan.body?.summary?.status === 'approved', jsonOf(doneOrphan));
 
   section('Aynı Idempotency-Key ile eşzamanlı gönderim tek talep üretir');
   const burst = await Promise.all(Array.from({ length: 6 }, () => submit(worker, 'leave', { kind: 'Rapor', start: '2027-02-01', end: '2027-02-02' }, `burst-${uniq}`)));
