@@ -1,0 +1,170 @@
+# ARCVORA Apps — şirket içi akış uygulamaları platformu
+
+> **Gizlilik:** Bu belge ve `Apps` modülü şirket ürünüdür; **açık kaynak değildir ve herkese açık bir depoya gönderilmemelidir.**
+> Bu dal yerelde geliştirilir; ARCVORA'nın herkese açık deposuna push edilmez. Kodun nereye (özel depo) taşınacağını sahibi belirler.
+
+## 1) Kaynak: yazışmadan çıkan istekler
+
+Kaynak, Yavuz Durbak ile yapılan WhatsApp yazışmasıdır (4 Kasım 2026). Her madde yazışmadaki bir cümleye dayanır.
+
+| # | İstek | Dayanak (yazışmadan) |
+|---|---|---|
+| 1 | Masraf sabit bir sistem olmasın; **şirketler kendi akış sistemini kendileri oluştursun** (izin, masraf, avans vb.). | "masraf yerine kendimiz avans izin vb oluşturabilelim", "kendi akış sistemini oluştursun şirketler" |
+| 2 | **Tasarlanan akış çalışan bir uygulama (app) olsun.** ARCVORA menüsüne "APP" bölümü gelsin. | "bu akış sonrası çıkan akış app olsun", "akışı biten uygulama, app olsun burada" (menüde "Öneriler"in altına APP) |
+| 3 | **Talepler muhasebeye doğrudan aktarılsın.** | "taleplerini muhasebeye direk aktaran bir yapı olur" |
+| 4 | İhtiyaç olan **başka akışlar da üretilebilsin; hepsi tek uygulamada.** | "ihtiyaç olan başka akışlarda üretiriz", "tek uygulamada yapıcaz hepsini" |
+| 5 | **Rol bazlı yönetim.** Yalnızca "app yetkisi" verilen kişi girince ilgili app'i kullanabilsin. | "bu sayfa rol bazlı yönetilsin", "sadece app yetkisi verdiğimiz girdiğinde ilgili appi kullanabilsin" |
+| 6 | **Master admin** her şeyi tasarlayabilsin. | "master admin dediğimiz tüm her şeyi tasarlayabilsin" |
+| 7 | **Şirketin kendi sunucusunda yayınlansın**, ekip kullansın. | "bizim sunucularda publish ederiz, ekip kullanır" |
+| 8 | **Açık kaynak olmasın**, GitHub'da public paylaşılmasın. | "paylaşmıyoruz bu uygulamayı gitte public, opensource olamaz" |
+| 9 | İlk gerçek kullanım: **evrakla yapılan izin işini uygulamaya çevirmek** (şirkette İK yazılımı yok, yüzlerce çalışan yok). | "humanist yok bizde… bundan dolayı evrakla yaptığımız işi appe çevirelim" |
+
+Yazışmada ayrıca şu ayrım var: "herhangi bir İK app'ini yapay zekâ ile 3 günde bitiririm, ama o herkesin yapabileceği şey olur."
+Hedef, sabit bir İK uygulaması değil; **şirketin kendi akışlarını tanımlayabildiği genel bir platformdur.**
+
+## 2) Anlaşılanlar, varsayımlar ve teyit gereken sorular
+
+Geliştirmeyi durdurmamak için aşağıdaki **varsayımlar** yapıldı. Her biri değiştirilebilir bir karardır; teyit edildikçe güncellenir.
+
+| Konu | Varsayım (geliştirmede uygulanan) | Teyit gerek |
+|---|---|---|
+| Şirket sayısı | Tek dağıtım = tek şirket. Veri modeli yine çalışma alanı (tenant) yalıtımlıdır; ileride çok şirkete açılabilir. | Evet: "şirketler" çoğul mu, tek şirket mi? |
+| Hesaplar | Self-servis kayıt kapatılır (`Auth__RegistrationOpen=false`); kullanıcıları master admin açar, parolayı verir, kullanıcı değiştirebilir. | SSO/Active Directory gerekir mi? |
+| Onay zinciri | Adımlar sıralıdır; onaylayıcı **doğrudan yönetici**, **belirli kişi** veya **grup** olabilir; koşullu adım (ör. tutar > X) desteklenir. | İzin/avans/masraf için gerçek zincirler nedir? |
+| Muhasebe | Muhasebe sistemi bilinmiyor. Genel çözüm: onaylanan talep **muhasebe kuyruğuna** düşer; (a) HTTP **webhook** ile otomatik, (b) kuyruk ekranından **elle işaretleme**, (c) **CSV** dışa aktarma. | Hangi muhasebe yazılımı? API/dosya/webhook? |
+| İzin | Tarih aralığı + gün sayısı (otomatik hesap) + açıklama + vekil. **İzin bakiyesi/hak edişi takibi ilk sürümde yok.** | Bakiye takibi ve resmî tatil hesabı gerekir mi? Yazdırılabilir/imzalı çıktı? |
+| Bildirim | İlk sürümde **uygulama içi** (onay kutusu, taleplerim). E-posta/WhatsApp yok. | E-posta (SMTP) gerekir mi? |
+| Ekler | Fiş/belge yükleme **faz G**'de (masraf için gerekli). İzin için gerekmez. | Masraf akışı ne zaman devreye girecek? |
+| ARCVORA ile ilişki | Aynı uygulama, aynı giriş. Mimari tasarım ekranları **yalnızca master admin/düzenleyicilere** görünür; app kullanıcıları yalnızca APP bölümünü görür. Akış tasarlayıcısı ayrı bir ekrandır; "ARCVORA akışından app taslağı" faz G. | Otomatik üretim mi, elle tasarım mı beklenir? |
+| Sunucu | Linux + Docker + PostgreSQL 16 varsayıldı (`Dockerfile` bu ortamda derlenmedi; ilk derlemede doğrulanmalı). | Altyapı nedir? |
+| Açık kaynak | Bu modül kapalıdır. Herkese açık ARCVORA deposuna push edilmez. | Depo/lisans/mülkiyet kararı sahibine ait. |
+
+## 3) Kapsam dışı (ilk sürüm)
+
+Dosya/belge yükleme (faz G), e-posta/WhatsApp bildirimi, izin bakiyesi ve resmî tatil takvimi, PDF/imzalı çıktı, SSO/AD,
+çok adımlı paralel dallanma, form içi tablolar (satır kalemleri), mobil uygulama, raporlama panoları.
+
+## 4) Roller ve yetkiler
+
+| Rol | Kim | Yapabildikleri |
+|---|---|---|
+| **Master admin** (`admin`) | Platformu yöneten kişi(ler) | Her şeyi tasarlar: mimari projeler (ARCVORA), app tasarımı/yayını, kullanıcı/grup yönetimi, app yetkisi verme, muhasebe ayarları. Tüm app'leri kullanabilir. |
+| Düzenleyici / okuyucu (`editor`/`reader`) | Mimari ekibi | ARCVORA proje yetkileri aynen korunur. App'lerde yalnızca kendilerine verilen yetki kadar. |
+| **App kullanıcısı** (`app_user`) | Çalışanlar | **Yalnızca** kendilerine yetki verilen app'leri kullanır: talep açar, taleplerini izler. Mimari projeleri **göremez** (404). |
+
+Ek, rolden bağımsız yetenekler:
+
+- **Onaylayıcı:** Akış, bir adımı birine atadığında (yönetici/kişi/grup) o kişi "Onay kutusu"nda görevi görür. App yetkisi gerekmez.
+- **Muhasebe:** Muhasebe grubunun üyeleri (ve master admin) muhasebe kuyruğunu görür ve işler.
+- **Doğrudan yönetici:** Üyelik üzerinde tanımlıdır; "yönetici onayı" adımını çözer.
+
+## 5) Akış tanımı (schema 1)
+
+Bir app, sürümlenmiş bir **akış tanımıdır**. Taslak düzenlenir; **yayınla** değişmez bir sürüm üretir. Açık talepler açıldıkları sürümle devam eder.
+
+```jsonc
+{
+  "schema": 1,
+  "prefix": "IZN",                       // talep numarası: IZN-2026-0007
+  "summaryFields": ["start", "end"],     // listelerde gösterilen özet
+  "fields": [
+    { "key": "start", "label": "Başlangıç", "type": "date", "required": true },
+    { "key": "end",   "label": "Bitiş",     "type": "date", "required": true, "notBefore": "start" },
+    { "key": "days",  "label": "Gün",       "type": "number", "computed": { "op": "calendarDays", "from": "start", "to": "end" } },
+    { "key": "kind",  "label": "Tür",       "type": "select", "required": true, "options": ["Yıllık", "Mazeret", "Ücretsiz"] },
+    { "key": "proxy", "label": "Vekil",     "type": "user" },
+    { "key": "note",  "label": "Açıklama",  "type": "longtext", "maxLength": 1000 }
+  ],
+  "steps": [
+    { "id": "s1", "name": "Yönetici onayı", "approvers": { "type": "manager" } },
+    { "id": "s2", "name": "Genel müdür", "approvers": { "type": "group", "id": "<groupId>" }, "mode": "any",
+      "conditions": [{ "field": "days", "op": "gt", "value": 10 }] }
+  ],
+  "completion": { "accounting": { "enabled": false, "category": "izin" } }
+}
+```
+
+- **Alan tipleri:** `text`, `longtext`, `number`, `money`, `date`, `select`, `multiselect`, `checkbox`, `user`. Kurallar: `required`, `min`, `max`, `maxLength`, `options`, `notBefore` (başka bir tarih alanından önce olamaz), `computed` (`calendarDays`, `weekdays`).
+- **Onaylayıcı tipleri:** `manager` (talep edenin doğrudan yöneticisi), `user` (belirli kişi), `group` (grup; `mode`: `any` = biri onaylasa yeter, `all` = hepsi onaylamalı), `admin` (master admin'ler).
+- **Çözülemeyen onaylayıcı** (yöneticisi tanımsız, grup boş): görev master admin'lere düşer ve olay kaydına yazılır. Talep sessizce takılmaz.
+- **Koşullar:** `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`; hepsi sağlanırsa adım çalışır, aksi hâlde atlanır. Tüm adımlar atlanırsa talep otomatik onaylanır.
+- **Doğrulama:** Yayınlamadan önce tanım doğrulanır (tekrarlanan anahtar, bilinmeyen alan referansı, boş adım adı, döngüsel hesap, grup/kullanıcı varlığı).
+
+## 6) Talep yaşam döngüsü
+
+```
+            gönder                 adımın tüm görevleri onaylandı
+ (yok) ───────────► in_review ───────────────────────────────► sonraki adım ─► … ─► approved ─► (muhasebe kuyruğu)
+                       │   ▲
+        reddet         │   │ iptal (talep eden, yalnızca in_review)
+                       ▼   │
+                   rejected   cancelled
+```
+
+- Karar yalnızca görev **atanan kişi** tarafından, görev `pending` iken verilir; ikinci karar `409`.
+- Red için gerekçe zorunludur. Onayda yorum isteğe bağlıdır.
+- Talep eden kendi talebini onaylayamaz (atanan kişi talep eden ise o görev bir sonraki çözümlemeyle master admin'e yönlenir).
+- Her geçiş değişmez **olay kaydı** üretir (zaman çizelgesi).
+- Onay sonrası tek işlemde (transactional outbox) muhasebe kaydı oluşturulur; teslim ayrı bir işçi tarafından yapılır.
+
+## 7) Muhasebe aktarımı
+
+`AccountingEntry` (talep başına tek kayıt, idempotent): `pending → sent → processed` veya `failed`.
+
+1. Onay tamamlanınca (app tanımında `completion.accounting.enabled`) kayıt `pending` oluşur; yük, talebin alanlarından ve kimliklerinden derlenir.
+2. Çalışma alanı ayarında **webhook adresi** varsa işçi `POST` eder: gövde JSON, başlıklar `Idempotency-Key`, `X-Arcvora-Signature: sha256=<hmac>`. Başarılıysa `sent`; hata hâlinde artan aralıkla en fazla 8 deneme, sonra `failed`.
+3. Muhasebe kullanıcısı kuyruk ekranından kaydı **işlendi** olarak işaretler (not ile), `failed` olanı yeniden dener, CSV indirir.
+4. Webhook adresi yoksa kayıtlar `pending` kalır ve elle işlenir (CSV/ekran).
+
+## 8) Veri modeli (yeni tablolar)
+
+`Groups`, `GroupMembers`, `Membership.ManagerId`, `AppDefinitions`, `AppVersions`, `AppGrants`, `FlowRequests`, `ApprovalTasks`,
+`RequestEvents`, `AccountingEntries`, `AccountingSettings`. Mevcut `Users`, `Workspaces`, `Memberships`, `AuditEntries` korunur.
+Tüm yeni kayıtlar `WorkspaceId` taşır; başka çalışma alanı kaydına her erişim `404` döner (mevcut desen).
+
+## 9) API özeti
+
+| Alan | Uç noktalar (özet) |
+|---|---|
+| Kullanıcı/grup | `POST /workspaces/{id}/users`, `PATCH …/users/{userId}`, `POST /me/password`, `GET/POST/PATCH/DELETE /workspaces/{id}/groups` |
+| App tasarımı | `GET/POST /workspaces/{id}/apps`, `GET/PUT /apps/{id}` (taslak), `POST /apps/{id}/publish`, `POST /apps/{id}/archive`, `GET/PUT /apps/{id}/grants` |
+| Kullanım | `GET /my/apps`, `GET /apps/{id}/form`, `POST /apps/{id}/requests` |
+| Talepler | `GET /my/requests`, `GET /requests/{id}`, `POST /requests/{id}/cancel` |
+| Onay | `GET /my/tasks`, `POST /tasks/{id}/approve`, `POST /tasks/{id}/reject` |
+| Muhasebe | `GET /workspaces/{id}/accounting/entries`, `POST …/{entryId}/process`, `POST …/{entryId}/retry`, `GET …/export.csv`, `GET/PUT …/settings` |
+
+## 10) Arayüz
+
+Oturum açan herkes aynı kabuğu görür; menü role göre sadeleşir.
+
+- **App kullanıcısı:** Uygulamalarım · Taleplerim · Onay kutusu · (muhasebe üyesiyse) Muhasebe.
+- **Master admin:** yukarıdakilere ek olarak **Mimari projeler** (mevcut ARCVORA), **App tasarla**, **Yönetim** (kullanıcılar, gruplar, app yetkileri, muhasebe ayarları).
+- Tasarlayıcı: alan ekle/sırala, adım ekle, onaylayıcı seç, koşul tanımla, **canlı önizleme** (talep eden gözüyle form), doğrulama bulguları, yayınla.
+
+## 11) Güvenlik ilkeleri
+
+- Rol ve üyelik **her istekte sunucuda** doğrulanır; arayüz yalnızca kolaylıktır.
+- Çalışma alanı dışı kayıt `404`; yetkisiz ama üye `403`.
+- App kullanıcısı mimari projeleri listeleyemez, açamaz, dolaylı yoldan da (ör. örnek proje, dışa aktarma) erişemez.
+- Parolalar PBKDF2; yeni kullanıcıya verilen geçici parola ilk girişte değiştirilmeye çağrılır (`mustChangePassword`).
+- Webhook gövdesi HMAC ile imzalanır; adres yalnızca master admin tarafından girilir. **Not:** Şirket içi muhasebe sistemleri çoğu kez özel ağdadır; bu nedenle özel IP'lere gönderim engellenmez. Adres yalnızca `http/https` olmalıdır.
+- Denetim kaydı: kullanıcı/grup/yetki değişiklikleri, yayınlar, kararlar, muhasebe işlemleri.
+
+## 12) Fazlar ve bitiş ölçütleri
+
+| Faz | Teslim | Bitiş ölçütü (kanıt) |
+|---|---|---|
+| **A** | `app_user` rolü; kullanıcı oluşturma; parola değiştirme; gruplar; doğrudan yönetici; `app_user` için mimari projelere erişim kapalı | Entegrasyon testi: app kullanıcısı proje listesinde/erişiminde 404/403; admin kullanıcı açar; yeni kullanıcı girer ve parolasını değiştirir |
+| **B** | Akış tanımı modeli, doğrulayıcı, form doğrulama, hesaplanan alanlar, onaylayıcı çözümleyici, durum makinesi (Core) | Birim testleri: alan kuralları, koşullar, atlanan adımlar, `any`/`all`, çözülemeyen onaylayıcı, reddet/iptal |
+| **C** | Kalıcılık + API: tasarım/yayın/sürüm, yetki, talep, onay, iptal, zaman çizelgesi, onay kutusu | Entegrasyon testleri: yetkisiz erişim, çalışma alanı yalıtımı, paralel karar tek sonuç, sürümlü talep |
+| **D** | Muhasebe kuyruğu, webhook işçisi (HMAC, idempotent, yeniden deneme), CSV, işlendi işareti | Entegrasyon testleri: onay → tek kayıt; webhook başarısız → yeniden deneme → `failed`; imza doğru |
+| **E** | Web: portal, form, taleplerim, onay kutusu, tasarlayıcı, yönetim, muhasebe; rol bazlı menü | Vitest + tarayıcı yolculuğu (izin akışı uçtan uca) |
+| **F** | Şablonlar (İzin, Avans, Masraf); uçtan uca betikler; şirket dağıtım dokümanı | `scripts/e2e.sh --apps` geçer; belgeler |
+| **G** | (Sonra) ekler, e-posta bildirimi, izin bakiyesi, PDF çıktı, ARCVORA akışından taslak, SSO | — |
+
+## 13) Riskler
+
+- **Muhasebe sistemi bilinmiyor:** genel webhook/CSV çözümü gerçek sisteme uymayabilir; bağlayıcı ayrı bir iş olur.
+- **Hukuki/ticari:** kodun sahipliği ve gizliliği teknik değil, sözleşme konusudur; geliştirmeye başlamadan netleştirilmelidir.
+- **Dockerfile** henüz derlenmedi; ilk kurulumda sorun çıkabilir.
+- **Kullanıcı deneyimi** gerçek çalışanlarla denenmedi; izin formu şirketin gerçek evrakına göre uyarlanmalı.
