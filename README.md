@@ -17,7 +17,7 @@ Fikrini anlat · Kararlarını netleştir · Mimariyi birlikte geliştir
 ![PostgreSQL 16](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
 ![Durum: MVP](https://img.shields.io/badge/durum-MVP-8b6cf6)
 
-[Hızlı başlangıç](#hızlı-başlangıç) · [Kullanım rehberi](docs/KULLANIM.md) · [Ücretsiz dağıtım](docs/DEPLOY.md) · [Mimari](docs/ARCHITECTURE.md) · [Yol haritası](docs/ROADMAP.md)
+[Hızlı başlangıç](#hızlı-başlangıç) · [Kullanım rehberi](docs/KULLANIM.md) · [Ücretsiz dağıtım](docs/DEPLOY.md) · [Mimari](docs/ARCHITECTURE.md) · [Yol haritası](docs/ROADMAP.md) · [Apps: şirket içi akışlar](docs/APPS_PLATFORM.md)
 
 </div>
 
@@ -61,6 +61,7 @@ gereksinimler, kararlar, bileşenler ve bunların birbirleriyle ilişkileridir.
 - [Yapılandırma](#yapılandırma) · [Testler](#testler) · [Depo yapısı](#depo-yapısı)
 - [MVP kabul listesi](#mvp-kabul-listesi-doküman-25--durum) · [Bilinen sınırlar](#bilinen-sınırlar-dürüst-liste)
 - Rehberler: [Kullanım](docs/KULLANIM.md) · [Ücretsiz dağıtım](docs/DEPLOY.md) · [Yerel model](docs/LOCAL_LLM.md) · [Pilot rehberi](docs/PILOT_PLAYBOOK.md)
+- **ARCVORA Apps (şirket içi, gizli):** [Plan ve kapsam](docs/APPS_PLATFORM.md) · [Kullanım](docs/APPS_KULLANIM.md) · [Şirket sunucusuna kurulum](docs/DEPLOY_COMPANY.md)
 
 </details>
 
