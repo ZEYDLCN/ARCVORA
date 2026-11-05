@@ -19,7 +19,7 @@ public sealed class AccountingHooks(ArcvoraDbContext db, TimeProvider clock) : I
         // Sorgu süzgeci veritabanında çalışır; az önce verilen (henüz kaydedilmemiş) karar yalnızca izlenen varlıkta görünür.
         // Bu yüzden talebin tüm görevleri yüklenir ve durum belleğte süzülür.
         var approved = (await db.ApprovalTasks.Where(t => t.RequestId == request.Id).ToListAsync(ct)).Where(t => t.Status == ApprovalStatus.Approved).ToList();
-        var userIds = approved.Where(t => t.DecidedBy != null).Select(t => t.DecidedBy!.Value)
+        var userIds = approved.Where(t => t.DecidedBy != null).Select(t => t.DecidedBy!.Value).Concat(approved.Select(t => t.AssigneeId))
             .Concat(def.Fields.Where(f => f.Type == FieldType.User && values.GetValueOrDefault(f.Key) is string).Select(f => Guid.Parse((string)values[f.Key]!)))
             .Distinct().ToList();
         var names = await db.Users.AsNoTracking().Where(u => userIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.DisplayName, ct);
@@ -42,7 +42,10 @@ public sealed class AccountingHooks(ArcvoraDbContext db, TimeProvider clock) : I
             attachments = attachments.Select(a => new { a.Id, a.FieldKey, a.FileName, a.ContentType, a.Size, a.Sha256 }).ToList(),
             approvals = approved.OrderBy(t => t.DecidedAt).Select(t => new
             {
-                step = t.StepName, by = new { id = t.DecidedBy, name = t.DecidedBy is { } b ? names.GetValueOrDefault(b) : null }, at = t.DecidedAt, comment = t.Comment,
+                step = t.StepName, by = new { id = t.DecidedBy, name = t.DecidedBy is { } b ? names.GetValueOrDefault(b) : null },
+                // Vekil karar verdiyse adına karar verilen kişi (muhasebe/denetim hangi yetkiyle onaylandığını görür).
+                onBehalfOf = t.DecidedBy is { } who && who != t.AssigneeId ? (object)new { id = t.AssigneeId, name = names.GetValueOrDefault(t.AssigneeId) } : null,
+                at = t.DecidedAt, comment = t.Comment,
             }).ToList(),
         };
 

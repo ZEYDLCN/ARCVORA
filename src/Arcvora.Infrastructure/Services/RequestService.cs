@@ -10,7 +10,7 @@ using Npgsql;
 namespace Arcvora.Infrastructure.Services;
 
 /// <summary>Akış uygulamalarının çalışma zamanı: talep açma, onay/ret, iptal, listeleme. Kurallar çekirdekte (<see cref="FlowEngine"/>).</summary>
-public sealed class RequestService(ArcvoraDbContext db, AppAccessService access, IRequestHooks hooks, RequestVisibility visibility, TimeProvider clock)
+public sealed class RequestService(ArcvoraDbContext db, AppAccessService access, IRequestHooks hooks, RequestVisibility visibility, DelegationService delegations, TimeProvider clock)
 {
     public const int MaxCommentLength = 1000;
     private const int ListLimit = 200;
@@ -227,18 +227,28 @@ public sealed class RequestService(ArcvoraDbContext db, AppAccessService access,
     public async Task<IReadOnlyList<MyTaskDto>> MyTasksAsync(Guid userId, bool done, CancellationToken ct)
     {
         var wsIds = db.Memberships.Where(m => m.UserId == userId).Select(m => m.WorkspaceId);
+        var active = delegations.ActiveFor(userId);
         var q = from t in db.ApprovalTasks.AsNoTracking()
                 join r in db.FlowRequests.AsNoTracking() on t.RequestId equals r.Id
                 join a in db.Apps.AsNoTracking() on r.AppId equals a.Id
                 join u in db.Users.AsNoTracking() on r.RequesterId equals u.Id
-                where t.AssigneeId == userId && wsIds.Contains(t.WorkspaceId)
+                where wsIds.Contains(t.WorkspaceId)
                 select new { Task = t, Request = r, App = a, Requester = u.DisplayName };
         q = done
-            ? q.Where(x => x.Task.Status == ApprovalStatus.Approved || x.Task.Status == ApprovalStatus.Rejected).OrderByDescending(x => x.Task.DecidedAt)
-            : q.Where(x => x.Task.Status == ApprovalStatus.Pending && x.Request.Status == RequestStatus.InReview).OrderBy(x => x.Task.CreatedAt);
+            // Geçmiş: bana atanan veya (vekil olarak) benim karar verdiğim görevler.
+            ? q.Where(x => (x.Task.AssigneeId == userId || x.Task.DecidedBy == userId) && (x.Task.Status == ApprovalStatus.Approved || x.Task.Status == ApprovalStatus.Rejected))
+                .OrderByDescending(x => x.Task.DecidedAt)
+            // Bekleyen: bana atanan ya da şu an vekil olduğum kişinin görevi (kendi talebime vekâletle karar veremem, o yüzden listelenmez).
+            : q.Where(x => x.Task.Status == ApprovalStatus.Pending && x.Request.Status == RequestStatus.InReview
+                    && (x.Task.AssigneeId == userId
+                        || (x.Request.RequesterId != userId && active.Any(d => d.FromUserId == x.Task.AssigneeId && d.WorkspaceId == x.Task.WorkspaceId))))
+                .OrderBy(x => x.Task.CreatedAt);
         var rows = await q.Take(ListLimit).ToListAsync(ct);
+        var behalfIds = rows.Where(x => x.Task.AssigneeId != userId).Select(x => x.Task.AssigneeId).Distinct().ToList();
+        var names = behalfIds.Count == 0 ? [] : await db.Users.AsNoTracking().Where(u => behalfIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.DisplayName, ct);
         return rows.Select(x => new MyTaskDto(x.Task.Id, x.Request.Id, x.Request.Number, x.App.Name, x.App.Icon, x.Request.Summary, x.Requester,
-            x.Task.StepName, Status(x.Task.Status), x.Task.Fallback, x.Task.Comment, x.Task.CreatedAt, x.Task.DecidedAt)).ToList();
+            x.Task.StepName, Status(x.Task.Status), x.Task.Fallback, x.Task.Comment, x.Task.CreatedAt, x.Task.DecidedAt,
+            x.Task.AssigneeId != userId ? x.Task.AssigneeId : null, x.Task.AssigneeId != userId ? names.GetValueOrDefault(x.Task.AssigneeId, "(eski kullanıcı)") : null)).ToList();
     }
 
     public async Task<RequestDetailDto> DecideAsync(Guid userId, Guid taskId, ApprovalDecision decision, string? comment, CancellationToken ct)
@@ -249,10 +259,18 @@ public sealed class RequestService(ArcvoraDbContext db, AppAccessService access,
 
         for (var attempt = 1; ; attempt++)
         {
-            // Atanan kişi dışındaki herkes için görev yokmuş gibi davranılır (404).
-            var task = await db.ApprovalTasks.FirstOrDefaultAsync(t => t.Id == taskId && t.AssigneeId == userId, ct) ?? throw new NotFoundException("Görev bulunamadı.");
+            // Atanan kişi ve (vekâlet sürerken) vekili dışındaki herkes için görev yokmuş gibi davranılır (404).
+            var task = await db.ApprovalTasks.FirstOrDefaultAsync(t => t.Id == taskId, ct) ?? throw new NotFoundException("Görev bulunamadı.");
             var request = await db.FlowRequests.FirstAsync(r => r.Id == task.RequestId, ct);
             var member = await access.MemberAsync(userId, request.WorkspaceId, ct);
+            Guid? onBehalfOf = null;
+            if (task.AssigneeId != userId)
+            {
+                if (!await delegations.IsActiveAsync(task.AssigneeId, userId, task.WorkspaceId, ct)) throw new NotFoundException("Görev bulunamadı.");
+                if (request.RequesterId == userId)
+                    throw new AppException(403, "self_approval_via_delegation", "Kendi talebinizi vekâletle de olsa onaylayamazsınız.");
+                onBehalfOf = task.AssigneeId;
+            }
             if (request.Status != RequestStatus.InReview) throw new ConflictException("request_closed", "Talep zaten sonuçlanmış.");
             if (task.Status != ApprovalStatus.Pending) throw new ConflictException("task_not_pending", "Bu görev için karar zaten verilmiş.");
 
@@ -260,6 +278,9 @@ public sealed class RequestService(ArcvoraDbContext db, AppAccessService access,
             var version = await db.AppVersions.AsNoTracking().FirstAsync(v => v.Id == request.AppVersionId, ct);
             var def = AppDesignService.Deserialize(version.DefinitionJson);
             var siblings = await db.ApprovalTasks.Where(t => t.RequestId == request.Id && t.StepIndex == task.StepIndex).ToListAsync(ct);
+            // Bir kişi aynı adımda hem kendi hem vekil olduğu görevle iki kez karar veremez ("hepsi onaylamalı" adımı tek kişiyle geçilmesin).
+            if (siblings.Any(s => s.Id != task.Id && s.DecidedBy == userId && s.Status is ApprovalStatus.Approved or ApprovalStatus.Rejected))
+                throw new ConflictException("already_decided_in_step", "Bu adımda zaten karar verdiniz; diğer onaylayıcıların kararı bekleniyor.");
 
             var now = clock.GetUtcNow();
             var result = StepEvaluator.Decide(task.Mode, siblings.Select(s => new TaskState(s.Id, s.AssigneeId, s.Status)).ToList(), task.Id, decision);
@@ -270,7 +291,7 @@ public sealed class RequestService(ArcvoraDbContext db, AppAccessService access,
             task.DecidedAt = now;
             foreach (var s in siblings.Where(s => result.TasksToSkip.Contains(s.Id))) s.Status = ApprovalStatus.Skipped;
             AddEvent(request, userId, decision == ApprovalDecision.Approve ? RequestEventKinds.Approved : RequestEventKinds.Rejected,
-                new { taskId = task.Id, stepId = task.StepId, stepName = task.StepName, comment = text }, now);
+                new { taskId = task.Id, stepId = task.StepId, stepName = task.StepName, comment = text, onBehalfOf }, now);
             request.UpdatedAt = now;
 
             if (result.Outcome == StepOutcome.Rejected)
@@ -294,6 +315,34 @@ public sealed class RequestService(ArcvoraDbContext db, AppAccessService access,
             if (!await TrySaveAsync(attempt, ct)) continue;
             return await GetAsync(userId, request.Id, ct);
         }
+    }
+
+    /// <summary>
+    /// Master admin, bekleyen bir görevi başka birine devreder (onaylayıcı izinde/ulaşılamıyorsa). Talep eden, üye olmayan veya adımda zaten
+    /// görevi olan kişiye devredilemez. Görev satırı koşullu güncellenir: aynı anda karar verilirse 409.
+    /// </summary>
+    public async Task<RequestDetailDto> ReassignAsync(Guid actorId, Guid taskId, Guid? toUserId, CancellationToken ct)
+    {
+        var task = await db.ApprovalTasks.AsNoTracking().FirstOrDefaultAsync(t => t.Id == taskId, ct) ?? throw new NotFoundException("Görev bulunamadı.");
+        var member = await access.MemberAsync(actorId, task.WorkspaceId, ct);
+        if (member.Role != WorkspaceRole.Admin) throw new ForbiddenException("Görevi yalnızca master admin yeniden atayabilir.");
+        if (toUserId is null || toUserId == Guid.Empty) throw new RequestValidationException("invalid_request", "Yeni onaylayıcı seçilmeli.");
+        var to = toUserId.Value;
+
+        var request = await db.FlowRequests.AsNoTracking().FirstAsync(r => r.Id == task.RequestId, ct);
+        if (request.Status != RequestStatus.InReview || task.Status != ApprovalStatus.Pending)
+            throw new ConflictException("task_not_pending", "Yalnızca onay bekleyen görev yeniden atanabilir.");
+        if (to == task.AssigneeId || to == request.RequesterId
+            || !await db.Memberships.AnyAsync(m => m.WorkspaceId == task.WorkspaceId && m.UserId == to, ct)
+            || await db.ApprovalTasks.AnyAsync(t => t.RequestId == task.RequestId && t.StepIndex == task.StepIndex && t.AssigneeId == to, ct))
+            throw new RequestValidationException("invalid_assignee", "Seçilen kişi bu görev için uygun değil (üye değil, talep eden, ya da adımda zaten görevli).");
+
+        var changed = await db.ApprovalTasks.Where(t => t.Id == taskId && t.AssigneeId == task.AssigneeId && t.Status == ApprovalStatus.Pending)
+            .ExecuteUpdateAsync(set => set.SetProperty(t => t.AssigneeId, to), ct);
+        if (changed == 0) throw new ConflictException("concurrent_update", "Görev aynı anda değiştirildi. Tekrar deneyin.");
+        AddEvent(request, actorId, RequestEventKinds.Reassigned, new { taskId, stepId = task.StepId, stepName = task.StepName, from = task.AssigneeId, to }, clock.GetUtcNow());
+        await db.SaveChangesAsync(ct);
+        return await GetAsync(actorId, request.Id, ct);
     }
 
     /// <summary>İyimser eşzamanlılık: aynı talepte eşzamanlı karar/iptal olursa baştan değerlendirilir (ikincisi 409 alır).</summary>

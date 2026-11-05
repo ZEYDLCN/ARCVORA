@@ -7,7 +7,7 @@ using Npgsql;
 
 namespace Arcvora.Infrastructure.Services;
 
-public sealed class MemberService(ArcvoraDbContext db, ProjectAccessService access, AuditLog audit, PasswordHasher hasher, TimeProvider clock)
+public sealed class MemberService(ArcvoraDbContext db, ProjectAccessService access, AuditLog audit, PasswordHasher hasher, DelegationService delegations, TimeProvider clock)
 {
     private const string RoleMessage = "Rol 'admin', 'editor', 'reader' veya 'app_user' olmalı.";
 
@@ -137,6 +137,7 @@ public sealed class MemberService(ArcvoraDbContext db, ProjectAccessService acce
             foreach (var report in await db.Memberships.Where(x => x.WorkspaceId == workspaceId && x.ManagerId == userId).ToListAsync(ct))
                 report.ManagerId = null;
 
+            await delegations.RevokeAllOfAsync(workspaceId, userId, actorId, ct);
             await ReassignPendingTasksAsync(workspaceId, userId, ct);
             audit.Add(workspaceId, null, actorId, "member.removed", "user", userId.ToString());
             try { await db.SaveChangesAsync(ct); return; }

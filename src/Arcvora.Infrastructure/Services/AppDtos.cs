@@ -36,7 +36,8 @@ public sealed record RequestDetailDto(RequestSummaryDto Summary, FlowDefinition 
     IReadOnlyList<AttachmentDto> Attachments);
 
 public sealed record MyTaskDto(Guid Id, Guid RequestId, string RequestNumber, string AppName, string Icon, string Summary, string RequesterName,
-    string StepName, string Status, string? Fallback, string? Comment, DateTimeOffset CreatedAt, DateTimeOffset? DecidedAt);
+    string StepName, string Status, string? Fallback, string? Comment, DateTimeOffset CreatedAt, DateTimeOffset? DecidedAt,
+    Guid? OnBehalfOfId = null, string? OnBehalfOfName = null);
 
 public sealed record DecideRequest(string? Comment);
 

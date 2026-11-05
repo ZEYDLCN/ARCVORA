@@ -5,10 +5,10 @@ using Microsoft.EntityFrameworkCore;
 namespace Arcvora.Infrastructure.Services;
 
 /// <summary>
-/// Bir talebi kimin görebileceğinin tek kuralı: talep eden, master admin, görev atananı veya (ör. muhasebe grubu gibi) kancanın izin verdiği kişi.
+/// Bir talebi kimin görebileceğinin tek kuralı: talep eden, master admin, görev atananı, kararı veren, vekil (vekâlet sürerken) veya (ör. muhasebe grubu gibi) kancanın izin verdiği kişi.
 /// Çalışma alanı üyesi olmayan ya da göremeyen herkes için 404 (talebin varlığı sızdırılmaz). Ayrıntı, ek ve PDF aynı kuralı kullanır.
 /// </summary>
-public sealed class RequestVisibility(ArcvoraDbContext db, IRequestHooks hooks)
+public sealed class RequestVisibility(ArcvoraDbContext db, IRequestHooks hooks, DelegationService delegations)
 {
     public async Task<VisibleRequest> LoadAsync(Guid userId, Guid requestId, CancellationToken ct)
     {
@@ -17,7 +17,9 @@ public sealed class RequestVisibility(ArcvoraDbContext db, IRequestHooks hooks)
                      ?? throw new NotFoundException("Talep bulunamadı.");
         var tasks = await db.ApprovalTasks.AsNoTracking().Where(t => t.RequestId == r.Id).OrderBy(t => t.StepIndex).ThenBy(t => t.CreatedAt).ThenBy(t => t.Id).ToListAsync(ct);
 
-        var visible = r.RequesterId == userId || member.Role == WorkspaceRole.Admin || tasks.Any(t => t.AssigneeId == userId)
+        // Talep eden, master admin, görev atananı, kararı veren (vekil dahil), şu an vekâlet aldığı kişinin görevi olan veya kancanın izin verdiği kişi.
+        var visible = r.RequesterId == userId || member.Role == WorkspaceRole.Admin || tasks.Any(t => t.AssigneeId == userId || t.DecidedBy == userId)
+                      || await delegations.CoversAnyAsync(userId, r.WorkspaceId, tasks.Select(t => t.AssigneeId).Distinct().ToList(), ct)
                       || await hooks.CanViewAsync(userId, r, ct);
         if (!visible) throw new NotFoundException("Talep bulunamadı.");
         return new VisibleRequest(r, member, tasks);

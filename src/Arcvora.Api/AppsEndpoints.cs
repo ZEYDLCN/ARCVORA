@@ -107,6 +107,19 @@ public static class AppsEndpoints
             return Results.File(data, "text/csv; charset=utf-8", name);
         });
 
+        // ----------------------------------------------------------------------- vekâlet
+        secured.MapGet("/workspaces/{id:guid}/delegations", async (Guid id, string? scope, ClaimsPrincipal u, DelegationService s, CancellationToken ct) =>
+            Results.Ok(await s.ListAsync(Endpoints.UserId(u), id, scope, ct)));
+        secured.MapPost("/workspaces/{id:guid}/delegations", async (Guid id, CreateDelegationRequest r, ClaimsPrincipal u, DelegationService s, CancellationToken ct) =>
+        {
+            var d = await s.CreateAsync(Endpoints.UserId(u), id, r, ct);
+            return Results.Created($"/api/workspaces/{id}/delegations", d);
+        });
+        secured.MapDelete("/workspaces/{id:guid}/delegations/{delegationId:guid}", async (Guid id, Guid delegationId, ClaimsPrincipal u, DelegationService s, CancellationToken ct) =>
+            Results.Ok(await s.RevokeAsync(Endpoints.UserId(u), id, delegationId, ct)));
+        secured.MapPost("/tasks/{id:guid}/reassign", async (Guid id, ReassignRequest r, ClaimsPrincipal u, RequestService s, CancellationToken ct) =>
+            Results.Ok(await s.ReassignAsync(Endpoints.UserId(u), id, r.ToUserId, ct)));
+
         // ------------------------------------------------------------------ demo veri
         secured.MapGet("/workspaces/{id:guid}/demo-data", async (Guid id, ClaimsPrincipal u, DemoDataService s, CancellationToken ct) =>
             Results.Ok(await s.StatusAsync(Endpoints.UserId(u), id, ct)));

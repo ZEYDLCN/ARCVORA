@@ -280,7 +280,8 @@ public class DelegationTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var k = await SetupAsync();
         await Delegate(k.Boss, k.Emp);              // Çalışan, kendi müdürünün vekili
         var req = await Submit(k);                  // Çalışan'ın talebi müdüre düşer
-        var taskId = (await TaskFor(k.Emp, req)).GetProperty("id").GetGuid();
+        var taskId = await k.Boss.MyPendingTaskAsync(req);
+        Assert.False(HasTask(await k.Emp.GetAsync("/api/my/tasks"), req));        // kendi talebi vekâlet kutusunda hiç görünmez
         var r = await k.Emp.PostAsync($"/api/tasks/{taskId}/approve");
         Assert.True(r.Is(HttpStatusCode.Forbidden), r.ToString());
         Assert.Equal("self_approval_via_delegation", r.Str("code"));

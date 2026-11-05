@@ -46,7 +46,8 @@ public sealed class DocumentService(ArcvoraDbContext db, RequestVisibility visib
         var fields = def.Fields.Where(f => f.Type != FieldType.File)
             .Select(f => new PdfField(f.Label, FlowDisplay.Format(f, values.GetValueOrDefault(f.Key), people))).ToList();
 
-        var approvals = tasks.Select(t => new PdfApprovalRow(t.StepName, Name(t.AssigneeId),
+        var approvals = tasks.Select(t => new PdfApprovalRow(t.StepName,
+            t.DecidedBy is { } by && by != t.AssigneeId ? $"{Name(by)} (vekâleten: {Name(t.AssigneeId)})" : Name(t.AssigneeId),
             t.Status switch { ApprovalStatus.Approved => "Onayladı", ApprovalStatus.Rejected => "Reddetti", ApprovalStatus.Skipped => "Gerekmedi", _ => "Bekliyor" },
             t.DecidedAt, t.Comment)).ToList();
 

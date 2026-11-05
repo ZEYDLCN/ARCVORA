@@ -21,6 +21,7 @@ public static class RequestEventKinds
     public const string Rejected = "rejected";
     public const string Cancelled = "cancelled";
     public const string ApproverRemoved = "approver_removed";
+    public const string Reassigned = "reassigned";
     public const string Completed = "completed";
     public const string AccountingQueued = "accounting_queued";
     public const string AccountingSent = "accounting_sent";
