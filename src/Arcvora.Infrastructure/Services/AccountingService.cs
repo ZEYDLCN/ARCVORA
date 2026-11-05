@@ -127,8 +127,10 @@ public sealed class AccountingService(ArcvoraDbContext db, AppAccessService acce
             using var doc = JsonDocument.Parse(r.Entry.PayloadJson);
             var root = doc.RootElement;
             var requester = root.GetProperty("requester");
+            var fileNames = root.TryGetProperty("attachments", out var at) && at.ValueKind == JsonValueKind.Array
+                ? at.EnumerateArray().ToDictionary(a => a.GetProperty("id").GetString()!, a => a.GetProperty("fileName").GetString()!) : [];
             var fields = root.TryGetProperty("fields", out var f) && f.ValueKind == JsonValueKind.Array
-                ? string.Join(" | ", f.EnumerateArray().Select(x => $"{x.GetProperty("label").GetString()}={FieldText(x)}")) : "";
+                ? string.Join(" | ", f.EnumerateArray().Select(x => $"{x.GetProperty("label").GetString()}={FieldText(x, fileNames)}")) : "";
             sb.Append(Line(sep, r.Entry.Number, r.AppName, r.Entry.Category, Turkish(r.Entry.Status), requester.GetProperty("name").GetString(),
                 requester.GetProperty("email").GetString(), Utc(root, "submittedAt"), Utc(root, "approvedAt"),
                 r.Entry.ProcessedAt?.UtcDateTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture), r.Entry.Note,
@@ -137,10 +139,12 @@ public sealed class AccountingService(ArcvoraDbContext db, AppAccessService acce
         return (Encoding.UTF8.GetBytes(sb.ToString()), $"muhasebe-{clock.GetUtcNow():yyyyMMdd-HHmm}.csv");
     }
 
-    private static string FieldText(JsonElement f)
+    private static string FieldText(JsonElement f, IReadOnlyDictionary<string, string> fileNames)
     {
         if (f.TryGetProperty("valueLabel", out var vl) && vl.ValueKind == JsonValueKind.String) return vl.GetString()!;
         var v = f.GetProperty("value");
+        if (f.TryGetProperty("type", out var type) && type.GetString() == "file" && v.ValueKind == JsonValueKind.Array)
+            return string.Join(", ", v.EnumerateArray().Select(x => fileNames.GetValueOrDefault(x.GetString() ?? "", "(dosya)")));
         return v.ValueKind switch
         {
             JsonValueKind.String => v.GetString()!,
