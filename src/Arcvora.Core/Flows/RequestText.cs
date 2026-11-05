@@ -34,6 +34,8 @@ public static class RequestText
         string Str(string name) => detail is { ValueKind: JsonValueKind.Object } d && d.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "";
         var step = Str("stepName");
         var comment = Str("comment");
+        // Vekil karar verdiyse "Vekil, Müdür adına": kayıtta hem kararı veren hem adına karar verilen görünür.
+        string Behalf() => Guid.TryParse(Str("onBehalfOf"), out var b) ? $", {(people.TryGetValue(b, out var bn) ? bn : "Bir kullanıcı")} adına" : "";
 
         switch (kind)
         {
@@ -48,8 +50,13 @@ public static class RequestText
                 return $"“{step}” adımı başladı. Onaylayacak: {string.Join(", ", names)}{(fb == "" ? "" : $" ({FallbackLabel(fb)} master admin’e yönlendirildi)")}.";
             }
             case "step_skipped": return $"“{step}” adımı koşul sağlanmadığı için atlandı.";
-            case "approved": return $"{who} “{step}” adımını onayladı{(comment == "" ? "." : ": " + comment)}";
-            case "rejected": return $"{who} “{step}” adımında reddetti{(comment == "" ? "." : ": " + comment)}";
+            case "approved": return $"{who}{Behalf()} “{step}” adımını onayladı{(comment == "" ? "." : ": " + comment)}";
+            case "rejected": return $"{who}{Behalf()} “{step}” adımında reddetti{(comment == "" ? "." : ": " + comment)}";
+            case "reassigned":
+            {
+                string P(string key) => Guid.TryParse(Str(key), out var id) && people.TryGetValue(id, out var nm) ? nm : "Bir kullanıcı";
+                return $"{who} “{step}” görevinin onaylayıcısını değiştirdi: {P("from")} → {P("to")}.";
+            }
             case "cancelled": return $"{who} talebi iptal etti.";
             case "approver_removed":
             {

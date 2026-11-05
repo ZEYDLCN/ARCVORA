@@ -72,3 +72,28 @@ public class RequestTextTests
         Assert.Equal("something_new", Text("something_new"));
     }
 }
+
+public class RequestTextDelegationTests
+{
+    private static readonly Guid Ayse = Guid.Parse("00000000-0000-0000-0000-00000000000a");
+    private static readonly Guid Mehmet = Guid.Parse("00000000-0000-0000-0000-00000000000b");
+    private static readonly IReadOnlyDictionary<Guid, string> People = new Dictionary<Guid, string> { [Ayse] = "Ayşe Kaya", [Mehmet] = "Mehmet Demir" };
+    private static string Text(string kind, Guid? actor, string detail) => RequestText.Event(kind, actor, JsonDocument.Parse(detail).RootElement.Clone(), People);
+
+    [Fact]
+    public void Decisions_made_by_a_deputy_name_the_person_they_acted_for()
+    {
+        var detail = $$"""{"stepName":"Yönetici onayı","comment":"Tamam","onBehalfOf":"{{Ayse}}"}""";
+        Assert.Equal("Mehmet Demir, Ayşe Kaya adına “Yönetici onayı” adımını onayladı: Tamam", Text("approved", Mehmet, detail));
+        Assert.Equal("Mehmet Demir, Ayşe Kaya adına “Yönetici onayı” adımında reddetti: Tamam", Text("rejected", Mehmet, detail));
+        Assert.StartsWith("Mehmet Demir, Bir kullanıcı adına", Text("approved", Mehmet, $$"""{"stepName":"x","onBehalfOf":"{{Guid.NewGuid()}}"}"""));
+        Assert.Equal("Mehmet Demir “x” adımını onayladı.", Text("approved", Mehmet, """{"stepName":"x"}"""));       // vekâlet yoksa eski cümle
+    }
+
+    [Fact]
+    public void Reassignment_names_both_people()
+    {
+        Assert.Equal("Ayşe Kaya “Yönetici onayı” görevinin onaylayıcısını değiştirdi: Mehmet Demir → Ayşe Kaya.",
+            Text("reassigned", Ayse, $$"""{"stepName":"Yönetici onayı","from":"{{Mehmet}}","to":"{{Ayse}}"}"""));
+    }
+}
