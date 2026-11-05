@@ -63,6 +63,8 @@ public static class Endpoints
             Results.Created($"/api/workspaces/{id}/members", await s.CreateUserAsync(UserId(u), id, r, ct)));
         secured.MapPatch("/workspaces/{id:guid}/members/{userId:guid}", async (Guid id, Guid userId, UpdateMemberRequest r, ClaimsPrincipal u, MemberService s, CancellationToken ct) =>
             Results.Ok(await s.UpdateAsync(UserId(u), id, userId, r, ct)));
+        secured.MapPost("/workspaces/{id:guid}/members/{userId:guid}/reset-password", async (Guid id, Guid userId, ResetPasswordRequest r, ClaimsPrincipal u, MemberService s, CancellationToken ct) =>
+            Results.Ok(await s.ResetPasswordAsync(UserId(u), id, userId, r.Password, ct))).RequireRateLimiting("auth");
         secured.MapDelete("/workspaces/{id:guid}/members/{userId:guid}", async (Guid id, Guid userId, ClaimsPrincipal u, MemberService s, CancellationToken ct) =>
         {
             await s.RemoveAsync(UserId(u), id, userId, ct);
