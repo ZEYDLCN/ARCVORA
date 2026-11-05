@@ -119,9 +119,13 @@ export interface TaskInfo {
   fallback?: string; createdAt: string; decidedAt?: string; decidedBy?: string;
 }
 export interface RequestEventInfo { id: number; at: string; actorId?: string; kind: string; detail?: Record<string, unknown> }
+export interface AttachmentInfo {
+  id: string; fieldKey?: string; fileName: string; contentType: string; size: number; sha256: string; uploadedBy: string; createdAt: string;
+}
 export interface RequestDetail {
   summary: RequestSummary; definition: FlowDefinition; versionNumber: number; data: Record<string, unknown>;
   tasks: TaskInfo[]; events: RequestEventInfo[]; people: Record<string, string>; canCancel: boolean; myPendingTaskId?: string;
+  attachments: AttachmentInfo[];
 }
 export interface MyTask {
   id: string; requestId: string; requestNumber: string; appName: string; icon: string; summary: string; requesterName: string;

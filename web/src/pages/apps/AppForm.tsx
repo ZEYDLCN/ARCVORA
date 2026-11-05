@@ -22,6 +22,14 @@ export function AppForm({ id, workspace }: Ctx & { id: string }) {
     api.directory(workspace.id).then(setPeople).catch(() => setPeople([]));
   }, [id, workspace.id]);
 
+  const uploads = useMemo(() => ({
+    upload: async (file: File) => {
+      const a = await api.uploadFile(id, file);
+      return { id: a.id, fileName: a.fileName, size: a.size, contentType: a.contentType };
+    },
+    remove: (fileId: string) => api.deleteAttachment(fileId),
+  }), [id]);
+
   const steps = useMemo(() => form?.definition.steps ?? [], [form]);
 
   const submit = async (e: React.FormEvent) => {
@@ -57,7 +65,7 @@ export function AppForm({ id, workspace }: Ctx & { id: string }) {
           <form className="card" style={{ maxWidth: 820 }} onSubmit={submit} noValidate>
             {error && <div className="notice error" role="alert" style={{ marginBottom: 8 }}>{error}</div>}
             {errors._ && <div className="notice error" role="alert" style={{ marginBottom: 8 }}>{errors._.join(' ')}</div>}
-            <DynamicForm def={form.definition} values={values} errors={errors} people={people} disabled={busy}
+            <DynamicForm def={form.definition} values={values} errors={errors} people={people} disabled={busy} uploads={uploads}
               onChange={(k, v) => { setValues((s) => ({ ...s, [k]: v })); setErrors((s) => (s[k] ? { ...s, [k]: [] } : s)); }} />
             <h3 style={{ marginTop: 22 }}>Onay akışı</h3>
             <div className="step-strip" aria-label="Onay adımları">

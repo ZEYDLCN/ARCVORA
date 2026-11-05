@@ -66,3 +66,14 @@ td .actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .inline-form { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; }
 .inline-form > * { flex: 1 1 180px; }
 .inline-form > button { flex: 0 0 auto; }
+
+/* Ekler (fiş / belge / tarama) */
+.file-field { display: grid; gap: 8px; }
+.file-list, .attachments { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.file-list li, .attachments li { display: flex; gap: 10px; align-items: center; padding: 8px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-2); }
+.file-list .file-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.attachments .attachment-info { flex: 1; min-width: 0; display: grid; }
+.attachments .attachment-info b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.thumb { width: 52px; height: 52px; border-radius: 10px; object-fit: cover; flex: none; border: 1px solid var(--line); background: var(--surface); }
+.thumb.placeholder { display: grid; place-items: center; font-size: 24px; }
+@media (max-width: 560px) { .file-field .row .btn { flex: 1 1 100%; } }

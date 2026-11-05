@@ -1,5 +1,5 @@
 import type {
-  AccountingEntry, AccountingSettings, AppDetail, AppForm, AppGrants, AppSummary, Artifact, AuthResult, DirectoryEntry, FlowDefinition,
+  AccountingEntry, AccountingSettings, AppDetail, AttachmentInfo, AppForm, AppGrants, AppSummary, Artifact, AuthResult, DirectoryEntry, FlowDefinition,
   GroupInfo, Job, Member, MyApp, MyTask, ProfileInfo, ProjectDetail, ProjectSummary, ProposalDetail, ProposalSummary, RequestDetail,
   RequestSummary, View, Finding, Model, VersionInfo, WorkspaceInfo,
 } from './types';
@@ -161,6 +161,33 @@ export const api = {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
+  },
+
+  /** Dosyayı ham gövdeyle yükler (talebe bağlanmadan önce "hazırlanır"). Tür/boyut kararı sunucudadır. */
+  async uploadFile(appId: string, file: File): Promise<AttachmentInfo> {
+    const token = memoryToken ?? getToken();
+    const res = await fetch(`/api/apps/${appId}/uploads?fileName=${encodeURIComponent(file.name)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/octet-stream', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: file,
+    });
+    const text = await res.text();
+    let data: unknown = null;
+    try { data = text ? JSON.parse(text) : null; } catch { /* gövde JSON değil */ }
+    if (!res.ok) {
+      const p = (data ?? {}) as { code?: string; title?: string; details?: unknown };
+      if (res.status === 401 && token) window.dispatchEvent(new Event('arcvora:unauthorized'));
+      throw new ApiError(res.status, p.code ?? 'error', p.title ?? `Dosya yüklenemedi (${res.status}).`, p.details);
+    }
+    return data as AttachmentInfo;
+  },
+  deleteAttachment: (id: string) => request<void>('DELETE', `/attachments/${id}`),
+  /** Ek dosyanın baytları (kimlik doğrulamalı). Önizleme ve kaydetme bunu kullanır. */
+  async attachmentBlob(id: string): Promise<Blob> {
+    const token = memoryToken ?? getToken();
+    const res = await fetch(`/api/attachments/${id}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    if (!res.ok) throw new ApiError(res.status, 'download_failed', 'Dosya indirilemedi.');
+    return res.blob();
   },
 
   /** Kimlik doğrulamalı indirme (bağlantıya token eklenemediği için fetch + blob). */

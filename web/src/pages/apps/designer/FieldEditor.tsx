@@ -33,7 +33,7 @@ export function FieldEditor({ field: f, index, total, dates, errors, onChange, o
         <div><label htmlFor={`${id}-l`}>Etiket</label><input id={`${id}-l`} type="text" maxLength={100} value={f.label} onChange={(e) => onChange({ label: e.target.value })} /></div>
         <div>
           <label htmlFor={`${id}-t`}>Tür</label>
-          <select id={`${id}-t`} value={f.type} onChange={(e) => onChange({ type: e.target.value as FieldType, options: undefined, computed: undefined, notBefore: undefined, min: undefined, max: undefined, maxLength: undefined })}>
+          <select id={`${id}-t`} value={f.type} onChange={(e) => onChange({ type: e.target.value as FieldType, options: undefined, computed: undefined, notBefore: undefined, min: undefined, max: undefined, maxLength: undefined, maxFiles: undefined })}>
             {(Object.keys(fieldTypeLabels) as FieldType[]).map((t) => <option key={t} value={t}>{fieldTypeLabels[t]}</option>)}
           </select>
         </div>
@@ -56,6 +56,12 @@ export function FieldEditor({ field: f, index, total, dates, errors, onChange, o
       )}
       {(f.type === 'text' || f.type === 'long_text') && (
         <div className="mini-grid"><div><label htmlFor={`${id}-ml`}>En fazla karakter</label><input id={`${id}-ml`} type="number" min={1} max={4000} value={f.maxLength ?? ''} onChange={(e) => onChange({ maxLength: clean(e.target.value) })} /></div></div>
+      )}
+      {f.type === 'file' && (
+        <div className="mini-grid"><div>
+          <label htmlFor={`${id}-mf`}>En fazla dosya sayısı</label>
+          <input id={`${id}-mf`} type="number" min={1} max={10} value={f.maxFiles ?? ''} placeholder="3" onChange={(e) => onChange({ maxFiles: clean(e.target.value) })} />
+        </div></div>
       )}
       {isDate && dates.length > 0 && (
         <div className="mini-grid"><div>

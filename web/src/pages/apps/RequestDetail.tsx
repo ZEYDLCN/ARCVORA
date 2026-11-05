@@ -4,6 +4,7 @@ import { go } from '../../components/AppsShell';
 import { RequestBadge, TaskBadge } from '../../components/StatusBadge';
 import { eventText, fallbackLabel, stepStates } from '../../lib/requestText';
 import { formatValue } from '../../lib/flow';
+import { AttachmentList } from '../../components/AttachmentList';
 import type { RequestDetail as Detail } from '../../types';
 import { errorText, when } from './common';
 
@@ -62,6 +63,13 @@ export function RequestDetail({ id }: { id: string }) {
               </div>
             ))}
           </dl>
+
+          {(d.attachments ?? []).length > 0 && (
+            <>
+              <h3>Ekler</h3>
+              <AttachmentList attachments={d.attachments} labels={Object.fromEntries(d.definition.fields.map((f) => [f.key, f.label]))} />
+            </>
+          )}
 
           {taskId && s.status === 'in_review' && (
             <div className="decision-box">

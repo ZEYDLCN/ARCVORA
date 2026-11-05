@@ -1,6 +1,8 @@
 import { useId } from 'react';
 import { formatValue, withComputed, type FlowDefinition, type FlowField, type FormValues } from '../lib/flow';
 import type { DirectoryEntry } from '../types';
+import type { PickedFile } from '../lib/files';
+import { FileField, type UploadApi } from './FileField';
 
 interface Props {
   def: FlowDefinition;
@@ -9,10 +11,12 @@ interface Props {
   errors?: Record<string, string[]>;
   people?: DirectoryEntry[];
   disabled?: boolean;
+  /** Ek alanları için yükleme/silme; verilmezse ek alanları devre dışı çizilir. */
+  uploads?: UploadApi;
 }
 
 /** Akış tanımından form çizer. Hesaplanan alanlar yalnızca gösterilir; kesin doğrulama sunucudadır. */
-export function DynamicForm({ def, values, onChange, errors = {}, people = [], disabled }: Props) {
+export function DynamicForm({ def, values, onChange, errors = {}, people = [], disabled, uploads }: Props) {
   const uid = useId();
   const shown = withComputed(def, values);
   const names = Object.fromEntries(people.map((p) => [p.id, p.displayName]));
@@ -26,7 +30,7 @@ export function DynamicForm({ def, values, onChange, errors = {}, people = [], d
         const common = { id, disabled, 'aria-invalid': err || undefined, 'aria-describedby': err ? `${id}-err` : undefined } as const;
         const str = typeof values[f.key] === 'string' ? (values[f.key] as string) : '';
         const label = (
-          <label htmlFor={f.type === 'multi_select' ? undefined : id}>{f.label}{f.required && !f.computed && <span aria-hidden="true"> *</span>}</label>
+          <label htmlFor={f.type === 'multi_select' || f.type === 'file' ? undefined : id}>{f.label}{f.required && !f.computed && <span aria-hidden="true"> *</span>}</label>
         );
 
         let control: React.ReactNode;
@@ -80,6 +84,12 @@ export function DynamicForm({ def, values, onChange, errors = {}, people = [], d
                 {err && <div className="err" id={`${id}-err`} role="alert">{errs.join(' ')}</div>}
               </div>
             );
+          case 'file':
+            control = (
+              <FileField label={f.label} value={Array.isArray(values[f.key]) ? (values[f.key] as PickedFile[]) : []} maxFiles={f.maxFiles ?? 3}
+                uploads={uploads} disabled={disabled} invalid={err} describedBy={err ? `${id}-err` : undefined} onChange={(files) => onChange(f.key, files)} />
+            );
+            break;
           case 'user':
             control = (
               <select {...common} value={str} onChange={(e) => onChange(f.key, e.target.value)}>
@@ -93,7 +103,7 @@ export function DynamicForm({ def, values, onChange, errors = {}, people = [], d
         }
 
         return (
-          <div className={`field${f.type === 'long_text' || f.type === 'multi_select' ? ' wide' : ''}`} key={f.key}>
+          <div className={`field${f.type === 'long_text' || f.type === 'multi_select' || f.type === 'file' ? ' wide' : ''}`} key={f.key}>
             {label}
             {control}
             {f.helpText && <div className="help">{f.helpText}</div>}

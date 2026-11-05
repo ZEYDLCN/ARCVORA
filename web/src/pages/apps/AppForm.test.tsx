@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { flowTemplates } from '../../lib/templates';
 
-const mocks = vi.hoisted(() => ({ appForm: vi.fn(), directory: vi.fn(), submit: vi.fn() }));
+const mocks = vi.hoisted(() => ({ appForm: vi.fn(), directory: vi.fn(), submit: vi.fn(), uploadFile: vi.fn(), deleteAttachment: vi.fn() }));
 vi.mock('../../api', async (orig) => ({ ...(await orig<typeof import('../../api')>()), api: mocks }));
 const { ApiError } = await import('../../api');
 const { AppForm } = await import('./AppForm');
@@ -94,5 +94,45 @@ describe('AppForm', () => {
     await render();
     expect(host.querySelector('[role="alert"]')!.textContent).toContain('yetkiniz yok');
     expect(host.querySelector('form')).toBeNull();
+  });
+
+  describe('ek alanı', () => {
+    const receiptDef = {
+      schema: 1, prefix: 'MSF', summaryFields: ['amount'],
+      fields: [{ key: 'amount', label: 'Tutar', type: 'money', required: true }, { key: 'receipt', label: 'Fiş', type: 'file', maxFiles: 2 }],
+      steps: [{ id: 's1', name: 'Yönetici', approvers: { type: 'manager' } }],
+    };
+    const pickFile = async (name: string) => {
+      const input = host.querySelector('input[type=file]:not([capture])') as HTMLInputElement;
+      Object.defineProperty(input, 'files', { value: [new File([new Uint8Array(10)], name, { type: 'image/png' })], configurable: true });
+      await act(async () => { input.dispatchEvent(new Event('change', { bubbles: true })); });
+      await flush();
+    };
+
+    beforeEach(() => {
+      mocks.appForm.mockResolvedValue({ app: { id: 'app1', workspaceId: 'w', name: 'Masraf', description: '', icon: 'wallet', versionNumber: 1 }, definition: receiptDef });
+    });
+
+    it('dosyayı uygulama kimliğiyle yükler ve talep gönderilirken yalnızca kimlikleri yollar', async () => {
+      mocks.uploadFile.mockResolvedValue({ id: 'f1', fileName: 'fis.png', size: 10, contentType: 'image/png' });
+      mocks.submit.mockResolvedValue({ summary: { id: 'req-1' } });
+      await render();
+      set(ctl('Tutar'), '125,50');
+      await pickFile('fis.png');
+      expect(mocks.uploadFile).toHaveBeenCalledWith('app1', expect.any(File));
+      expect(host.textContent).toContain('fis.png');
+      await submit();
+      expect(mocks.submit.mock.calls[0][1]).toEqual({ amount: 125.5, receipt: ['f1'] });
+    });
+
+    it('sunucu "geçersiz dosya" derse hatayı ek alanının altında gösterir', async () => {
+      mocks.submit.mockRejectedValue(new ApiError(422, 'invalid_request', 'Form geçersiz.', [
+        { code: 'invalid_file', path: 'data.receipt', message: 'Eklenen dosya geçersiz veya zaten kullanılmış. Dosyayı yeniden yükleyin.' },
+      ]));
+      await render();
+      set(ctl('Tutar'), '10');
+      await submit();
+      expect(host.querySelector('.field .err')!.textContent).toContain('yeniden yükleyin');
+    });
   });
 });

@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RequestDetail as Detail } from '../../types';
 
-const api = vi.hoisted(() => ({ requestDetail: vi.fn(), approveTask: vi.fn(), rejectTask: vi.fn(), cancelRequest: vi.fn() }));
+const api = vi.hoisted(() => ({ requestDetail: vi.fn(), approveTask: vi.fn(), rejectTask: vi.fn(), cancelRequest: vi.fn(), attachmentBlob: vi.fn() }));
 vi.mock('../../api', async (orig) => ({ ...(await orig<typeof import('../../api')>()), api }));
 const { RequestDetail } = await import('./RequestDetail');
 
@@ -23,7 +23,7 @@ const base = (over: Partial<Detail> = {}): Detail => ({
   versionNumber: 1, data: { kind: 'Yıllık', note: 'merhaba', days: 5 },
   tasks: [{ id: 't1', assigneeId: 'u2', stepIndex: 0, stepId: 's1', stepName: 'Yönetici onayı', status: 'pending', createdAt: '2026-11-05T10:00:00Z' }],
   events: [{ id: 1, at: '2026-11-05T10:00:00Z', actorId: 'u1', kind: 'submitted' }],
-  people: { u1: 'Çalışan', u2: 'Yönetici' }, canCancel: false, ...over,
+  people: { u1: 'Çalışan', u2: 'Yönetici' }, canCancel: false, attachments: [], ...over,
 });
 
 const render = async (id = 'r1') => { await act(async () => { root.render(<RequestDetail id={id} />); await Promise.resolve(); await Promise.resolve(); }); };
@@ -116,5 +116,19 @@ describe('RequestDetail', () => {
     api.requestDetail.mockRejectedValue(new Error('x'));
     await render();
     expect(host.querySelector('[role="alert"]')!.textContent).toContain('Talep yüklenemedi');
+  });
+
+  it('ekleri alan etiketiyle listeler; eksiz talepte "Ekler" bölümü yoktur', async () => {
+    api.requestDetail.mockResolvedValue(base());
+    await render();
+    expect(host.textContent).not.toContain('Ekler');
+
+    api.requestDetail.mockResolvedValue(base({
+      attachments: [{ id: 'a1', fieldKey: 'note', fileName: 'fatura.pdf', contentType: 'application/pdf', size: 4096, sha256: 'x', uploadedBy: 'u1', createdAt: '2026-11-05T10:00:00Z' }],
+    }));
+    await render('r2');                                  // farklı kimlik: bileşen yeniden yükler
+    expect(host.textContent).toContain('Ekler');
+    expect(host.textContent).toContain('fatura.pdf');
+    expect(host.textContent).toContain('Açıklama · 4 KB');
   });
 });
