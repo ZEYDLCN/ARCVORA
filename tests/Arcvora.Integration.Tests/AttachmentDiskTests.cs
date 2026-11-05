@@ -67,4 +67,15 @@ public class AttachmentDiskTests(DiskApiFactory factory) : IClassFixture<DiskApi
         foreach (var f in FilesOnDisk(factory.Root).Where(f => f.Contains(Guid.Parse(id).ToString("N")))) File.Delete(f);
         Assert.Equal(HttpStatusCode.NotFound, (await emp.DownloadAsync($"/api/attachments/{id}")).Status);
     }
+
+    [Fact]
+    public async Task Demo_files_are_written_to_disk_and_removed_with_the_demo_data()
+    {
+        var admin = await Api.RegisterAsync(factory);
+        var before = FilesOnDisk(factory.Root).Count();
+        Assert.True((await admin.PostAsync($"/api/workspaces/{admin.WorkspaceId}/demo-data")).Is(HttpStatusCode.Created));
+        Assert.True(FilesOnDisk(factory.Root).Count() - before >= 4);
+        Assert.True((await admin.DeleteAsync($"/api/workspaces/{admin.WorkspaceId}/demo-data")).Is(HttpStatusCode.NoContent));
+        Assert.Equal(before, FilesOnDisk(factory.Root).Count());
+    }
 }

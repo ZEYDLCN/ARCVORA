@@ -107,6 +107,17 @@ public static class AppsEndpoints
             return Results.File(data, "text/csv; charset=utf-8", name);
         });
 
+        // ------------------------------------------------------------------ demo veri
+        secured.MapGet("/workspaces/{id:guid}/demo-data", async (Guid id, ClaimsPrincipal u, DemoDataService s, CancellationToken ct) =>
+            Results.Ok(await s.StatusAsync(Endpoints.UserId(u), id, ct)));
+        secured.MapPost("/workspaces/{id:guid}/demo-data", async (Guid id, ClaimsPrincipal u, DemoDataService s, CancellationToken ct) =>
+            Results.Created($"/api/workspaces/{id}/demo-data", await s.SeedAsync(Endpoints.UserId(u), id, ct)));
+        secured.MapDelete("/workspaces/{id:guid}/demo-data", async (Guid id, ClaimsPrincipal u, DemoDataService s, CancellationToken ct) =>
+        {
+            await s.RemoveAsync(Endpoints.UserId(u), id, ct);
+            return Results.NoContent();
+        });
+
         // --------------------------------------------------------------------- onay
         secured.MapGet("/my/tasks", async (bool? done, ClaimsPrincipal u, RequestService s, CancellationToken ct) =>
             Results.Ok(await s.MyTasksAsync(Endpoints.UserId(u), done ?? false, ct)));

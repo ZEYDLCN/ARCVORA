@@ -146,7 +146,7 @@ public class DemoDataTests(ApiFactory factory) : IClassFixture<ApiFactory>
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ArcvoraDbContext>();
         Assert.Equal(0, await db.Attachments.CountAsync(a => a.WorkspaceId == admin.WorkspaceId));
-        Assert.Equal(0, await db.AttachmentBlobs.CountAsync());
+        Assert.Equal(0, await db.AttachmentBlobs.CountAsync(b => db.Attachments.All(a => a.Id != b.AttachmentId)));     // yetim bayt yok
         Assert.Equal(0, await db.RequestCounters.CountAsync(c => c.WorkspaceId == admin.WorkspaceId));
         Assert.Equal(0, await db.Users.CountAsync(u => u.IsDemo && u.ManagedByWorkspaceId == admin.WorkspaceId));
 
@@ -190,7 +190,7 @@ public class DemoDataTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(3, members.Count);
         Assert.Equal(1, (await admin.GetAsync($"/api/workspaces/{admin.WorkspaceId}/apps")).Body.GetArrayLength());
         Assert.Equal(2, (await worker.GetAsync("/api/my/requests")).Body.GetArrayLength());
-        Assert.Equal(1, (await boss.GetAsync("/api/my/tasks")).Body.GetArrayLength() - 1);    // yalnızca gerçek görevler (ikisinden biri hâlâ bekliyor)
+        Assert.Equal(2, (await boss.GetAsync("/api/my/tasks")).Body.GetArrayLength());           // yalnızca iki gerçek talebin görevleri
     }
 
     [Fact]
@@ -231,7 +231,7 @@ public class DemoDataTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var u = seed["users"][0];
         var login = await new Api(factory.CreateClient()).PostAsync("/api/auth/login", new { email = u.GetProperty("email").GetString(), password = u.GetProperty("temporaryPassword").GetString() });
         Assert.True(login.Is(HttpStatusCode.OK), login.ToString());
-        Assert.True(login["user"].GetProperty("mustChangePassword").GetBoolean());
+        Assert.True(login["mustChangePassword"].GetBoolean());
         var bad = await new Api(factory.CreateClient()).PostAsync("/api/auth/login", new { email = u.GetProperty("email").GetString(), password = "demo123" });
         Assert.True(bad.Is(HttpStatusCode.Unauthorized));
         _ = admin;

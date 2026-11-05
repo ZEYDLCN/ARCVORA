@@ -51,6 +51,7 @@ public static class DependencyInjection
         services.AddScoped<AppDesignService>();
         services.AddScoped<AttachmentService>();
         services.AddScoped<DocumentService>();
+        services.AddScoped<DemoDataService>();
         services.AddScoped<RequestVisibility>();
         services.AddScoped<RequestService>();
         services.AddScoped<IRequestHooks, AccountingHooks>();
