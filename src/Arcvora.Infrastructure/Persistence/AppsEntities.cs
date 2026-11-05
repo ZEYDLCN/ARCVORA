@@ -167,3 +167,33 @@ public sealed class AccountingSettings
     public Guid? AccountingGroupId { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 }
+
+/// <summary>
+/// Talebe eklenen dosya (fiş, belge, tarama). Önce "hazırlanmış" (RequestId boş) olarak yüklenir; talep gönderilince talebe bağlanır.
+/// Bağlanmamış dosyalar süre dolunca temizlenir. Baytlar <see cref="AttachmentBlob"/> içinde ya da diskte durur (bkz. IFileStore).
+/// </summary>
+public sealed class Attachment
+{
+    public Guid Id { get; set; }
+    public Guid WorkspaceId { get; set; }
+    public Guid AppId { get; set; }
+    public Guid UploadedBy { get; set; }
+    public Guid? RequestId { get; set; }
+    public string? FieldKey { get; set; }
+    /// <summary>Temizlenmiş görünen ad (uzantı gerçek türe göre).</summary>
+    public string FileName { get; set; } = "";
+    /// <summary>İçerikten belirlenen tür; istemcinin bildirdiği değil.</summary>
+    public string ContentType { get; set; } = "";
+    public long Size { get; set; }
+    public string Sha256 { get; set; } = "";
+    public bool IsDemo { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset? LinkedAt { get; set; }
+}
+
+/// <summary>Varsayılan depo: baytlar veritabanında (yedekle birlikte gider, silmeyle birlikte kalkar).</summary>
+public sealed class AttachmentBlob
+{
+    public Guid AttachmentId { get; set; }
+    public byte[] Data { get; set; } = [];
+}

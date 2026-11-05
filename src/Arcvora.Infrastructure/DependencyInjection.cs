@@ -2,6 +2,7 @@ using Arcvora.Core.Ai;
 using Arcvora.Infrastructure.Ai;
 using Arcvora.Infrastructure.Auth;
 using Arcvora.Infrastructure.Common;
+using Arcvora.Infrastructure.Files;
 using Arcvora.Infrastructure.Jobs;
 using Arcvora.Infrastructure.Persistence;
 using Arcvora.Infrastructure.Services;
@@ -20,6 +21,7 @@ public static class DependencyInjection
         services.Configure<JobOptions>(config.GetSection("Jobs"));
         services.Configure<AuthOptions>(config.GetSection("Auth"));
         services.Configure<AccountingOptions>(config.GetSection("Accounting"));
+        services.Configure<AttachmentOptions>(config.GetSection("Attachments"));
 
         // DATABASE_URL, barındırıcıların (Render, Koyeb, Fly…) yerleşik kuralıdır ve verilmişse önceliklidir; postgres:// adresi de kabul edilir.
         var connection = ConnectionStringNormalizer.Normalize(
@@ -47,6 +49,17 @@ public static class DependencyInjection
         services.AddScoped<RequestService>();
         services.AddScoped<IRequestHooks, AccountingHooks>();
         services.AddScoped<AccountingService>();
+        var attachments = config.GetSection("Attachments").Get<AttachmentOptions>() ?? new AttachmentOptions();
+        if (attachments.MaxSizeMb is < 1 or > 25) throw new InvalidOperationException("Attachments:MaxSizeMb 1–25 arasında olmalı.");
+        switch (attachments.Store.ToLowerInvariant())
+        {
+            case "database": services.AddScoped<IFileStore, DbFileStore>(); break;
+            case "disk":
+                if (string.IsNullOrWhiteSpace(attachments.Path)) throw new InvalidOperationException("Attachments:Store=disk için Attachments:Path gerekli.");
+                services.AddSingleton<IFileStore>(new DiskFileStore(Path.GetFullPath(attachments.Path)));
+                break;
+            default: throw new InvalidOperationException($"Bilinmeyen Attachments:Store '{attachments.Store}' (database | disk).");
+        }
         services.AddHttpClient(AccountingDispatcher.ClientName, c => c.Timeout = TimeSpan.FromSeconds(config.GetValue("Accounting:TimeoutSeconds", 15)));
         services.AddSingleton<AccountingDispatcher>();
         services.AddScoped<GenerationJobHandler>();

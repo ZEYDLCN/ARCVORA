@@ -68,3 +68,18 @@ public sealed class AuthOptions
     public bool RegistrationOpen { get; set; } = true;
 }
 
+
+/// <summary>Talep ekleri (fiş, belge, tarama).</summary>
+public sealed class AttachmentOptions
+{
+    /// <summary>"database" (varsayılan; baytlar PostgreSQL'de) veya "disk" (Path altında).</summary>
+    public string Store { get; set; } = "database";
+    /// <summary>Store=disk için kök klasör. Yedeklemeyi ve disk alanını yönetmek size kalır.</summary>
+    public string Path { get; set; } = "";
+    /// <summary>Tek dosya için üst sınır (1–25 MB).</summary>
+    public int MaxSizeMb { get; set; } = 10;
+    /// <summary>Bir kullanıcının talebe bağlanmamış (hazırlanmış) en fazla dosya sayısı; yükleme kötüye kullanımını sınırlar.</summary>
+    public int MaxStagedPerUser { get; set; } = 20;
+    /// <summary>Talebe bağlanmayan dosyalar bu süre sonra temizlenir.</summary>
+    public int StagedTtlHours { get; set; } = 24;
+}

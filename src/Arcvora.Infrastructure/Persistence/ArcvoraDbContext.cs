@@ -24,6 +24,8 @@ public sealed class ArcvoraDbContext(DbContextOptions<ArcvoraDbContext> options)
     public DbSet<RequestEvent> RequestEvents => Set<RequestEvent>();
     public DbSet<AccountingEntry> AccountingEntries => Set<AccountingEntry>();
     public DbSet<AccountingSettings> AccountingSettings => Set<AccountingSettings>();
+    public DbSet<Attachment> Attachments => Set<Attachment>();
+    public DbSet<AttachmentBlob> AttachmentBlobs => Set<AttachmentBlob>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -153,6 +155,24 @@ public sealed class ArcvoraDbContext(DbContextOptions<ArcvoraDbContext> options)
             e.Property(x => x.WebhookUrl).HasMaxLength(500);
             e.Property(x => x.WebhookSecret).HasMaxLength(200);
             e.HasOne<Workspace>().WithMany().HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<Attachment>(e =>
+        {
+            e.Property(x => x.FieldKey).HasMaxLength(40);
+            e.Property(x => x.FileName).HasMaxLength(120);
+            e.Property(x => x.ContentType).HasMaxLength(60);
+            e.Property(x => x.Sha256).HasMaxLength(64);
+            e.HasIndex(x => x.RequestId);
+            e.HasIndex(x => new { x.UploadedBy, x.RequestId, x.CreatedAt });
+            e.HasOne<AppDefinition>().WithMany().HasForeignKey(x => x.AppId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<FlowRequest>().WithMany().HasForeignKey(x => x.RequestId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<AttachmentBlob>(e =>
+        {
+            e.HasKey(x => x.AttachmentId);
+            e.HasOne<Attachment>().WithOne().HasForeignKey<AttachmentBlob>(x => x.AttachmentId).OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<Project>(e =>

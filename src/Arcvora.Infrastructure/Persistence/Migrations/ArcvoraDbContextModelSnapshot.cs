@@ -372,6 +372,80 @@ namespace Arcvora.Infrastructure.Persistence.Migrations
                     b.ToTable("Artifacts");
                 });
 
+            modelBuilder.Entity("Arcvora.Infrastructure.Persistence.Attachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AppId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FieldKey")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<bool>("IsDemo")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("LinkedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("RequestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Sha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<long>("Size")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("UploadedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppId");
+
+                    b.HasIndex("RequestId");
+
+                    b.HasIndex("UploadedBy", "RequestId", "CreatedAt");
+
+                    b.ToTable("Attachments");
+                });
+
+            modelBuilder.Entity("Arcvora.Infrastructure.Persistence.AttachmentBlob", b =>
+                {
+                    b.Property<Guid>("AttachmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<byte[]>("Data")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.HasKey("AttachmentId");
+
+                    b.ToTable("AttachmentBlobs");
+                });
+
             modelBuilder.Entity("Arcvora.Infrastructure.Persistence.AuditEntry", b =>
                 {
                     b.Property<long>("Id")
@@ -1016,6 +1090,29 @@ namespace Arcvora.Infrastructure.Persistence.Migrations
                     b.HasOne("Arcvora.Infrastructure.Persistence.Project", null)
                         .WithMany()
                         .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Arcvora.Infrastructure.Persistence.Attachment", b =>
+                {
+                    b.HasOne("Arcvora.Infrastructure.Persistence.AppDefinition", null)
+                        .WithMany()
+                        .HasForeignKey("AppId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Arcvora.Infrastructure.Persistence.FlowRequest", null)
+                        .WithMany()
+                        .HasForeignKey("RequestId")
+                        .OnDelete(DeleteBehavior.Cascade);
+                });
+
+            modelBuilder.Entity("Arcvora.Infrastructure.Persistence.AttachmentBlob", b =>
+                {
+                    b.HasOne("Arcvora.Infrastructure.Persistence.Attachment", null)
+                        .WithOne()
+                        .HasForeignKey("Arcvora.Infrastructure.Persistence.AttachmentBlob", "AttachmentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
