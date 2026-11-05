@@ -162,9 +162,40 @@ public sealed class Api(HttpClient http)
         return api;
     }
 
+    /// <summary>Var olan bir hesapla giriş yapar (yönetici tarafından açılmış kullanıcılar için).</summary>
+    public static async Task<Api> LoginAsync(ApiFactory f, string email, string password, Guid? workspaceId = null)
+    {
+        var api = new Api(f.CreateClient());
+        var r = await api.PostAsync("/api/auth/login", new { email, password });
+        Assert.True(r.Is(HttpStatusCode.OK), r.ToString());
+        api.Token = r.Str("token");
+        api.Email = email;
+        api.UserId = Guid.Parse(r["user"].GetProperty("id").GetString()!);
+        api.WorkspaceId = workspaceId ?? Guid.Parse(r["workspaces"][0].GetProperty("id").GetString()!);
+        api.Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", api.Token);
+        return api;
+    }
+
+    /// <summary>Yönetici olarak yeni kullanıcı açar (yanıtı döndürür).</summary>
+    public Task<Resp> CreateUserAsync(string? email = null, string role = "app_user", string password = "temporary-pass-1",
+        string displayName = "Çalışan", Guid? managerId = null) =>
+        PostAsync($"/api/workspaces/{WorkspaceId}/users",
+            new { email = email ?? $"u-{Guid.NewGuid():N}@example.com", displayName, password, role, managerId });
+
+    /// <summary>Yönetici olarak kullanıcı açar ve o kullanıcı olarak giriş yapar.</summary>
+    public async Task<Api> NewUserAsync(ApiFactory f, string role = "app_user", string password = "temporary-pass-1",
+        string displayName = "Çalışan", Guid? managerId = null)
+    {
+        var email = $"u-{Guid.NewGuid():N}@example.com";
+        var r = await CreateUserAsync(email, role, password, displayName, managerId);
+        Assert.True(r.Is(HttpStatusCode.Created), r.ToString());
+        return await LoginAsync(f, email, password, WorkspaceId);
+    }
+
     public Task<Resp> GetAsync(string url) => SendAsync(HttpMethod.Get, url, null);
     public Task<Resp> PostAsync(string url, object? body = null, string? idempotencyKey = null) => SendAsync(HttpMethod.Post, url, body ?? new { }, idempotencyKey);
     public Task<Resp> PatchAsync(string url, object body) => SendAsync(HttpMethod.Patch, url, body);
+    public Task<Resp> PutAsync(string url, object body) => SendAsync(HttpMethod.Put, url, body);
     public Task<Resp> DeleteAsync(string url) => SendAsync(HttpMethod.Delete, url, null);
 
     private async Task<Resp> SendAsync(HttpMethod method, string url, object? body, string? idempotencyKey = null)
