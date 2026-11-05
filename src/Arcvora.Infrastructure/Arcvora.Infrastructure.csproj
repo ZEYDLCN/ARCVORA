@@ -24,5 +24,7 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Documents\Fonts\*.ttf" LogicalName="Fonts.%(Filename)%(Extension)" />
+    <!-- Hazır akış şablonları: web/src/lib/templates.json ile aynı içerik (Docker derlemesi yalnızca src/ görür); eşitliği bir test denetler. -->
+    <EmbeddedResource Include="Apps\templates.json" LogicalName="templates.json" />
   </ItemGroup>
 </Project>

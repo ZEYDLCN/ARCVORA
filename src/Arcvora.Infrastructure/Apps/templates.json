@@ -1,0 +1,259 @@
+[
+  {
+    "id": "leave",
+    "name": "İzin talebi",
+    "icon": "calendar",
+    "description": "Evrakla yapılan izin işlemi: tarih aralığı, gün sayısı (otomatik), izin türü ve vekil. Yönetici onaylar; 10 günden uzun izinler ayrıca master admin onayına gider.",
+    "definition": {
+      "schema": 1,
+      "prefix": "IZN",
+      "summaryFields": [
+        "start",
+        "end",
+        "kind"
+      ],
+      "fields": [
+        {
+          "key": "kind",
+          "label": "İzin türü",
+          "type": "select",
+          "required": true,
+          "options": [
+            "Yıllık izin",
+            "Mazeret izni",
+            "Ücretsiz izin",
+            "Rapor"
+          ]
+        },
+        {
+          "key": "start",
+          "label": "Başlangıç tarihi",
+          "type": "date",
+          "required": true
+        },
+        {
+          "key": "end",
+          "label": "Bitiş tarihi",
+          "type": "date",
+          "required": true,
+          "notBefore": "start"
+        },
+        {
+          "key": "days",
+          "label": "Gün sayısı",
+          "type": "number",
+          "computed": {
+            "op": "calendar_days",
+            "from": "start",
+            "to": "end"
+          },
+          "helpText": "Başlangıç ve bitiş dahil takvim günü; otomatik hesaplanır."
+        },
+        {
+          "key": "proxy",
+          "label": "Vekil (izinde işlere bakacak kişi)",
+          "type": "user"
+        },
+        {
+          "key": "note",
+          "label": "Açıklama",
+          "type": "long_text",
+          "maxLength": 500
+        }
+      ],
+      "steps": [
+        {
+          "id": "manager",
+          "name": "Yönetici onayı",
+          "approvers": {
+            "type": "manager"
+          }
+        },
+        {
+          "id": "admin",
+          "name": "Master admin onayı (10 günden uzun)",
+          "approvers": {
+            "type": "admin"
+          },
+          "conditions": [
+            {
+              "field": "days",
+              "op": "gt",
+              "value": 10
+            }
+          ]
+        }
+      ],
+      "completion": {
+        "accounting": {
+          "enabled": false,
+          "category": "izin"
+        }
+      }
+    }
+  },
+  {
+    "id": "advance",
+    "name": "Avans talebi",
+    "icon": "wallet",
+    "description": "Tutar ve gerekçe; yönetici onaylar, 10.000 TRY üzeri tutarlar master admin onayına gider. Onaylanınca muhasebe kuyruğuna düşer.",
+    "definition": {
+      "schema": 1,
+      "prefix": "AVN",
+      "summaryFields": [
+        "amount",
+        "reason"
+      ],
+      "fields": [
+        {
+          "key": "amount",
+          "label": "Tutar",
+          "type": "money",
+          "required": true,
+          "currency": "TRY",
+          "min": 1
+        },
+        {
+          "key": "reason",
+          "label": "Gerekçe",
+          "type": "text",
+          "required": true,
+          "maxLength": 200
+        },
+        {
+          "key": "need_date",
+          "label": "İhtiyaç tarihi",
+          "type": "date"
+        },
+        {
+          "key": "note",
+          "label": "Açıklama",
+          "type": "long_text",
+          "maxLength": 500
+        }
+      ],
+      "steps": [
+        {
+          "id": "manager",
+          "name": "Yönetici onayı",
+          "approvers": {
+            "type": "manager"
+          }
+        },
+        {
+          "id": "admin",
+          "name": "Master admin onayı (10.000 TRY üzeri)",
+          "approvers": {
+            "type": "admin"
+          },
+          "conditions": [
+            {
+              "field": "amount",
+              "op": "gt",
+              "value": 10000
+            }
+          ]
+        }
+      ],
+      "completion": {
+        "accounting": {
+          "enabled": true,
+          "category": "avans"
+        }
+      }
+    }
+  },
+  {
+    "id": "expense",
+    "name": "Masraf bildirimi",
+    "icon": "receipt",
+    "description": "Harcama tarihi, tutar, kategori ve açıklama; yönetici onaylar, 5.000 TRY üzeri tutarlar master admin onayına gider. Onaylanınca muhasebe kuyruğuna düşer. (Fiş/belge yükleme sonraki sürümdedir.)",
+    "definition": {
+      "schema": 1,
+      "prefix": "MSR",
+      "summaryFields": [
+        "amount",
+        "category",
+        "description"
+      ],
+      "fields": [
+        {
+          "key": "expense_date",
+          "label": "Harcama tarihi",
+          "type": "date",
+          "required": true
+        },
+        {
+          "key": "amount",
+          "label": "Tutar",
+          "type": "money",
+          "required": true,
+          "currency": "TRY",
+          "min": 0.01
+        },
+        {
+          "key": "category",
+          "label": "Kategori",
+          "type": "select",
+          "required": true,
+          "options": [
+            "Yemek",
+            "Ulaşım",
+            "Konaklama",
+            "Ofis malzemesi",
+            "Diğer"
+          ]
+        },
+        {
+          "key": "description",
+          "label": "Açıklama",
+          "type": "text",
+          "required": true,
+          "maxLength": 200
+        },
+        {
+          "key": "receipt_no",
+          "label": "Fiş / fatura no",
+          "type": "text",
+          "maxLength": 50
+        },
+        {
+          "key": "receipt_file",
+          "label": "Fiş / fatura (fotoğraf veya tarama)",
+          "type": "file",
+          "maxFiles": 3,
+          "helpText": "Telefonla çekebilir veya taranmış PDF yükleyebilirsiniz."
+        }
+      ],
+      "steps": [
+        {
+          "id": "manager",
+          "name": "Yönetici onayı",
+          "approvers": {
+            "type": "manager"
+          }
+        },
+        {
+          "id": "admin",
+          "name": "Master admin onayı (5.000 TRY üzeri)",
+          "approvers": {
+            "type": "admin"
+          },
+          "conditions": [
+            {
+              "field": "amount",
+              "op": "gt",
+              "value": 5000
+            }
+          ]
+        }
+      ],
+      "completion": {
+        "accounting": {
+          "enabled": true,
+          "category": "masraf"
+        }
+      }
+    }
+  }
+]
