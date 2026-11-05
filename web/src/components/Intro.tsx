@@ -77,7 +77,7 @@ export function Intro({ onDone }: { onDone: () => void }) {
         </div>
         <div className="intro-brand">
           <div className="intro-word">Arcvora</div>
-          <div className="intro-tag">Turn intent into architecture</div>
+          <div className="intro-tag" lang="en">Turn intent into architecture</div>
           <div className="intro-bar"><i /></div>
         </div>
       </div>

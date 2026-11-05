@@ -3,6 +3,7 @@ import { IconInfo, IconPlus } from './icons';
 import { KindIcons } from './icons';
 import { TechLogo } from './TechLogo';
 import { layoutComponents, NODE_H, NODE_W } from '../lib/canvas';
+import { wrapLabel } from '../lib/label';
 import { brandTitle, techLogoIds } from '../lib/techLogo';
 import type { LogoId } from '../lib/logos.generated';
 import type { Model } from '../types';
@@ -143,8 +144,19 @@ export function ArchCanvas({ model, selected, onSelect }: { model: Model; select
                 </g>
                 <clipPath id={`clip-${n.id}`}><rect x={0} y={0} width={NODE_W - 10} height={NODE_H} /></clipPath>
                 <g clipPath={`url(#clip-${n.id})`}>
-                  <text x={14 + 38 + (ids.length > 1 ? 20 : 0) + 12} y={29} className="ntitle">{clip(n.name, ids.length > 1 ? 11 : 14)}</text>
-                  <text x={14 + 38 + (ids.length > 1 ? 20 : 0) + 12} y={46} className="nsub">{clip(n.technology || kindLabel[n.kind] || n.kind, ids.length > 1 ? 13 : 17)}</text>
+                  {(() => {
+                    const tx = 14 + 38 + (ids.length > 1 ? 20 : 0) + 12;
+                    const title = wrapLabel(n.name, ids.length > 1 ? 11 : 14); // kırpmak yerine en fazla iki satıra sar
+                    const two = title.length > 1;
+                    return (
+                      <>
+                        <text x={tx} y={two ? 23 : 29} className="ntitle">
+                          {title.map((line, li) => <tspan key={li} x={tx} dy={li === 0 ? 0 : 16}>{line}</tspan>)}
+                        </text>
+                        <text x={tx} y={two ? 58 : 46} className="nsub">{clip(n.technology || kindLabel[n.kind] || n.kind, ids.length > 1 ? 13 : 17)}</text>
+                      </>
+                    );
+                  })()}
                 </g>
               </g>
             );
