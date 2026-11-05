@@ -87,8 +87,52 @@ export interface Job {
 export interface ProfileInfo {
   id: string; name: string; status: string; selectable: boolean; supportedVersionNote: string; verification: string;
 }
-export interface WorkspaceInfo { id: string; name: string; role: string; canAccept: boolean }
+export interface WorkspaceInfo { id: string; name: string; role: string; canAccept: boolean; isAccounting?: boolean }
 export interface AuthResult {
-  token: string; user: { id: string; email: string; displayName: string }; workspaces: WorkspaceInfo[];
+  token: string; user: { id: string; email: string; displayName: string }; workspaces: WorkspaceInfo[]; mustChangePassword?: boolean;
 }
 export interface Artifact { id: string; versionNumber: number; format: string; fileName: string; contentHash: string; modelHash: string; size: number }
+
+// ------------------------------------------------------------------ Akış uygulamaları (Apps)
+import type { FlowDefinition } from './lib/flow';
+export type { FlowDefinition } from './lib/flow';
+
+export interface FlowIssue { code: string; path: string; message: string }
+
+export interface AppSummary {
+  id: string; workspaceId: string; name: string; description: string; icon: string; status: 'draft' | 'published' | 'archived';
+  versionNumber: number; hasDraftChanges: boolean; revision: number; updatedAt: string;
+}
+export interface AppDetail { summary: AppSummary; draft: FlowDefinition; published?: FlowDefinition; issues: FlowIssue[] }
+export interface MyApp { id: string; workspaceId: string; name: string; description: string; icon: string; versionNumber: number }
+export interface AppForm { app: MyApp; definition: FlowDefinition }
+export interface AppGrants { userIds: string[]; groupIds: string[] }
+
+export type RequestStatus = 'in_review' | 'approved' | 'rejected' | 'cancelled';
+export type TaskStatus = 'pending' | 'approved' | 'rejected' | 'skipped';
+export interface RequestSummary {
+  id: string; workspaceId: string; number: string; appId: string; appName: string; icon: string; status: RequestStatus; summary: string;
+  requesterId: string; requesterName: string; createdAt: string; completedAt?: string; currentStepName?: string;
+}
+export interface TaskInfo {
+  id: string; assigneeId: string; stepIndex: number; stepId: string; stepName: string; status: TaskStatus; comment?: string;
+  fallback?: string; createdAt: string; decidedAt?: string; decidedBy?: string;
+}
+export interface RequestEventInfo { id: number; at: string; actorId?: string; kind: string; detail?: Record<string, unknown> }
+export interface RequestDetail {
+  summary: RequestSummary; definition: FlowDefinition; versionNumber: number; data: Record<string, unknown>;
+  tasks: TaskInfo[]; events: RequestEventInfo[]; people: Record<string, string>; canCancel: boolean; myPendingTaskId?: string;
+}
+export interface MyTask {
+  id: string; requestId: string; requestNumber: string; appName: string; icon: string; summary: string; requesterName: string;
+  stepName: string; status: TaskStatus; fallback?: string; comment?: string; createdAt: string; decidedAt?: string;
+}
+export interface Member { userId: string; email: string; displayName: string; role: string; canAccept: boolean; managerId?: string; mustChangePassword: boolean }
+export interface GroupInfo { id: string; name: string; memberIds: string[] }
+export interface DirectoryEntry { id: string; displayName: string }
+export interface AccountingEntry {
+  id: string; requestId: string; number: string; appId: string; appName: string; category: string; status: 'pending' | 'sent' | 'processed' | 'failed';
+  attempts: number; lastError?: string; createdAt: string; sentAt?: string; processedBy?: string; processedByName?: string; processedAt?: string;
+  note?: string; payload: Record<string, unknown>;
+}
+export interface AccountingSettings { webhookUrl?: string; hasSecret: boolean; accountingGroupId?: string }

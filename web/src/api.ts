@@ -1,6 +1,7 @@
 import type {
-  Artifact, AuthResult, Job, ProfileInfo, ProjectDetail, ProjectSummary, ProposalDetail, ProposalSummary, View, Finding,
-  Model, VersionInfo, WorkspaceInfo,
+  AccountingEntry, AccountingSettings, AppDetail, AppForm, AppGrants, AppSummary, Artifact, AuthResult, DirectoryEntry, FlowDefinition,
+  GroupInfo, Job, Member, MyApp, MyTask, ProfileInfo, ProjectDetail, ProjectSummary, ProposalDetail, ProposalSummary, RequestDetail,
+  RequestSummary, View, Finding, Model, VersionInfo, WorkspaceInfo,
 } from './types';
 
 const TOKEN_KEY = 'arcvora.token';
@@ -58,7 +59,8 @@ export const api = {
   register: (email: string, password: string, displayName: string) =>
     request<AuthResult>('POST', '/auth/register', { email, password, displayName }),
   login: (email: string, password: string) => request<AuthResult>('POST', '/auth/login', { email, password }),
-  me: () => request<{ user: AuthResult['user']; workspaces: WorkspaceInfo[] }>('GET', '/me'),
+  me: () => request<{ user: AuthResult['user']; workspaces: WorkspaceInfo[]; mustChangePassword?: boolean }>('GET', '/me'),
+  changePassword: (currentPassword: string, newPassword: string) => request<void>('POST', '/me/password', { currentPassword, newPassword }),
   profiles: () => request<ProfileInfo[]>('GET', '/profiles'),
 
   projects: () => request<ProjectSummary[]>('GET', '/projects'),
@@ -99,6 +101,66 @@ export const api = {
 
   exportProject: (id: string, versionNumber: number, format: 'markdown' | 'package') =>
     request<Artifact>('POST', `/projects/${id}/exports`, { versionNumber, format }),
+
+  // ---- akış uygulamaları: kullanım
+  myApps: () => request<MyApp[]>('GET', '/my/apps'),
+  appForm: (id: string) => request<AppForm>('GET', `/apps/${id}/form`),
+  submit: (id: string, data: Record<string, unknown>, key: string) =>
+    request<RequestDetail>('POST', `/apps/${id}/requests`, { data }, { 'Idempotency-Key': key }),
+  myRequests: (status?: string) => request<RequestSummary[]>('GET', `/my/requests${status ? `?status=${status}` : ''}`),
+  allRequests: (ws: string, status?: string) => request<RequestSummary[]>('GET', `/workspaces/${ws}/requests${status ? `?status=${status}` : ''}`),
+  requestDetail: (id: string) => request<RequestDetail>('GET', `/requests/${id}`),
+  cancelRequest: (id: string) => request<RequestDetail>('POST', `/requests/${id}/cancel`, {}),
+  myTasks: (done = false) => request<MyTask[]>('GET', `/my/tasks${done ? '?done=true' : ''}`),
+  approveTask: (taskId: string, comment: string) => request<RequestDetail>('POST', `/tasks/${taskId}/approve`, { comment }),
+  rejectTask: (taskId: string, comment: string) => request<RequestDetail>('POST', `/tasks/${taskId}/reject`, { comment }),
+  directory: (ws: string) => request<DirectoryEntry[]>('GET', `/workspaces/${ws}/directory`),
+
+  // ---- akış uygulamaları: tasarım (master admin)
+  apps: (ws: string) => request<AppSummary[]>('GET', `/workspaces/${ws}/apps`),
+  createApp: (ws: string, body: { name: string; description?: string; icon?: string; definition?: FlowDefinition }) =>
+    request<AppDetail>('POST', `/workspaces/${ws}/apps`, body),
+  appDetail: (id: string) => request<AppDetail>('GET', `/apps/${id}`),
+  updateApp: (id: string, body: { baseRevision: number; name?: string; description?: string; icon?: string; definition?: FlowDefinition }) =>
+    request<AppDetail>('PUT', `/apps/${id}`, body),
+  publishApp: (id: string) => request<AppDetail>('POST', `/apps/${id}/publish`, {}),
+  archiveApp: (id: string, archived: boolean) => request<AppSummary>('POST', `/apps/${id}/${archived ? 'archive' : 'restore'}`, {}),
+  deleteApp: (id: string) => request<void>('DELETE', `/apps/${id}`),
+  appGrants: (id: string) => request<AppGrants>('GET', `/apps/${id}/grants`),
+  setAppGrants: (id: string, g: AppGrants) => request<AppGrants>('PUT', `/apps/${id}/grants`, g),
+
+  // ---- yönetim: kullanıcı ve grup
+  members: (ws: string) => request<Member[]>('GET', `/workspaces/${ws}/members`),
+  createUser: (ws: string, b: { email: string; displayName: string; password: string; role: string; managerId?: string }) =>
+    request<Member>('POST', `/workspaces/${ws}/users`, b),
+  updateMember: (ws: string, userId: string, b: Record<string, unknown>) => request<Member>('PATCH', `/workspaces/${ws}/members/${userId}`, b),
+  removeMember: (ws: string, userId: string) => request<void>('DELETE', `/workspaces/${ws}/members/${userId}`),
+  groups: (ws: string) => request<GroupInfo[]>('GET', `/workspaces/${ws}/groups`),
+  createGroup: (ws: string, name: string) => request<GroupInfo>('POST', `/workspaces/${ws}/groups`, { name }),
+  renameGroup: (ws: string, id: string, name: string) => request<GroupInfo>('PATCH', `/workspaces/${ws}/groups/${id}`, { name }),
+  setGroupMembers: (ws: string, id: string, userIds: string[]) => request<GroupInfo>('PUT', `/workspaces/${ws}/groups/${id}/members`, { userIds }),
+  deleteGroup: (ws: string, id: string) => request<void>('DELETE', `/workspaces/${ws}/groups/${id}`),
+
+  // ---- muhasebe
+  accountingSettings: (ws: string) => request<AccountingSettings>('GET', `/workspaces/${ws}/accounting/settings`),
+  updateAccountingSettings: (ws: string, b: Record<string, unknown>) => request<AccountingSettings>('PUT', `/workspaces/${ws}/accounting/settings`, b),
+  accountingEntries: (ws: string, status?: string) => request<AccountingEntry[]>('GET', `/workspaces/${ws}/accounting/entries${status ? `?status=${status}` : ''}`),
+  processEntry: (ws: string, id: string, note: string) => request<AccountingEntry>('POST', `/workspaces/${ws}/accounting/entries/${id}/process`, { note }),
+  retryEntry: (ws: string, id: string) => request<AccountingEntry>('POST', `/workspaces/${ws}/accounting/entries/${id}/retry`, {}),
+  /** CSV indirme (kimlik doğrulamalı). */
+  async downloadAccountingCsv(ws: string, status?: string): Promise<void> {
+    const token = memoryToken ?? getToken();
+    const res = await fetch(`/api/workspaces/${ws}/accounting/export.csv${status ? `?status=${status}` : ''}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    if (!res.ok) throw new ApiError(res.status, 'download_failed', 'CSV indirilemedi.');
+    const url = URL.createObjectURL(await res.blob());
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = /filename="?([^";]+)"?/.exec(res.headers.get('content-disposition') ?? '')?.[1] ?? 'muhasebe.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  },
 
   /** Kimlik doğrulamalı indirme (bağlantıya token eklenemediği için fetch + blob). */
   async download(id: string, artifact: Artifact): Promise<void> {
