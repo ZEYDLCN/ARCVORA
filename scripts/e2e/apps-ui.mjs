@@ -2,7 +2,7 @@
 //   master admin kullanıcı açar ve şablondan uygulama tasarlayıp yayınlar → çalışan (app_user) geçici parolasını değiştirir, YALNIZCA Uygulamalar
 //   menüsünü görür, mimari/tasarım sayfalarına giremez, izin talebi açar → yönetici onay kutusunda onaylar → çalışan sonucu görür; mobil taşma.
 import { openSession, register, WEB } from './ui-lib.mjs';
-import { check, finish, section } from './lib.mjs';
+import { call, check, finish, section } from './lib.mjs';
 
 const uniq = `${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`;
 const problemsAll = [];
@@ -102,7 +102,7 @@ try {
   const workerS = await open();
   const { page: W } = workerS;
   // Eski geçici parola artık geçersiz; sıfırlamayla verilen yeni geçici parola kullanılır.
-  const oldTry = await W.evaluate(async ([email, password]) => (await fetch('/api/auth/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, password }) })).status, [workerMail, workerTemp]);
+  const oldTry = (await call('POST', '/api/auth/login', { body: { email: workerMail, password: workerTemp } })).status;
   check('sıfırlanmadan önceki geçici parola artık geçersiz', oldTry === 401, oldTry);
   await login(W, workerMail, workerTempOverride.value);
   await setFirstPassword(workerS, workerTempOverride.value, 'Calisan-Yeni-Parola-1');
