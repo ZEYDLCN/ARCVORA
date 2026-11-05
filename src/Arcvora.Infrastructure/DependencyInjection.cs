@@ -46,6 +46,7 @@ public static class DependencyInjection
         services.AddScoped<GroupService>();
         services.AddScoped<AppAccessService>();
         services.AddScoped<AppDesignService>();
+        services.AddScoped<AttachmentService>();
         services.AddScoped<RequestVisibility>();
         services.AddScoped<RequestService>();
         services.AddScoped<IRequestHooks, AccountingHooks>();

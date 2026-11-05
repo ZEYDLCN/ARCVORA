@@ -98,7 +98,7 @@ public sealed class FakeWebhook : HttpMessageHandler
 }
 
 /// <summary>Her test sınıfı kendi geçici PostgreSQL veritabanını alır.</summary>
-public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
+public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private static string Admin => Environment.GetEnvironmentVariable("ARCVORA_TEST_PG")
                                    ?? "Host=localhost;Username=postgres;Password=postgres";
@@ -106,6 +106,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     public SwitchableGenerator Generator { get; } = new();
     public FakeWebhook Webhook { get; } = new();
     public string ConnectionString => $"{Admin};Database={_db}";
+    /// <summary>Alt sınıflar belirli bir testte yapılandırmayı değiştirir (ör. disk deposu).</summary>
+    protected virtual IReadOnlyDictionary<string, string> ExtraSettings => new Dictionary<string, string>();
 
     public async Task InitializeAsync()
     {
@@ -141,7 +143,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             ["Ai:Provider"] = "heuristic",
             ["Accounting:RetryBaseSeconds"] = "0",      // yeniden denemeler beklemeden, deterministik
             ["Accounting:MaxAttempts"] = "3",
+            ["Attachments:StagedTtlHours"] = "0",       // temizlik testi beklemeden çalışsın; bağlama süre dolumuna bakmaz
         };
+        foreach (var (k, v) in ExtraSettings) settings[k] = v;
         foreach (var (k, v) in settings) builder.UseSetting(k, v);
         builder.ConfigureServices(s =>
         {
@@ -235,6 +239,24 @@ public sealed class Api(HttpClient http)
     public Task<Resp> PatchAsync(string url, object body) => SendAsync(HttpMethod.Patch, url, body);
     public Task<Resp> PutAsync(string url, object body) => SendAsync(HttpMethod.Put, url, body);
     public Task<Resp> DeleteAsync(string url) => SendAsync(HttpMethod.Delete, url, null);
+
+    /// <summary>Ham gövdeyle dosya yükler (<c>POST /apps/{id}/uploads?fileName=</c>).</summary>
+    public async Task<Resp> UploadAsync(Guid appId, byte[] bytes, string? fileName = "fis.png")
+    {
+        var url = $"/api/apps/{appId}/uploads" + (fileName is null ? "" : "?fileName=" + Uri.EscapeDataString(fileName));
+        using var req = new HttpRequestMessage(HttpMethod.Post, url) { Content = new ByteArrayContent(bytes) };
+        req.Content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+        using var res = await http.SendAsync(req);
+        var text = await res.Content.ReadAsStringAsync();
+        return new Resp(res.StatusCode, string.IsNullOrWhiteSpace(text) ? JsonDocument.Parse("null").RootElement.Clone() : JsonDocument.Parse(text).RootElement.Clone());
+    }
+
+    /// <summary>İkili yanıt (dosya) indirir; başlıklar için ham yanıtı da döndürür.</summary>
+    public async Task<(HttpStatusCode Status, byte[] Bytes, HttpResponseMessage Response)> DownloadAsync(string url)
+    {
+        var res = await http.GetAsync(url);
+        return (res.StatusCode, await res.Content.ReadAsByteArrayAsync(), res);
+    }
 
     private async Task<Resp> SendAsync(HttpMethod method, string url, object? body, string? idempotencyKey = null)
     {

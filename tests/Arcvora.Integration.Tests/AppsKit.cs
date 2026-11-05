@@ -51,6 +51,19 @@ public static class AppsKit
         };
     }
 
+    /// <summary>Fişli masraf akışı: tutar + ek alanı (en fazla <paramref name="maxFiles"/> dosya), yönetici onayı.</summary>
+    public static object ReceiptDef(int maxFiles = 2, bool required = false, bool accounting = false) => new
+    {
+        schema = 1, prefix = "MSF", summaryFields = new[] { "amount" },
+        fields = new object[]
+        {
+            new { key = "amount", label = "Tutar", type = "money", required = true },
+            new { key = "receipt", label = "Fiş", type = "file", required, maxFiles },
+        },
+        steps = new object[] { new { id = "s1", name = "Yönetici onayı", approvers = new { type = "manager" } } },
+        completion = accounting ? new { accounting = new { enabled = true, category = "masraf" } } : null,
+    };
+
     public static object Leave(string start = "2026-11-10", string end = "2026-11-14", string kind = "Yıllık", Guid? proxy = null) =>
         proxy is null ? new { start, end, kind } : new { start, end, kind, proxy };
 
