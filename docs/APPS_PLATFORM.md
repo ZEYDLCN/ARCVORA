@@ -2,6 +2,8 @@
 
 > **Gizlilik:** Bu belge ve `Apps` modülü şirket ürünüdür; **açık kaynak değildir ve herkese açık bir depoya gönderilmemelidir.**
 > Bu dal yerelde geliştirilir; ARCVORA'nın herkese açık deposuna push edilmez. Kodun nereye (özel depo) taşınacağını sahibi belirler.
+>
+> **Lisans sınırı:** Herkese açık ARCVORA (mimari araç) **MIT** lisanslıdır (`main`). Bu **Apps modülü MIT kapsamına alınmadı** ve varsayılan olarak kapalıdır; şirketin “açık kaynak olamaz” şartı Apps içindir. Apps'i de MIT yapmak (veya telif/lisans sahibini belirlemek) ayrı, geri dönüşü olmayan bir karardır; sahipleri yazılı kararlaştırana kadar bu kodu herkese açık bir yere koymayın. Bu dal ana dalı birleştirince kök `LICENSE` (MIT) görünür: o dosya yalnızca MIT'e konu kodu kapsar.
 
 ## 1) Kaynak: yazışmadan çıkan istekler
 
@@ -31,7 +33,7 @@ Geliştirmeyi durdurmamak için aşağıdaki **varsayımlar** yapıldı. Her bir
 | Şirket sayısı | Tek dağıtım = tek şirket. Veri modeli yine çalışma alanı (tenant) yalıtımlıdır; ileride çok şirkete açılabilir. | Evet: "şirketler" çoğul mu, tek şirket mi? |
 | Hesaplar | Self-servis kayıt kapatılır (`Auth__RegistrationOpen=false`); kullanıcıları master admin açar, parolayı verir, kullanıcı değiştirebilir. | SSO/Active Directory gerekir mi? |
 | Onay zinciri | Adımlar sıralıdır; onaylayıcı **doğrudan yönetici**, **belirli kişi** veya **grup** olabilir; koşullu adım (ör. tutar > X) desteklenir. | İzin/avans/masraf için gerçek zincirler nedir? |
-| Muhasebe | Muhasebe sistemi bilinmiyor. Genel çözüm: onaylanan talep **muhasebe kuyruğuna** düşer; (a) HTTP **webhook** ile otomatik, (b) kuyruk ekranından **elle işaretleme**, (c) **CSV** dışa aktarma. | Hangi muhasebe yazılımı? API/dosya/webhook? |
+| Muhasebe | Muhasebe sistemi bilinmiyor. Genel çözüm: onaylanan talep **muhasebe kuyruğuna** düşer; (a) HTTP **webhook** ile otomatik, (b) kuyruk ekranından **elle işaretleme**, (c) **CSV** dışa aktarma. | **Yanıt (5 Kasım):** şirkette muhasebe/İK yazılımı yok, süreçler evrakla yürüyor → dahili kuyruk + CSV birincil, webhook isteğe bağlı (bkz. §15). |
 | İzin | Tarih aralığı + gün sayısı (otomatik hesap) + açıklama + vekil. **İzin bakiyesi/hak edişi takibi ilk sürümde yok.** | Bakiye takibi ve resmî tatil hesabı gerekir mi? Yazdırılabilir/imzalı çıktı? |
 | Bildirim | İlk sürümde **uygulama içi** (onay kutusu, taleplerim). E-posta/WhatsApp yok. | E-posta (SMTP) gerekir mi? |
 | Ekler | Fiş/belge yükleme **faz G**'de (masraf için gerekli). İzin için gerekmez. | Masraf akışı ne zaman devreye girecek? |
@@ -186,3 +188,45 @@ Kod, test ve belgeler bu fazlandırmaya göre tamamlandı; kullanım için bkz. 
 - Yük/performans denemesi: veri modeli yüzlerce çalışan için uygundur ama ölçülmedi.
 - Webhook gizli anahtarı veritabanında düz metindir (imza üretmek için); yedekleri koruyun.
 - Parola sıfırlama e-postayla değil, master admin eliyledir; yalnızca master admin'in açtığı hesaplar sıfırlanabilir.
+
+## 15) Yeni bilgi: kurum tamamen evrakla çalışıyor (5 Kasım)
+
+Yavuz'un anlattığına göre şirkette dış bir servis/yazılım yok (İK, muhasebe vb.); işler evrakla yürüyor ve **hepsi dijitale taşınacak, servisler şirket içinde kurulacak.** Etkisi:
+
+- **Muhasebe aktarımı varsayımı kapandı:** bağlanılacak bir sistem yok. Dahili **muhasebe kuyruğu + CSV + elle işleme** asıl çözümdür; webhook yalnızca ileride bir sistem gelirse kullanılır. Kâğıt kayıt yerine bu kuyruk **kayıt defteri** olur.
+- **Kapsam geniştir:** bu bir izin uygulaması değil, evrak süreçlerinin tümünün dijitalleşmesidir. Genel akış motoru buna uygundur: yeni evrak türü çoğu zaman yeni bir **akış tanımıdır**, kod değil. Kod gerektiren şeyler aşağıdaki **G fazı** maddeleridir.
+
+### Evrak envanteri (kod yazmadan önce yapılacak iş)
+
+Her kâğıt süreç için tek satır doldurun; tablo bir sonraki fazın sırasını belirler:
+
+| Soru | Neden |
+|---|---|
+| Evrakın adı ve **kim, ne sıklıkla** doldurur? | Hangi uygulama/form, kaç kullanıcı |
+| **Kim imzalar, hangi sırayla, hangi koşulda** (tutar, gün…)? | Onay adımları ve koşullar |
+| Eke ne konur (fiş, fatura, sözleşme, rapor)? | Dosya yükleme gerekir mi |
+| **Çıktı** gerekir mi (imzalı kâğıt, dosyaya konan nüsha)? | Yazdırılabilir/PDF çıktı |
+| Kim **görür/arşivler**, ne kadar **saklanır**? | Yetki, arama, saklama süresi (KVKK) |
+| Sonrasında **kime ne yapılır** (ödeme, kayıt, bordro girişi)? | Muhasebe/İK kuyruğu, rapor |
+| Yöneticinin **izinli** olduğu zamanlar? | Vekâlet/devir |
+
+Eşleme örneği: izin, avans, masraf → hazır şablonlar. Satın alma talebi, araç/ekipman talebi, sözleşme/gider onayı, fazla mesai bildirimi → yeni akış tanımı (kod değil). Müşteri/ürün listesi, bordro hesabı, stok → **ayrı modül kararı** (bu bir ERP kapsamıdır; ayrı planlanmalı).
+
+### G fazı: öncelik önerisi
+
+| Sıra | Yetenek | Gerekçe |
+|---|---|---|
+| G1 | **Ekler** (fiş/belge/tarama yükleme; tür ve boyut sınırı, yetkili erişim, saklama) | Masraf ve satın alma evrakı eksiz olmaz; kâğıdın yerini alan en kritik parça |
+| G2 | **Yazdırılabilir / PDF çıktı** (form + onay zinciri + zaman damgası + doğrulama no) | Islak imzanın yerine geçen kayıt; denetimde gösterilecek nüsha |
+| G3 | **Vekâlet / devir** (izinli yöneticinin yerine vekil onaylayıcı) | Kâğıtta imza “bulunur”, sistemde görev bekleyip takılır |
+| G4 | **Bildirim** (e-posta; görev atandı, sonuçlandı) | Onay kutusuna bakmayan kişi talebi bekletir |
+| G5 | **Arama, raporlar, dışa aktarma, arşiv/saklama süresi (KVKK)** | Kâğıt arşivin dijital karşılığı |
+| G6 | **Ana veri / dinamik listeler** (departman, masraf kategorisi, araç listesi) | Seçeneklerin elle yazılması yerine tek yerden yönetim |
+| G7 | **İzin bakiyesi / hak ediş** (+ resmî tatil takvimi) | Bakiye hâlâ elle tutuluyorsa |
+| G8 | SSO/AD, mobil uygulama | Kullanıcı sayısı ve talebe göre |
+
+### Önerilen ilerleme
+
+1. **Pilot:** tek evrak (izin) ile başlayın; gerçek çalışanlarla bir ay kullanın, geri bildirimi yazın.
+2. Evrak envanterini çıkarın; G fazını envanterden çıkan **gerçek** ihtiyaca göre sıralayın (yukarıdaki sıra bir tahmindir).
+3. Her yeni yetenek önce bir evrakın somut ihtiyacıyla gerekçelendirilsin; ERP kapsamındaki modüller ayrı karar olarak ele alınsın.
