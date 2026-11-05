@@ -82,6 +82,7 @@ if (builder.Configuration.GetValue("Worker:InProcess", false))
 {
     builder.Services.AddHostedService<JobWorkerService>();
     builder.Services.AddHostedService<AccountingWorkerService>();
+    builder.Services.AddHostedService<MaintenanceWorkerService>();
 }
 
 // Bir ters proxy'nin (Render, Fly, Koyeb, nginx…) ARKASINDA çalışırken gerçek istemci adresi X-Forwarded-For'dan okunur; aksi halde

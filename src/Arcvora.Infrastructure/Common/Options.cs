@@ -83,3 +83,10 @@ public sealed class AttachmentOptions
     /// <summary>Talebe bağlanmayan dosyalar bu süre sonra temizlenir.</summary>
     public int StagedTtlHours { get; set; } = 24;
 }
+
+/// <summary>Arka plan bakım işleri (hazırlanmış ek temizliği, hatırlatmalar, saklama süresi).</summary>
+public sealed class MaintenanceOptions
+{
+    /// <summary>Bakım turlarının aralığı (dakika).</summary>
+    public int IntervalMinutes { get; set; } = 10;
+}

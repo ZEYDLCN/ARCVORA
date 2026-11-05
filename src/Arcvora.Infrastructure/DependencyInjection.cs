@@ -22,6 +22,8 @@ public static class DependencyInjection
         services.Configure<AuthOptions>(config.GetSection("Auth"));
         services.Configure<AccountingOptions>(config.GetSection("Accounting"));
         services.Configure<AttachmentOptions>(config.GetSection("Attachments"));
+        services.Configure<MaintenanceOptions>(config.GetSection("Maintenance"));
+        services.AddSingleton<MaintenanceService>();
 
         // DATABASE_URL, barındırıcıların (Render, Koyeb, Fly…) yerleşik kuralıdır ve verilmişse önceliklidir; postgres:// adresi de kabul edilir.
         var connection = ConnectionStringNormalizer.Normalize(
