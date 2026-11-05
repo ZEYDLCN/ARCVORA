@@ -13,6 +13,8 @@ public sealed class ArcvoraDbContext(DbContextOptions<ArcvoraDbContext> options)
     public DbSet<Job> Jobs => Set<Job>();
     public DbSet<Artifact> Artifacts => Set<Artifact>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
+    public DbSet<Group> Groups => Set<Group>();
+    public DbSet<GroupMember> GroupMembers => Set<GroupMember>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -32,6 +34,21 @@ public sealed class ArcvoraDbContext(DbContextOptions<ArcvoraDbContext> options)
             e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne<Workspace>().WithMany().HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => x.UserId);
+        });
+
+        b.Entity<Group>(e =>
+        {
+            e.Property(x => x.Name).HasMaxLength(100);
+            e.HasIndex(x => x.WorkspaceId);
+            e.HasOne<Workspace>().WithMany().HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<GroupMember>(e =>
+        {
+            e.HasKey(x => new { x.GroupId, x.UserId });
+            e.HasIndex(x => x.UserId);
+            e.HasOne<Group>().WithMany().HasForeignKey(x => x.GroupId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<Project>(e =>

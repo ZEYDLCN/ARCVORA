@@ -1,6 +1,10 @@
 namespace Arcvora.Infrastructure.Persistence;
 
-public enum WorkspaceRole { Reader = 0, Editor = 1, Admin = 2 }
+/// <summary>
+/// Çalışma alanı rolü. <see cref="AppUser"/> yalnızca kendisine yetki verilen akış uygulamalarını kullanır; mimari projeleri
+/// göremez. Sıralama karşılaştırmaları bellekte yapılır (sütun metin olarak saklanır): AppUser &lt; Reader &lt; Editor &lt; Admin.
+/// </summary>
+public enum WorkspaceRole { AppUser = -1, Reader = 0, Editor = 1, Admin = 2 }
 
 public enum ProposalStatus { Pending, Accepted, Rejected, Stale }
 
@@ -35,6 +39,8 @@ public sealed class User
     public string Email { get; set; } = "";
     public string DisplayName { get; set; } = "";
     public string PasswordHash { get; set; } = "";
+    /// <summary>Yönetici tarafından verilen geçici parolayla açılan hesaplar ilk girişte değiştirmeye çağrılır.</summary>
+    public bool MustChangePassword { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
 }
 
@@ -52,8 +58,25 @@ public sealed class Membership
     public WorkspaceRole Role { get; set; }
     /// <summary>Kabul yetkisi ayrıca sınırlandırılabilir (§19). Yönetici her zaman kabul edebilir.</summary>
     public bool CanAccept { get; set; } = true;
+    /// <summary>Doğrudan yönetici (aynı çalışma alanının üyesi). "Yönetici onayı" adımını çözer.</summary>
+    public Guid? ManagerId { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public User? User { get; set; }
+}
+
+/// <summary>Çalışma alanı içindeki kişi grubu: onaylayıcı veya muhasebe grubu olarak kullanılır.</summary>
+public sealed class Group
+{
+    public Guid Id { get; set; }
+    public Guid WorkspaceId { get; set; }
+    public string Name { get; set; } = "";
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+public sealed class GroupMember
+{
+    public Guid GroupId { get; set; }
+    public Guid UserId { get; set; }
 }
 
 public sealed class Project
