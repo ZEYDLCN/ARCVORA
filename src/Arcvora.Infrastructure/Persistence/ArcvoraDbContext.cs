@@ -24,6 +24,7 @@ public sealed class ArcvoraDbContext(DbContextOptions<ArcvoraDbContext> options)
     public DbSet<RequestEvent> RequestEvents => Set<RequestEvent>();
     public DbSet<AccountingEntry> AccountingEntries => Set<AccountingEntry>();
     public DbSet<AccountingSettings> AccountingSettings => Set<AccountingSettings>();
+    public DbSet<Delegation> Delegations => Set<Delegation>();
     public DbSet<Attachment> Attachments => Set<Attachment>();
     public DbSet<AttachmentBlob> AttachmentBlobs => Set<AttachmentBlob>();
 
@@ -154,6 +155,14 @@ public sealed class ArcvoraDbContext(DbContextOptions<ArcvoraDbContext> options)
             e.HasKey(x => x.WorkspaceId);
             e.Property(x => x.WebhookUrl).HasMaxLength(500);
             e.Property(x => x.WebhookSecret).HasMaxLength(200);
+            e.HasOne<Workspace>().WithMany().HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<Delegation>(e =>
+        {
+            e.Property(x => x.Reason).HasMaxLength(200);
+            e.HasIndex(x => new { x.WorkspaceId, x.FromUserId });
+            e.HasIndex(x => new { x.ToUserId, x.WorkspaceId });
             e.HasOne<Workspace>().WithMany().HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
         });
 

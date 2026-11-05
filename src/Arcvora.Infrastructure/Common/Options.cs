@@ -94,8 +94,13 @@ public sealed class MaintenanceOptions
 /// <summary>Yazdırılabilir PDF çıktısı.</summary>
 public sealed class DocumentOptions
 {
-    /// <summary>PDF'te saatler bu UTC farkıyla basılır (dakika; Türkiye UTC+3 = 180). Sunucuda saat dilimi verisi gerekmez.</summary>
-    public int UtcOffsetMinutes { get; set; } = 180;
     /// <summary>PDF'e gömülecek tek bir görselin en büyük boyutu; fazlası yalnızca listelenir.</summary>
     public int MaxImageBytes { get; set; } = 4 * 1024 * 1024;
+}
+
+/// <summary>Yerel zaman: vekâlet günleri, PDF saatleri ve hatırlatmalar çalışma alanının yerel gününe göre hesaplanır.</summary>
+public sealed class LocaleOptions
+{
+    /// <summary>UTC'ye göre sabit fark (dakika; Türkiye UTC+3 = 180). Saat dilimi veritabanı gerektirmez (Docker'da da çalışır).</summary>
+    public int UtcOffsetMinutes { get; set; } = 180;
 }

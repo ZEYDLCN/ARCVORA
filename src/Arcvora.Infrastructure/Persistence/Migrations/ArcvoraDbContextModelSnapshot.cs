@@ -494,6 +494,52 @@ namespace Arcvora.Infrastructure.Persistence.Migrations
                     b.ToTable("AuditEntries");
                 });
 
+            modelBuilder.Entity("Arcvora.Infrastructure.Persistence.Delegation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("EndsOn")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("FromUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("RevokedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("StartsOn")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("ToUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ToUserId", "WorkspaceId");
+
+                    b.HasIndex("WorkspaceId", "FromUserId");
+
+                    b.ToTable("Delegations");
+                });
+
             modelBuilder.Entity("Arcvora.Infrastructure.Persistence.FlowRequest", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1125,6 +1171,15 @@ namespace Arcvora.Infrastructure.Persistence.Migrations
                     b.HasOne("Arcvora.Infrastructure.Persistence.Attachment", null)
                         .WithOne()
                         .HasForeignKey("Arcvora.Infrastructure.Persistence.AttachmentBlob", "AttachmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Arcvora.Infrastructure.Persistence.Delegation", b =>
+                {
+                    b.HasOne("Arcvora.Infrastructure.Persistence.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

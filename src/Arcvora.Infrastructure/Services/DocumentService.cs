@@ -19,7 +19,7 @@ public sealed record VerifyResult(bool Valid, string? Number, string? Status, st
 /// böylece eski bir çıktı "güncel değil" olarak anlaşılır. Anahtar <c>Jwt:Key</c>'den türetilir (değiştirirseniz eski kodlar geçersiz olur).
 /// </summary>
 public sealed class DocumentService(ArcvoraDbContext db, RequestVisibility visibility, AppAccessService access, IFileStore store,
-    IOptions<JwtOptions> jwt, IOptions<DocumentOptions> options, TimeProvider clock)
+    IOptions<JwtOptions> jwt, IOptions<DocumentOptions> options, IOptions<LocaleOptions> locale, TimeProvider clock)
 {
     private static readonly string[] ImageTypes = ["image/png", "image/jpeg"];
 
@@ -64,7 +64,7 @@ public sealed class DocumentService(ArcvoraDbContext db, RequestVisibility visib
         }
 
         var model = new RequestPdfModel(r.Number, app.Name, workspace.Name, status, RequestText.StatusLabel(status), Name(r.RequesterId), r.CreatedAt, r.CompletedAt,
-            version.Number, fields, approvals, timeline, attachments, CodeFor(r), clock.GetUtcNow(), options.Value.UtcOffsetMinutes);
+            version.Number, fields, approvals, timeline, attachments, CodeFor(r), clock.GetUtcNow(), locale.Value.UtcOffsetMinutes);
         return (RequestPdf.Build(model), $"{r.Number}.pdf");
     }
 

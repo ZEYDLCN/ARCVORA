@@ -201,3 +201,22 @@ public sealed class AttachmentBlob
     public Guid AttachmentId { get; set; }
     public byte[] Data { get; set; } = [];
 }
+
+/// <summary>
+/// Vekâlet: <see cref="FromUserId"/> kişisinin onay görevlerini, [StartsOn, EndsOn] günleri arasında (uçlar dahil, çalışma alanının yerel günü)
+/// <see cref="ToUserId"/> kişisi de görür ve karara bağlayabilir. Geçişsizdir. İptal edilirse hemen biter (kayıt silinmez, denetim için kalır).
+/// </summary>
+public sealed class Delegation
+{
+    public Guid Id { get; set; }
+    public Guid WorkspaceId { get; set; }
+    public Guid FromUserId { get; set; }
+    public Guid ToUserId { get; set; }
+    public DateOnly StartsOn { get; set; }
+    public DateOnly EndsOn { get; set; }
+    public string? Reason { get; set; }
+    public Guid CreatedBy { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset? RevokedAt { get; set; }
+    public Guid? RevokedBy { get; set; }
+}

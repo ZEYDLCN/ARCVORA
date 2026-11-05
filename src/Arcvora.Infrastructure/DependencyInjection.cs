@@ -24,6 +24,7 @@ public static class DependencyInjection
         services.Configure<AttachmentOptions>(config.GetSection("Attachments"));
         services.Configure<MaintenanceOptions>(config.GetSection("Maintenance"));
         services.Configure<DocumentOptions>(config.GetSection("Documents"));
+        services.Configure<LocaleOptions>(config.GetSection("Locale"));
         services.AddSingleton<MaintenanceService>();
 
         // DATABASE_URL, barındırıcıların (Render, Koyeb, Fly…) yerleşik kuralıdır ve verilmişse önceliklidir; postgres:// adresi de kabul edilir.
@@ -51,6 +52,7 @@ public static class DependencyInjection
         services.AddScoped<AppDesignService>();
         services.AddScoped<AttachmentService>();
         services.AddScoped<DocumentService>();
+        services.AddScoped<DelegationService>();
         services.AddScoped<DemoDataService>();
         services.AddScoped<RequestVisibility>();
         services.AddScoped<RequestService>();
