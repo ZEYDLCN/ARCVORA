@@ -61,7 +61,9 @@ public sealed record ArtifactDto(Guid Id, Guid ProjectId, int VersionNumber, str
     DateTimeOffset CreatedAt);
 
 public sealed record MemberDto(Guid UserId, string Email, string DisplayName, string Role, bool CanAccept,
-    Guid? ManagerId = null, bool MustChangePassword = false);
+    Guid? ManagerId = null, bool MustChangePassword = false, bool PasswordResettable = false);
+
+public sealed record ResetPasswordRequest(string? Password);
 
 public sealed record AddMemberRequest(string? Email, string? Role, bool? CanAccept);
 

@@ -41,6 +41,11 @@ public sealed class User
     public string PasswordHash { get; set; } = "";
     /// <summary>Yönetici tarafından verilen geçici parolayla açılan hesaplar ilk girişte değiştirmeye çağrılır.</summary>
     public bool MustChangePassword { get; set; }
+    /// <summary>
+    /// Hesabı bir master admin açtıysa o çalışma alanı. Yalnızca o çalışma alanının master admin'i parolayı sıfırlayabilir;
+    /// kendi kaydıyla açılmış hesaplar (null) başka bir şirketin çalışma alanına da üye olabilir ve asla başkası tarafından sıfırlanamaz.
+    /// </summary>
+    public Guid? ManagedByWorkspaceId { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
 }
 

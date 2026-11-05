@@ -920,6 +920,9 @@ namespace Arcvora.Infrastructure.Persistence.Migrations
                         .HasMaxLength(320)
                         .HasColumnType("character varying(320)");
 
+                    b.Property<Guid?>("ManagedByWorkspaceId")
+                        .HasColumnType("uuid");
+
                     b.Property<bool>("MustChangePassword")
                         .HasColumnType("boolean");
 
