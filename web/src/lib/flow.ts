@@ -1,13 +1,13 @@
 // Akış uygulamaları: sunucudaki çekirdek kurallarla aynı biçim ve önizleme hesapları (kesin doğrulama her zaman sunucudadır).
 
-export type FieldType = 'text' | 'long_text' | 'number' | 'money' | 'date' | 'select' | 'multi_select' | 'checkbox' | 'user';
+export type FieldType = 'text' | 'long_text' | 'number' | 'money' | 'date' | 'select' | 'multi_select' | 'checkbox' | 'user' | 'file';
 export type ComputedOp = 'calendar_days' | 'weekdays';
 export type ApproverType = 'manager' | 'user' | 'group' | 'admin';
 export type ConditionOp = 'eq' | 'ne' | 'gt' | 'gte' | 'lt' | 'lte' | 'in';
 
 export interface FlowField {
   key: string; label: string; type: FieldType; required?: boolean; helpText?: string; options?: string[];
-  min?: number; max?: number; maxLength?: number; notBefore?: string; currency?: string;
+  min?: number; max?: number; maxLength?: number; notBefore?: string; currency?: string; maxFiles?: number;
   computed?: { op: ComputedOp; from: string; to: string };
 }
 export interface ApproverSpec { type: ApproverType; id?: string }
@@ -20,7 +20,7 @@ export interface FlowDefinition {
 
 export const fieldTypeLabels: Record<FieldType, string> = {
   text: 'Kısa metin', long_text: 'Uzun metin', number: 'Sayı', money: 'Tutar', date: 'Tarih', select: 'Tek seçim',
-  multi_select: 'Çoklu seçim', checkbox: 'Onay kutusu', user: 'Kişi',
+  multi_select: 'Çoklu seçim', checkbox: 'Onay kutusu', user: 'Kişi', file: 'Ek (fiş / belge / tarama)',
 };
 
 export const approverLabels: Record<ApproverType, string> = {
@@ -110,6 +110,11 @@ export function buildPayload(def: FlowDefinition, values: FormValues): Record<st
       case 'checkbox':
         if (typeof v === 'boolean') out[f.key] = v;
         break;
+      case 'file': {
+        const ids = Array.isArray(v) ? v.map((x) => (typeof x === 'string' ? x : (x as { id?: unknown })?.id)).filter((x): x is string => typeof x === 'string') : [];
+        if (ids.length > 0) out[f.key] = ids;
+        break;
+      }
     }
   }
   return out;
@@ -143,6 +148,7 @@ export function formatValue(f: FlowField, v: unknown, people: Record<string, str
     case 'checkbox': return v === true ? 'Evet' : 'Hayır';
     case 'multi_select': return Array.isArray(v) ? v.join(', ') : String(v);
     case 'user': return people[String(v)] ?? '(bilinmeyen kullanıcı)';
+    case 'file': return Array.isArray(v) && v.length > 0 ? `${v.length} dosya` : '—';
     default: return String(v);
   }
 }

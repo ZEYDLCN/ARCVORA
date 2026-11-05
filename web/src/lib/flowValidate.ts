@@ -2,7 +2,7 @@ import { allowedOps, type FlowDefinition, type FlowCondition, type FlowField } f
 
 export interface FlowIssue { code: string; path: string; message: string }
 
-export const LIMITS = { fields: 60, steps: 10, summary: 3, options: 50, maxText: 4000 } as const;
+export const LIMITS = { fields: 60, steps: 10, summary: 3, options: 50, maxText: 4000, maxFiles: 10 } as const;
 
 const FIELD_KEY = /^[a-z][a-z0-9_]{0,39}$/;
 const STEP_ID = /^[a-z][a-z0-9_]{0,19}$/;
@@ -45,6 +45,8 @@ export function validateFlow(def: FlowDefinition): FlowIssue[] {
     }
     if ((f.type === 'number' || f.type === 'money') && f.min !== undefined && f.max !== undefined && f.min > f.max)
       add('invalid_range', `${p}.min`, 'En küçük değer en büyük değerden büyük olamaz.');
+    if (f.maxFiles !== undefined && (f.type !== 'file' || f.maxFiles < 1 || f.maxFiles > LIMITS.maxFiles))
+      add('invalid_range', `${p}.maxFiles`, `Dosya sayısı yalnızca ek alanında ve 1–${LIMITS.maxFiles} arasında verilebilir.`);
     if ((f.type === 'text' || f.type === 'long_text') && f.maxLength !== undefined && (f.maxLength < 1 || f.maxLength > LIMITS.maxText))
       add('invalid_range', `${p}.maxLength`, `En fazla uzunluk 1–${LIMITS.maxText} olmalı.`);
     if (f.notBefore !== undefined && f.notBefore !== '') {
