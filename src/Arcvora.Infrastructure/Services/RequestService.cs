@@ -10,7 +10,7 @@ using Npgsql;
 namespace Arcvora.Infrastructure.Services;
 
 /// <summary>Akış uygulamalarının çalışma zamanı: talep açma, onay/ret, iptal, listeleme. Kurallar çekirdekte (<see cref="FlowEngine"/>).</summary>
-public sealed class RequestService(ArcvoraDbContext db, AppAccessService access, IRequestHooks hooks, TimeProvider clock)
+public sealed class RequestService(ArcvoraDbContext db, AppAccessService access, IRequestHooks hooks, RequestVisibility visibility, TimeProvider clock)
 {
     public const int MaxCommentLength = 1000;
     private const int ListLimit = 200;
@@ -134,14 +134,7 @@ public sealed class RequestService(ArcvoraDbContext db, AppAccessService access,
 
     public async Task<RequestDetailDto> GetAsync(Guid userId, Guid requestId, CancellationToken ct)
     {
-        var r = await db.FlowRequests.AsNoTracking().FirstOrDefaultAsync(x => x.Id == requestId, ct) ?? throw new NotFoundException("Talep bulunamadı.");
-        var member = await db.Memberships.AsNoTracking().FirstOrDefaultAsync(m => m.WorkspaceId == r.WorkspaceId && m.UserId == userId, ct)
-                     ?? throw new NotFoundException("Talep bulunamadı.");
-        var tasks = await db.ApprovalTasks.AsNoTracking().Where(t => t.RequestId == r.Id).OrderBy(t => t.StepIndex).ThenBy(t => t.CreatedAt).ThenBy(t => t.Id).ToListAsync(ct);
-
-        var visible = r.RequesterId == userId || member.Role == WorkspaceRole.Admin || tasks.Any(t => t.AssigneeId == userId)
-                      || await hooks.CanViewAsync(userId, r, ct);
-        if (!visible) throw new NotFoundException("Talep bulunamadı.");
+        var (r, member, tasks) = await visibility.LoadAsync(userId, requestId, ct);
 
         var app = await db.Apps.AsNoTracking().FirstAsync(a => a.Id == r.AppId, ct);
         var version = await db.AppVersions.AsNoTracking().FirstAsync(v => v.Id == r.AppVersionId, ct);
