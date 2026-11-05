@@ -33,14 +33,14 @@ public static class FlowValues
         return result;
     }
 
-    /// <summary>Listelerde gösterilen kısa özet: seçilen alanların değerleri " · " ile birleşir. Kullanıcı alanları atlanır.</summary>
+    /// <summary>Listelerde gösterilen kısa özet: seçilen alanların değerleri " · " ile birleşir. Kullanıcı ve ek alanları atlanır.</summary>
     public static string Summary(FlowDefinition def, IReadOnlyDictionary<string, object?> values, int maxLength = 300)
     {
         var parts = new List<string>();
         foreach (var key in def.SummaryFields)
         {
             var field = def.Fields.FirstOrDefault(f => f.Key == key);
-            if (field is null || field.Type == FieldType.User || !values.TryGetValue(key, out var v) || v is null) continue;
+            if (field is null || field.Type is FieldType.User or FieldType.File || !values.TryGetValue(key, out var v) || v is null) continue;
             var text = v switch
             {
                 string s when field.Type == FieldType.Date && DateOnly.TryParseExact(s, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d) => d.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture),

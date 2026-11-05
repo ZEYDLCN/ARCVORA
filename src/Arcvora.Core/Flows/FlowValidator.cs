@@ -12,6 +12,7 @@ public static partial class FlowValidator
     public const int MaxSummaryFields = 3;
     public const int MaxOptions = 50;
     public const int MaxTextLength = 4000;
+    public const int MaxFilesPerField = 10;
 
     [GeneratedRegex("^[a-z][a-z0-9_]{0,39}$")] private static partial Regex FieldKeyRx();
     [GeneratedRegex("^[a-z][a-z0-9_]{0,19}$")] private static partial Regex StepIdRx();
@@ -56,6 +57,8 @@ public static partial class FlowValidator
             }
             if (f.Type is FieldType.Number or FieldType.Money && f.Min is { } mn && f.Max is { } mx && mn > mx)
                 Add("invalid_range", $"{p}.min", "En küçük değer en büyük değerden büyük olamaz.");
+            if (f.MaxFiles is { } mf && (f.Type != FieldType.File || mf < 1 || mf > MaxFilesPerField))
+                Add("invalid_range", $"{p}.maxFiles", $"Dosya sayısı yalnızca ek alanında ve 1–{MaxFilesPerField} arasında verilebilir.");
             if (f.Type is FieldType.Text or FieldType.LongText && f.MaxLength is { } ml && (ml < 1 || ml > MaxTextLength))
                 Add("invalid_range", $"{p}.maxLength", $"En fazla uzunluk 1–{MaxTextLength} olmalı.");
 

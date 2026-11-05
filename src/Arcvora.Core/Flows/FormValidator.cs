@@ -16,6 +16,7 @@ public static class FormValidator
 {
     private const decimal MaxNumber = 1_000_000_000_000m;
     private const int DefaultTextLength = 200;
+    public const int DefaultMaxFiles = 3;
 
     public static FormResult Validate(FlowDefinition def, IReadOnlyDictionary<string, JsonElement> data)
     {
@@ -63,13 +64,21 @@ public static class FormValidator
     }
 
     /// <summary><c>file</c> tipli alanlarda seçilen ek kimlikleri (sahiplik/varlık kontrolü için).</summary>
-    public static IReadOnlyList<(string Key, Guid Id)> FileFieldIds(FlowDefinition def, IReadOnlyDictionary<string, object?> values) => [];
+    public static IReadOnlyList<(string Key, Guid Id)> FileFieldIds(FlowDefinition def, IReadOnlyDictionary<string, object?> values)
+    {
+        var list = new List<(string, Guid)>();
+        foreach (var f in def.Fields.Where(f => f.Type == FieldType.File))
+            if (values.TryGetValue(f.Key, out var v) && v is IEnumerable<string> ids)
+                foreach (var s in ids)
+                    if (Guid.TryParse(s, out var id)) list.Add((f.Key, id));
+        return list;
+    }
 
     private static bool IsMissing(FlowField f, JsonElement? el) => el is null || el.Value.ValueKind switch
     {
         JsonValueKind.Null or JsonValueKind.Undefined => true,
         JsonValueKind.String => string.IsNullOrWhiteSpace(el.Value.GetString()),
-        JsonValueKind.Array => f.Type == FieldType.MultiSelect && el.Value.GetArrayLength() == 0,
+        JsonValueKind.Array => f.Type is FieldType.MultiSelect or FieldType.File && el.Value.GetArrayLength() == 0,
         _ => false,
     };
 
@@ -136,6 +145,22 @@ public static class FormValidator
                 var b = el.GetBoolean();
                 if (f.Required && !b) { Bad("required", $"'{f.Label}' işaretlenmeli."); return; }
                 values[f.Key] = b;
+                break;
+            }
+            case FieldType.File:
+            {
+                if (el.ValueKind != JsonValueKind.Array) { Bad("invalid_type", $"'{f.Label}' bir dosya listesi olmalı."); return; }
+                var ids = new List<string>();
+                foreach (var item in el.EnumerateArray())
+                {
+                    if (item.ValueKind != JsonValueKind.String || !Guid.TryParse(item.GetString(), out var id) || id == Guid.Empty)
+                    { Bad("invalid_file", $"'{f.Label}' için geçersiz dosya."); return; }
+                    var text = id.ToString();
+                    if (!ids.Contains(text)) ids.Add(text);
+                }
+                var max = f.MaxFiles ?? DefaultMaxFiles;
+                if (ids.Count > max) { Bad("too_many_files", $"'{f.Label}' için en fazla {max} dosya eklenebilir."); return; }
+                values[f.Key] = ids;
                 break;
             }
             case FieldType.User:
