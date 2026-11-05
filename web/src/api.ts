@@ -1,7 +1,7 @@
 import type {
   AccountingEntry, AccountingSettings, AppDetail, AttachmentInfo, AppForm, AppGrants, AppSummary, Artifact, AuthResult, DirectoryEntry, FlowDefinition,
   GroupInfo, Job, Member, MyApp, MyTask, ProfileInfo, ProjectDetail, ProjectSummary, ProposalDetail, ProposalSummary, RequestDetail,
-  RequestSummary, View, Finding, Model, VersionInfo, WorkspaceInfo,
+  RequestSummary, VerifyResult, View, Finding, Model, VersionInfo, WorkspaceInfo,
 } from './types';
 
 const TOKEN_KEY = 'arcvora.token';
@@ -180,6 +180,22 @@ export const api = {
       throw new ApiError(res.status, p.code ?? 'error', p.title ?? `Dosya yüklenemedi (${res.status}).`, p.details);
     }
     return data as AttachmentInfo;
+  },
+  verifyDocument: (ws: string, number: string, code: string) =>
+    request<VerifyResult>('GET', `/workspaces/${ws}/documents/verify?number=${encodeURIComponent(number)}&code=${encodeURIComponent(code)}`),
+  /** Talebin yazdırılabilir PDF'i (kimlik doğrulamalı indirme). */
+  async downloadRequestPdf(id: string, fallbackName: string): Promise<void> {
+    const token = memoryToken ?? getToken();
+    const res = await fetch(`/api/requests/${id}/pdf`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    if (!res.ok) throw new ApiError(res.status, 'download_failed', 'PDF oluşturulamadı.');
+    const url = URL.createObjectURL(await res.blob());
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = /filename="?([^";]+)"?/.exec(res.headers.get('content-disposition') ?? '')?.[1] ?? fallbackName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
   },
   deleteAttachment: (id: string) => request<void>('DELETE', `/attachments/${id}`),
   /** Ek dosyanın baytları (kimlik doğrulamalı). Önizleme ve kaydetme bunu kullanır. */

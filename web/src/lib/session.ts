@@ -1,7 +1,7 @@
 import type { WorkspaceInfo } from '../types';
 
 export type RouteName =
-  | 'home' | 'projects' | 'project' | 'apps' | 'app' | 'requests' | 'request' | 'inbox' | 'accounting' | 'design' | 'designer' | 'admin' | 'account';
+  | 'home' | 'projects' | 'project' | 'apps' | 'app' | 'requests' | 'request' | 'inbox' | 'accounting' | 'verify' | 'design' | 'designer' | 'admin' | 'account';
 
 export interface Route { name: RouteName; id?: string; sub?: string }
 
@@ -22,6 +22,7 @@ export function parseRoute(hash: string): Route {
   if (h === '#/inbox') return { name: 'inbox' };
   if (h === '#/account') return { name: 'account' };
   if (h === '#/accounting') return { name: 'accounting' };
+  if (h === '#/verify') return { name: 'verify' };
   if (h === '#/design') return { name: 'design' };
   if ((m = rx(`design/${UUID}`).exec(h))) return { name: 'designer', id: id(m) };
   if ((m = /^#\/admin(?:\/(users|groups|accounting|requests))?$/i.exec(h))) return { name: 'admin', sub: (m[1] ?? 'users').toLowerCase() };
@@ -39,6 +40,7 @@ export function routeHash(r: Route): string {
     case 'inbox': return '#/inbox';
     case 'account': return '#/account';
     case 'accounting': return '#/accounting';
+    case 'verify': return '#/verify';
     case 'design': return '#/design';
     case 'designer': return `#/design/${r.id}`;
     case 'admin': return `#/admin/${r.sub ?? 'users'}`;

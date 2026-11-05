@@ -13,6 +13,7 @@ import { Inbox } from './pages/apps/Inbox';
 import { MyApps } from './pages/apps/MyApps';
 import { MyRequests } from './pages/apps/MyRequests';
 import { RequestDetail } from './pages/apps/RequestDetail';
+import { Verify } from './pages/apps/Verify';
 import { Auth } from './pages/Auth';
 import { ChangePassword } from './pages/ChangePassword';
 import { Projects } from './pages/Projects';
@@ -111,6 +112,7 @@ export function App() {
       case 'request': return <RequestDetail key={route.id} id={route.id!} />;
       case 'inbox': return <Inbox />;
       case 'accounting': return <Accounting {...common} />;
+      case 'verify': return <Verify {...common} />;
       case 'design': return <DesignList {...common} />;
       case 'designer': return <Designer key={route.id} id={route.id!} {...common} />;
       case 'admin': return <Admin sub={route.sub ?? 'users'} {...common} />;

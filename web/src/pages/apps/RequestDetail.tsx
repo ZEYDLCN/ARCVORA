@@ -87,6 +87,12 @@ export function RequestDetail({ id }: { id: string }) {
             </div>
           )}
 
+          <p style={{ marginTop: 14 }}>
+            <button className="btn" disabled={busy} onClick={() => { setBusy(true); void api.downloadRequestPdf(id, `${s.number}.pdf`).catch((e) => setError(errorText(e, 'PDF oluşturulamadı.'))).finally(() => setBusy(false)); }}>
+              PDF indir / yazdır
+            </button>
+          </p>
+
           {d.canCancel && (
             <p style={{ marginTop: 14 }}>
               <button className="btn danger" disabled={busy} onClick={() => { if (window.confirm('Bu talebi iptal etmek istediğinize emin misiniz?')) void act(() => api.cancelRequest(id)); }}>Talebi iptal et</button>

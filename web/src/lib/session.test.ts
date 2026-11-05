@@ -32,7 +32,7 @@ describe('parseRoute', () => {
   });
   it('routeHash ile gidiş-dönüş tutarlıdır', () => {
     for (const r of [{ name: 'apps' }, { name: 'app', id }, { name: 'request', id }, { name: 'project', id }, { name: 'designer', id },
-      { name: 'admin', sub: 'groups' }, { name: 'admin', sub: 'requests' }, { name: 'account' }, { name: 'inbox' }, { name: 'accounting' }, { name: 'design' }, { name: 'projects' }, { name: 'requests' }] as const)
+      { name: 'admin', sub: 'groups' }, { name: 'admin', sub: 'requests' }, { name: 'account' }, { name: 'inbox' }, { name: 'accounting' }, { name: 'verify' }, { name: 'design' }, { name: 'projects' }, { name: 'requests' }] as const)
       expect(parseRoute(routeHash(r))).toEqual(r);
   });
 });
@@ -47,6 +47,7 @@ describe('roller', () => {
   it('app kullanıcısı mimari/yönetim/muhasebe sayfalarına giremez', () => {
     const u = ws('app_user');
     for (const n of ['projects', 'design', 'admin', 'accounting'] as const) expect(canAccess({ name: n }, u)).toBe(false);
+    expect(canAccess({ name: 'verify' }, u)).toBe(true);           // belge doğrulama her üyeye açık
     expect(canAccess({ name: 'project', id }, u)).toBe(false);
     for (const n of ['apps', 'requests', 'inbox', 'account'] as const) expect(canAccess({ name: n }, u)).toBe(true);
   });

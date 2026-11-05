@@ -140,3 +140,5 @@ export interface AccountingEntry {
   note?: string; payload: Record<string, unknown>;
 }
 export interface AccountingSettings { webhookUrl?: string; hasSecret: boolean; accountingGroupId?: string }
+
+export interface VerifyResult { valid: boolean; number?: string; status?: RequestStatus; statusLabel?: string; completedAt?: string; appName?: string }

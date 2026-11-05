@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RequestDetail as Detail } from '../../types';
 
-const api = vi.hoisted(() => ({ requestDetail: vi.fn(), approveTask: vi.fn(), rejectTask: vi.fn(), cancelRequest: vi.fn(), attachmentBlob: vi.fn() }));
+const api = vi.hoisted(() => ({ requestDetail: vi.fn(), approveTask: vi.fn(), rejectTask: vi.fn(), cancelRequest: vi.fn(), attachmentBlob: vi.fn(), downloadRequestPdf: vi.fn() }));
 vi.mock('../../api', async (orig) => ({ ...(await orig<typeof import('../../api')>()), api }));
 const { RequestDetail } = await import('./RequestDetail');
 
@@ -130,5 +130,15 @@ describe('RequestDetail', () => {
     expect(host.textContent).toContain('Ekler');
     expect(host.textContent).toContain('fatura.pdf');
     expect(host.textContent).toContain('Açıklama · 4 KB');
+  });
+
+  it('PDF indir düğmesi talebin PDF\'ini ister; başarısızsa söyler', async () => {
+    api.requestDetail.mockResolvedValue(base());
+    api.downloadRequestPdf.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('x'));
+    await render('r3');
+    await act(async () => { button('PDF indir / yazdır')!.click(); await Promise.resolve(); });
+    expect(api.downloadRequestPdf).toHaveBeenCalledWith('r3', 'IZN-2026-0001.pdf');
+    await act(async () => { button('PDF indir / yazdır')!.click(); await Promise.resolve(); await Promise.resolve(); });
+    expect(host.querySelector('[role=alert]')!.textContent).toContain('PDF oluşturulamadı');
   });
 });
