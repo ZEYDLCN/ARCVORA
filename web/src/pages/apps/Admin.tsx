@@ -35,7 +35,7 @@ export function Admin({ sub, workspace, user }: Ctx & { sub: string }) {
 function Users({ ws, me }: { ws: string; me: string }) {
   const [members, setMembers] = useState<Member[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [created, setCreated] = useState<{ email: string; password: string } | null>(null);
+  const [created, setCreated] = useState<{ email: string; password: string; reset?: boolean } | null>(null);
   const [form, setForm] = useState({ email: '', displayName: '', password: generatePassword(), role: 'app_user', managerId: '' });
   const [busy, setBusy] = useState(false);
 
@@ -62,7 +62,7 @@ function Users({ ws, me }: { ws: string; me: string }) {
       {error && <div className="notice error" role="alert" style={{ marginBottom: 10 }}>{error}</div>}
       {created && (
         <div className="notice" role="status" style={{ marginBottom: 12 }}>
-          <b>Kullanıcı oluşturuldu.</b> Geçici parolayı güvenli bir yolla iletin; kullanıcı ilk girişte değiştirecek.
+          <b>{created.reset ? 'Parola sıfırlandı.' : 'Kullanıcı oluşturuldu.'}</b> Geçici parolayı güvenli bir yolla iletin; kullanıcı ilk girişte değiştirecek.
           <div className="mono" style={{ marginTop: 6 }}>{created.email} · {created.password}</div>
         </div>
       )}
@@ -118,9 +118,19 @@ function Users({ ws, me }: { ws: string; me: string }) {
                     </select>
                   </td>
                   <td>
-                    {m.userId !== me && (
-                      <button className="btn small danger" disabled={busy} onClick={() => { if (window.confirm(`${m.displayName} çalışma alanından çıkarılsın mı?`)) void guard(() => api.removeMember(ws, m.userId)); }}>Çıkar</button>
-                    )}
+                    <div className="actions">
+                      {m.passwordResettable && (
+                        <button className="btn small" disabled={busy} title="Yeni bir geçici parola üretir; kullanıcı ilk girişte değiştirir"
+                          onClick={() => {
+                            if (!window.confirm(`${m.displayName} için yeni bir geçici parola üretilsin mi? Mevcut parolası geçersiz olur.`)) return;
+                            const password = generatePassword();
+                            void guard(async () => { await api.resetPassword(ws, m.userId, password); setCreated({ email: m.email, password, reset: true }); });
+                          }}>Parola sıfırla</button>
+                      )}
+                      {m.userId !== me && (
+                        <button className="btn small danger" disabled={busy} onClick={() => { if (window.confirm(`${m.displayName} çalışma alanından çıkarılsın mı? Bekleyen onay görevleri master admin’e devredilir.`)) void guard(() => api.removeMember(ws, m.userId)); }}>Çıkar</button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
