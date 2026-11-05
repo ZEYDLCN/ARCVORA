@@ -127,7 +127,7 @@ export interface MyTask {
   id: string; requestId: string; requestNumber: string; appName: string; icon: string; summary: string; requesterName: string;
   stepName: string; status: TaskStatus; fallback?: string; comment?: string; createdAt: string; decidedAt?: string;
 }
-export interface Member { userId: string; email: string; displayName: string; role: string; canAccept: boolean; managerId?: string; mustChangePassword: boolean }
+export interface Member { userId: string; email: string; displayName: string; role: string; canAccept: boolean; managerId?: string; mustChangePassword: boolean; passwordResettable: boolean }
 export interface GroupInfo { id: string; name: string; memberIds: string[] }
 export interface DirectoryEntry { id: string; displayName: string }
 export interface AccountingEntry {

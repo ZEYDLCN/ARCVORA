@@ -135,6 +135,7 @@ export const api = {
     request<Member>('POST', `/workspaces/${ws}/users`, b),
   updateMember: (ws: string, userId: string, b: Record<string, unknown>) => request<Member>('PATCH', `/workspaces/${ws}/members/${userId}`, b),
   removeMember: (ws: string, userId: string) => request<void>('DELETE', `/workspaces/${ws}/members/${userId}`),
+  resetPassword: (ws: string, userId: string, password: string) => request<Member>('POST', `/workspaces/${ws}/members/${userId}/reset-password`, { password }),
   groups: (ws: string) => request<GroupInfo[]>('GET', `/workspaces/${ws}/groups`),
   createGroup: (ws: string, name: string) => request<GroupInfo>('POST', `/workspaces/${ws}/groups`, { name }),
   renameGroup: (ws: string, id: string, name: string) => request<GroupInfo>('PATCH', `/workspaces/${ws}/groups/${id}`, { name }),
