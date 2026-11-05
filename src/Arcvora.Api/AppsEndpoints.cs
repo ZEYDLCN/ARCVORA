@@ -52,6 +52,24 @@ public static class AppsEndpoints
         secured.MapGet("/workspaces/{id:guid}/directory", async (Guid id, ClaimsPrincipal u, RequestService s, CancellationToken ct) =>
             Results.Ok(await s.DirectoryAsync(Endpoints.UserId(u), id, ct)));
 
+        // --------------------------------------------------------------------- ekler
+        secured.MapPost("/apps/{id:guid}/uploads", async (Guid id, string? fileName, HttpRequest req, ClaimsPrincipal u, AttachmentService s, CancellationToken ct) =>
+        {
+            var dto = await s.UploadAsync(Endpoints.UserId(u), id, fileName, req.Body, req.ContentLength, ct);
+            return Results.Created($"/api/attachments/{dto.Id}", dto);
+        });
+        secured.MapGet("/attachments/{id:guid}", async (Guid id, HttpContext http, ClaimsPrincipal u, AttachmentService s, CancellationToken ct) =>
+        {
+            var (meta, data) = await s.DownloadAsync(Endpoints.UserId(u), id, ct);
+            http.Response.Headers.CacheControl = "private, no-store";
+            return Results.File(data, meta.ContentType, meta.FileName);
+        });
+        secured.MapDelete("/attachments/{id:guid}", async (Guid id, ClaimsPrincipal u, AttachmentService s, CancellationToken ct) =>
+        {
+            await s.DeleteStagedAsync(Endpoints.UserId(u), id, ct);
+            return Results.NoContent();
+        });
+
         // ------------------------------------------------------------------- talepler
         secured.MapGet("/my/requests", async (string? status, ClaimsPrincipal u, RequestService s, CancellationToken ct) =>
             Results.Ok(await s.MyRequestsAsync(Endpoints.UserId(u), status, ct)));

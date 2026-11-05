@@ -40,4 +40,12 @@ public sealed class AppAccessService(ArcvoraDbContext db)
         return await db.AppGrants.AnyAsync(g => g.AppId == appId
             && ((g.Kind == GrantKinds.User && g.SubjectId == userId) || (g.Kind == GrantKinds.Group && groupIds.Contains(g.SubjectId))), ct);
     }
+
+    /// <summary>Kullanıcı uygulamayı kullanabilmeli (403 no_app_access) ve uygulama yayında olmalı (409 app_not_published).</summary>
+    public async Task RequireUsableAsync(Guid userId, Membership member, AppDefinition app, CancellationToken ct)
+    {
+        if (!await CanUseAsync(userId, member, app.Id, ct)) throw new AppException(403, "no_app_access", "Bu uygulamayı kullanma yetkiniz yok.");
+        if (app.Status != AppStatus.Published || app.PublishedVersionId is null)
+            throw new ConflictException("app_not_published", "Bu uygulama şu anda kullanıma açık değil.");
+    }
 }

@@ -398,7 +398,7 @@ public class AttachmentTests(ApiFactory factory) : IClassFixture<ApiFactory>
 
         using var scope = factory.Services.CreateScope();
         var purged = await scope.ServiceProvider.GetRequiredService<AttachmentService>().PurgeStagedAsync(CancellationToken.None);
-        Assert.Equal(2, purged);
+        Assert.True(purged >= 2, purged.ToString());       // aynı veritabanındaki diğer testlerin hazırlanmış dosyaları da temizlenir
 
         foreach (var gone in new[] { s1, s2 })
             Assert.Equal(HttpStatusCode.NotFound, (await k.Emp.DownloadAsync($"/api/attachments/{gone}")).Status);

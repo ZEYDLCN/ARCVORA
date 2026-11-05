@@ -83,6 +83,8 @@ public sealed class RequestService(ArcvoraDbContext db, AppAccessService access,
             issues.AddRange(userFields.Where(u => !valid.Contains(u.Id))
                 .Select(u => new FlowIssue("invalid_user", $"data.{u.Key}", "Seçilen kişi bu çalışma alanında yok.")));
         }
+        var files = FormValidator.FileFieldIds(def, form.Values);
+        if (files.Count > 0) issues.AddRange(await UnusableFilesAsync(userId, app, files, ct));
         if (issues.Count > 0) throw new RequestValidationException("invalid_request", "Form geçersiz.", issues);
 
         var now = clock.GetUtcNow();
@@ -102,6 +104,7 @@ public sealed class RequestService(ArcvoraDbContext db, AppAccessService access,
         try
         {
             await db.SaveChangesAsync(ct);
+            await LinkFilesAsync(request, userId, files, ct);
             await tx.CommitAsync(ct);
         }
         catch (DbUpdateException ex) when (key is not null && ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
@@ -113,6 +116,35 @@ public sealed class RequestService(ArcvoraDbContext db, AppAccessService access,
             return (await GetAsync(userId, winner.Id, ct), false);
         }
         return (await GetAsync(userId, request.Id, ct), true);
+    }
+
+    /// <summary>Talebe eklenmek istenen dosyalardan geçersiz olanlar: yok, başkasının, başka uygulamanın veya zaten bir talebe bağlı.</summary>
+    private async Task<IEnumerable<FlowIssue>> UnusableFilesAsync(Guid userId, AppDefinition app, IReadOnlyList<(string Key, Guid Id)> files, CancellationToken ct)
+    {
+        var ids = files.Select(f => f.Id).Distinct().ToList();
+        var usable = (await db.Attachments.AsNoTracking()
+                .Where(a => ids.Contains(a.Id) && a.UploadedBy == userId && a.AppId == app.Id && a.WorkspaceId == app.WorkspaceId && a.RequestId == null)
+                .Select(a => a.Id).ToListAsync(ct)).ToHashSet();
+        return files.Where(f => !usable.Contains(f.Id)).Select(f => new FlowIssue("invalid_file", $"data.{f.Key}", "Eklenen dosya geçersiz veya zaten kullanılmış. Dosyayı yeniden yükleyin."));
+    }
+
+    /// <summary>
+    /// Dosyaları talebe bağlar. Koşullu güncelleme ("yalnızca hâlâ bağlı değilse") eşzamanlı iki talebin aynı dosyayı almasını önler;
+    /// etkilenen satır sayısı eksikse işlem geri alınır.
+    /// </summary>
+    private async Task LinkFilesAsync(FlowRequest request, Guid userId, IReadOnlyList<(string Key, Guid Id)> files, CancellationToken ct)
+    {
+        var now = clock.GetUtcNow();
+        foreach (var group in files.GroupBy(f => f.Key))
+        {
+            var ids = group.Select(f => f.Id).ToList();
+            var key = group.Key;
+            var linked = await db.Attachments.Where(a => ids.Contains(a.Id) && a.UploadedBy == userId && a.AppId == request.AppId && a.RequestId == null)
+                .ExecuteUpdateAsync(set => set.SetProperty(a => a.RequestId, request.Id).SetProperty(a => a.FieldKey, key).SetProperty(a => a.LinkedAt, now), ct);
+            if (linked != ids.Count)
+                throw new RequestValidationException("invalid_request", "Form geçersiz.",
+                    new[] { new FlowIssue("invalid_file", $"data.{key}", "Eklenen dosya başka bir talepte kullanılmış. Dosyayı yeniden yükleyin.") });
+        }
     }
 
     // ============================================================= liste ve ayrıntı
@@ -157,7 +189,9 @@ public sealed class RequestService(ArcvoraDbContext db, AppAccessService access,
             JsonDocument.Parse(r.DataJson).RootElement.Clone(),
             tasks.Select(t => new TaskDto(t.Id, t.AssigneeId, t.StepIndex, t.StepId, t.StepName, Status(t.Status), t.Comment, t.Fallback, t.CreatedAt, t.DecidedAt, t.DecidedBy)).ToList(),
             events.Select(e => new EventDto(e.Id, e.At, e.ActorId, e.Kind, e.DetailJson is null ? null : JsonDocument.Parse(e.DetailJson).RootElement.Clone())).ToList(),
-            people, canCancel, myPending);
+            people, canCancel, myPending,
+            AttachmentList.Ordered(AppDesignService.Deserialize(version.DefinitionJson), FlowValues.FromJson(r.DataJson),
+                await db.Attachments.AsNoTracking().Where(a => a.RequestId == r.Id).ToListAsync(ct)));
     }
 
     // =================================================================== iptal
@@ -324,13 +358,8 @@ public sealed class RequestService(ArcvoraDbContext db, AppAccessService access,
         return (int)(await cmd.ExecuteScalarAsync(ct))!;
     }
 
-    private async Task RequireUsableAsync(Guid userId, Membership member, AppDefinition app, CancellationToken ct)
-    {
-        if (!await access.CanUseAsync(userId, member, app.Id, ct))
-            throw new AppException(403, "no_app_access", "Bu uygulamayı kullanma yetkiniz yok.");
-        if (app.Status != AppStatus.Published || app.PublishedVersionId is null)
-            throw new ConflictException("app_not_published", "Bu uygulama şu anda kullanıma açık değil.");
-    }
+    private Task RequireUsableAsync(Guid userId, Membership member, AppDefinition app, CancellationToken ct) =>
+        access.RequireUsableAsync(userId, member, app, ct);
 
     private Task<FlowRequest?> FindByKeyAsync(Guid userId, string key, CancellationToken ct) =>
         db.FlowRequests.AsNoTracking().FirstOrDefaultAsync(r => r.RequesterId == userId && r.IdempotencyKey == key, ct);

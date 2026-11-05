@@ -32,7 +32,8 @@ public sealed record EventDto(long Id, DateTimeOffset At, Guid? ActorId, string 
 
 /// <param name="People">Kayıtta geçen kişilerin kimlik → ad eşlemesi (talep eden, atananlar, işlem yapanlar).</param>
 public sealed record RequestDetailDto(RequestSummaryDto Summary, FlowDefinition Definition, int VersionNumber, JsonElement Data,
-    IReadOnlyList<TaskDto> Tasks, IReadOnlyList<EventDto> Events, IReadOnlyDictionary<Guid, string> People, bool CanCancel, Guid? MyPendingTaskId);
+    IReadOnlyList<TaskDto> Tasks, IReadOnlyList<EventDto> Events, IReadOnlyDictionary<Guid, string> People, bool CanCancel, Guid? MyPendingTaskId,
+    IReadOnlyList<AttachmentDto> Attachments);
 
 public sealed record MyTaskDto(Guid Id, Guid RequestId, string RequestNumber, string AppName, string Icon, string Summary, string RequesterName,
     string StepName, string Status, string? Fallback, string? Comment, DateTimeOffset CreatedAt, DateTimeOffset? DecidedAt);

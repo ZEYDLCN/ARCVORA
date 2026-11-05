@@ -24,6 +24,8 @@ public sealed class AccountingHooks(ArcvoraDbContext db, TimeProvider clock) : I
             .Distinct().ToList();
         var names = await db.Users.AsNoTracking().Where(u => userIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.DisplayName, ct);
 
+        var attachments = AttachmentList.Ordered(def, values, await db.Attachments.AsNoTracking().Where(a => a.RequestId == request.Id).ToListAsync(ct));
+
         var entryId = Guid.NewGuid();
         var payload = new
         {
@@ -37,6 +39,7 @@ public sealed class AccountingHooks(ArcvoraDbContext db, TimeProvider clock) : I
                 currency = f.Type == FieldType.Money ? f.Currency ?? "TRY" : null,
                 valueLabel = f.Type == FieldType.User && values[f.Key] is string s && Guid.TryParse(s, out var uid) ? names.GetValueOrDefault(uid) : null,
             }).ToList(),
+            attachments = attachments.Select(a => new { a.Id, a.FieldKey, a.FileName, a.ContentType, a.Size, a.Sha256 }).ToList(),
             approvals = approved.OrderBy(t => t.DecidedAt).Select(t => new
             {
                 step = t.StepName, by = new { id = t.DecidedBy, name = t.DecidedBy is { } b ? names.GetValueOrDefault(b) : null }, at = t.DecidedAt, comment = t.Comment,
