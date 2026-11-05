@@ -62,6 +62,9 @@ public static class FormValidator
         return list;
     }
 
+    /// <summary><c>file</c> tipli alanlarda seçilen ek kimlikleri (sahiplik/varlık kontrolü için).</summary>
+    public static IReadOnlyList<(string Key, Guid Id)> FileFieldIds(FlowDefinition def, IReadOnlyDictionary<string, object?> values) => [];
+
     private static bool IsMissing(FlowField f, JsonElement? el) => el is null || el.Value.ValueKind switch
     {
         JsonValueKind.Null or JsonValueKind.Undefined => true,
