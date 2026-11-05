@@ -90,3 +90,12 @@ public sealed class MaintenanceOptions
     /// <summary>Bakım turlarının aralığı (dakika).</summary>
     public int IntervalMinutes { get; set; } = 10;
 }
+
+/// <summary>Yazdırılabilir PDF çıktısı.</summary>
+public sealed class DocumentOptions
+{
+    /// <summary>PDF'te saatler bu UTC farkıyla basılır (dakika; Türkiye UTC+3 = 180). Sunucuda saat dilimi verisi gerekmez.</summary>
+    public int UtcOffsetMinutes { get; set; } = 180;
+    /// <summary>PDF'e gömülecek tek bir görselin en büyük boyutu; fazlası yalnızca listelenir.</summary>
+    public int MaxImageBytes { get; set; } = 4 * 1024 * 1024;
+}

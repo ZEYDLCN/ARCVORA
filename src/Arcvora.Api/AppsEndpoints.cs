@@ -70,6 +70,16 @@ public static class AppsEndpoints
             return Results.NoContent();
         });
 
+        // ----------------------------------------------------------------- PDF çıktısı
+        secured.MapGet("/requests/{id:guid}/pdf", async (Guid id, HttpContext http, ClaimsPrincipal u, DocumentService s, CancellationToken ct) =>
+        {
+            var (pdf, name) = await s.RequestPdfAsync(Endpoints.UserId(u), id, ct);
+            http.Response.Headers.CacheControl = "private, no-store";
+            return Results.File(pdf, "application/pdf", name);
+        });
+        secured.MapGet("/workspaces/{id:guid}/documents/verify", async (Guid id, string? number, string? code, ClaimsPrincipal u, DocumentService s, CancellationToken ct) =>
+            Results.Ok(await s.VerifyAsync(Endpoints.UserId(u), id, number, code, ct)));
+
         // ------------------------------------------------------------------- talepler
         secured.MapGet("/my/requests", async (string? status, ClaimsPrincipal u, RequestService s, CancellationToken ct) =>
             Results.Ok(await s.MyRequestsAsync(Endpoints.UserId(u), status, ct)));
