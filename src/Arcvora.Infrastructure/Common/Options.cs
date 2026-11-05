@@ -47,6 +47,18 @@ public sealed class LocalLlmOptions
     public bool DisableThinking { get; set; }
 }
 
+/// <summary>Muhasebe webhook işçisi (onaylanan taleplerin dış sisteme aktarımı).</summary>
+public sealed class AccountingOptions
+{
+    public int MaxAttempts { get; set; } = 8;
+    /// <summary>Yeniden deneme beklemesi = taban * 2^(deneme-1) saniye (en fazla 6 saat).</summary>
+    public int RetryBaseSeconds { get; set; } = 30;
+    public int TimeoutSeconds { get; set; } = 15;
+    public int PollIntervalMs { get; set; } = 2000;
+    /// <summary>Bir kayıt alındıktan sonra işçi çökerse yeniden denenmeden önce beklenen süre.</summary>
+    public int LeaseSeconds { get; set; } = 120;
+}
+
 public sealed class AuthOptions
 {
     /// <summary>
