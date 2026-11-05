@@ -56,7 +56,8 @@ try {
   const bossMail = `yonetici-${uniq}@example.com`, workerMail = `calisan-${uniq}@example.com`;
   const bossTemp = await addUser('Yonetici Kisi', bossMail);
   const workerTemp = await addUser('Calisan Kisi', workerMail, 'Yonetici Kisi');
-  check('kullanıcı tablosunda ikisi de görünür', (await A.locator('table tbody tr').count()) >= 3);
+  // Tablo, kullanıcı oluşturulduktan sonra eşzamansız yenilenir: satırların gelmesini bekle (admin + 2 kullanıcı).
+  check('kullanıcı tablosunda ikisi de görünür', await adminS.visible(A.locator('table tbody tr').nth(2)) && (await A.locator('table tbody tr', { hasText: 'Calisan Kisi' }).count()) === 1);
   check('geçici parola rozeti görünür', (await A.locator('.badge.warn', { hasText: 'geçici parola' }).count()) === 2);
 
   await A.goto(`${WEB}/#/design`);
