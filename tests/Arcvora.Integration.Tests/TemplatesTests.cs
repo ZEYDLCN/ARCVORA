@@ -127,4 +127,28 @@ public class TemplatesTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal("masraf", entry.GetProperty("category").GetString());
         Assert.Contains("F-2026-77", entry.GetProperty("payload").GetProperty("fields").ToString());
     }
+
+    [Fact]
+    public async Task Expense_accepts_receipt_photos_and_scans_and_hands_them_to_accounting()
+    {
+        var (admin, boss, worker, app) = await SetupAsync("expense");
+        var photo = (await worker.UploadAsync(app, FilesKit.Png(), "taksi.jpg")).Str("id");
+        var scan = (await worker.UploadAsync(app, FilesKit.Pdf("otel"), "otel-faturasi.pdf")).Str("id");
+
+        var ok = await worker.SubmitAsync(app, new { expense_date = "2026-11-03", amount = 640m, category = "Yemek", description = "Müşteri yemeği", receipt_file = new[] { photo, scan } });
+        Assert.True(ok.Is(HttpStatusCode.Created), ok.ToString());
+        Assert.Equal(2, ok["attachments"].GetArrayLength());
+        var id = Guid.Parse(ok["summary"].GetProperty("id").GetString()!);
+
+        // 4 dosya sınırı aşılır (şablonda en fazla 3).
+        var four = new List<string>();
+        for (var i = 0; i < 4; i++) four.Add((await worker.UploadAsync(app, FilesKit.Png())).Str("id"));
+        var tooMany = await worker.SubmitAsync(app, new { expense_date = "2026-11-03", amount = 10m, category = "Yemek", description = "x", receipt_file = four });
+        Assert.Contains("too_many_files", tooMany["details"].EnumerateArray().Select(i => i.GetProperty("code").GetString()));
+
+        await boss.PostAsync($"/api/tasks/{await boss.MyPendingTaskAsync(id)}/approve");
+        var payload = (await admin.GetAsync($"/api/workspaces/{admin.WorkspaceId}/accounting/entries")).Body[0].GetProperty("payload");
+        Assert.Equal(2, payload.GetProperty("attachments").GetArrayLength());
+        Assert.Equal("taksi.png", payload.GetProperty("attachments")[0].GetProperty("fileName").GetString());   // yanlış uzantı içeriğe göre düzeltildi
+    }
 }

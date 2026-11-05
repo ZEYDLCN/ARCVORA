@@ -216,6 +216,13 @@
           "label": "Fiş / fatura no",
           "type": "text",
           "maxLength": 50
+        },
+        {
+          "key": "receipt_file",
+          "label": "Fiş / fatura (fotoğraf veya tarama)",
+          "type": "file",
+          "maxFiles": 3,
+          "helpText": "Telefonla çekebilir veya taranmış PDF yükleyebilirsiniz."
         }
       ],
       "steps": [
