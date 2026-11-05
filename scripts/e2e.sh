@@ -120,6 +120,7 @@ api_extras() {
   step "Eşzamanlılık (paralel kabul, çakışan düzenleme)" node scripts/e2e/api-concurrency.mjs
   step "Yaşam döngüsü (düzenleme, yama, açık soru, denetim, silme)" node scripts/e2e/api-lifecycle.mjs
   step "Uç durumlar (kimlik, doğrulama, güvenlik, sürüm, dışa aktarma, öneri durumları)" node scripts/e2e/api-edge.mjs
+  step "Akış uygulamaları (kullanıcı/rol, şablon, onay akışı, muhasebe webhook'u, CSV, yalıtım)" node scripts/e2e/apps-journey.mjs
 }
 
 if [ "$MODE" = local ]; then
@@ -172,6 +173,7 @@ limit_phase forwarded 13 "Proxy arkasında istemci başına hız sınırı (X-Fo
 
 [ "$UI" = 1 ] && step "Tarayıcı yolculuğu" env E2E_SHOTS_DIR="$LOGS/ekran-goruntuleri" node scripts/e2e/ui-journey.mjs
 [ "$UI" = 1 ] && step "Tarayıcı uç durumları (hata yolları, oturum, XSS, klavye, ekran boyutları)" env E2E_SHOTS_DIR="$LOGS/ekran-goruntuleri" node scripts/e2e/ui-edge.mjs
+[ "$UI" = 1 ] && step "Tarayıcı: akış uygulamaları (rol bazlı menü, tasarlayıcı, talep, onay, mobil)" env E2E_SHOTS_DIR="$LOGS/ekran-goruntuleri" node scripts/e2e/apps-ui.mjs
 
 echo
 if [ "$FAIL" = 0 ]; then echo "✓ Tüm uçtan uca testler geçti ($MODE)."; else echo "✗ Bazı uçtan uca testler başarısız ($MODE). Kayıtlar: $LOGS"; fi
