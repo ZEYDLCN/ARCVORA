@@ -4,10 +4,13 @@ import { IconCollapse, IconExpand, IconLogout, IconMenu, IconMoon, IconSearch, I
 import { Logo } from './Logo';
 
 export interface NavItem { id: string; label: string; icon: ReactNode; badge?: number | string; active?: boolean; onClick: () => void }
+export interface NavGroup { id: string; title?: string; items: NavItem[] }
 
 interface Props {
   nav: NavItem[];
   navTitle?: string;
+  /** Ana menüden sonra gelen ek gruplar (ör. Uygulamalar, Yönetim). */
+  navGroups?: NavGroup[];
   user: { displayName: string };
   dark: boolean;
   onTheme: () => void;
@@ -25,7 +28,7 @@ function readCollapsed(): boolean {
  * Uygulama kabuğu: taneli renkli zemin üzerinde yüzen beyaz yuvarlak kenarlı kenar çubuğu ve içerik kartı.
  * Kenar çubuğu daraltılabilir; mobilde çekmece olarak açılır. ⌘K / Ctrl+K arama paletini açar.
  */
-export function Shell({ nav, navTitle, user, dark, onTheme, onLogout, searchItems, searchPlaceholder, children }: Props) {
+export function Shell({ nav, navTitle, navGroups, user, dark, onTheme, onLogout, searchItems, searchPlaceholder, children }: Props) {
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const [drawer, setDrawer] = useState(false);
   const [palette, setPalette] = useState(false);
@@ -72,14 +75,18 @@ export function Shell({ nav, navTitle, user, dark, onTheme, onLogout, searchItem
         </button>
 
         <nav className="sb-nav" aria-label={navTitle ?? 'Bölümler'}>
-          {navTitle && <div className="sb-title label">{navTitle}</div>}
-          {nav.map((n) => (
-            <button key={n.id} className="sb-item" aria-current={n.active ? 'page' : undefined} title={n.label}
-              onClick={() => { n.onClick(); setDrawer(false); }}>
-              <span className="ico">{n.icon}</span>
-              <span className="label">{n.label}</span>
-              {n.badge !== undefined && n.badge !== 0 && <span className="count">{n.badge}</span>}
-            </button>
+          {[{ id: 'main', title: navTitle, items: nav }, ...(navGroups ?? [])].map((g) => (
+            <div key={g.id} className="sb-group">
+              {g.title && <div className="sb-title label">{g.title}</div>}
+              {g.items.map((n) => (
+                <button key={n.id} className="sb-item" aria-current={n.active ? 'page' : undefined} title={n.label}
+                  onClick={() => { n.onClick(); setDrawer(false); }}>
+                  <span className="ico">{n.icon}</span>
+                  <span className="label">{n.label}</span>
+                  {n.badge !== undefined && n.badge !== 0 && <span className="count">{n.badge}</span>}
+                </button>
+              ))}
+            </div>
           ))}
         </nav>
 
