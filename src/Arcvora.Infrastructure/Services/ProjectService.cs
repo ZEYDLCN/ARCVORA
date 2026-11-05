@@ -60,7 +60,7 @@ public sealed class ProjectService(ArcvoraDbContext db, ProjectAccessService acc
     {
         var rows = await (from p in db.Projects.AsNoTracking()
                           join m in db.Memberships.AsNoTracking() on p.WorkspaceId equals m.WorkspaceId
-                          where m.UserId == userId
+                          where m.UserId == userId && m.Role != WorkspaceRole.AppUser
                           select new { p, m.Role }).ToListAsync(ct);
         if (rows.Count == 0) return [];
 

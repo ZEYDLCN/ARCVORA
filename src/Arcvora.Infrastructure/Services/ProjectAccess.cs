@@ -31,7 +31,8 @@ public sealed class ProjectAccessService(ArcvoraDbContext db)
         // (aksi hâlde Project.HeadNumber değişikliği sessizce yazılmaz).
         var query = from p in db.Projects
                     join m in db.Memberships on p.WorkspaceId equals m.WorkspaceId
-                    where p.Id == projectId && m.UserId == userId
+                    // App kullanıcıları mimari projelerin varlığını bile göremez (404).
+                    where p.Id == projectId && m.UserId == userId && m.Role != WorkspaceRole.AppUser
                     select new { Project = p, Membership = m };
         if (!track) query = query.AsNoTracking();
         var row = await query.FirstOrDefaultAsync(ct);
