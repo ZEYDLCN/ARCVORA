@@ -4,9 +4,10 @@ import { go } from '../../components/AppsShell';
 import { generatePassword, roleLabels, roleOptions } from '../../lib/roles';
 import type { AccountingSettings, GroupInfo, Member } from '../../types';
 import { errorText, type Ctx } from './common';
+import { RequestList } from './MyRequests';
 
-type Tab = 'users' | 'groups' | 'accounting';
-const tabs: { id: Tab; label: string }[] = [{ id: 'users', label: 'Kullanıcılar' }, { id: 'groups', label: 'Gruplar' }, { id: 'accounting', label: 'Muhasebe ayarları' }];
+type Tab = 'users' | 'groups' | 'accounting' | 'requests';
+const tabs: { id: Tab; label: string }[] = [{ id: 'users', label: 'Kullanıcılar' }, { id: 'groups', label: 'Gruplar' }, { id: 'requests', label: 'Tüm talepler' }, { id: 'accounting', label: 'Muhasebe ayarları' }];
 
 export function Admin({ sub, workspace, user }: Ctx & { sub: string }) {
   const tab = (tabs.some((t) => t.id === sub) ? sub : 'users') as Tab;
@@ -22,6 +23,7 @@ export function Admin({ sub, workspace, user }: Ctx & { sub: string }) {
       <div className="page-body">
         {tab === 'users' && <Users ws={workspace.id} me={user.id} />}
         {tab === 'groups' && <Groups ws={workspace.id} />}
+        {tab === 'requests' && <RequestList workspaceId={workspace.id} all />}
         {tab === 'accounting' && <AccountingSettingsForm ws={workspace.id} />}
       </div>
     </>
