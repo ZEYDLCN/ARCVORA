@@ -157,3 +157,81 @@ public class UserManagementTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal("last_admin", r.Str("code"));
     }
 }
+
+/// <summary>Master admin, kendi açtığı hesapların parolasını sıfırlar; kendi kaydıyla açılmış hesaplara dokunamaz.</summary>
+public class PasswordResetTests(ApiFactory factory) : IClassFixture<ApiFactory>
+{
+    private static string Url(Api a, Guid user) => $"/api/workspaces/{a.WorkspaceId}/members/{user}/reset-password";
+
+    [Fact]
+    public async Task Admin_resets_a_managed_users_password_and_the_user_must_change_it_again()
+    {
+        var admin = await Api.RegisterAsync(factory);
+        var email = $"reset-{Guid.NewGuid():N}@example.com";
+        var created = await admin.CreateUserAsync(email, "app_user", password: "first-temporary-1");
+        var userId = created.Id("userId");
+        var user = await Api.LoginAsync(factory, email, "first-temporary-1");
+        await user.PostAsync("/api/me/password", new { currentPassword = "first-temporary-1", newPassword = "users-own-password-1" });
+        Assert.False((await Api.LoginAsync(factory, email, "users-own-password-1").ContinueWith(t => t.Result.GetAsync("/api/me")).Unwrap())["mustChangePassword"].GetBoolean());
+
+        var members = await admin.GetAsync($"/api/workspaces/{admin.WorkspaceId}/members");
+        Assert.True(members.Body.EnumerateArray().First(m => m.GetProperty("userId").GetString() == userId.ToString()).GetProperty("passwordResettable").GetBoolean());
+
+        var reset = await admin.PostAsync(Url(admin, userId), new { password = "reset-temporary-9" });
+        Assert.True(reset.Is(HttpStatusCode.OK), reset.ToString());
+        Assert.True(reset["mustChangePassword"].GetBoolean());
+
+        var anon = new Api(factory.CreateClient());
+        Assert.True((await anon.PostAsync("/api/auth/login", new { email, password = "users-own-password-1" })).Is(HttpStatusCode.Unauthorized));
+        var again = await Api.LoginAsync(factory, email, "reset-temporary-9");
+        Assert.True((await again.GetAsync("/api/me"))["mustChangePassword"].GetBoolean());
+    }
+
+    [Fact]
+    public async Task Accounts_that_registered_themselves_cannot_be_reset_even_by_a_workspace_admin()
+    {
+        var admin = await Api.RegisterAsync(factory);
+        var independent = await Api.RegisterAsync(factory);          // kendi çalışma alanı olan bağımsız hesap
+        await admin.AddMemberAsync(independent, "reader");
+
+        var r = await admin.PostAsync(Url(admin, independent.UserId), new { password = "attacker-chosen-1" });
+        Assert.True(r.Is(HttpStatusCode.Conflict), r.ToString());
+        Assert.Equal("not_managed", r.Str("code"));
+        // Parolası değişmedi: sahibi hâlâ girebilir.
+        Assert.True((await new Api(factory.CreateClient()).PostAsync("/api/auth/login", new { email = independent.Email, password = "correct-horse-battery" })).Is(HttpStatusCode.OK));
+
+        var list = await admin.GetAsync($"/api/workspaces/{admin.WorkspaceId}/members");
+        Assert.False(list.Body.EnumerateArray().First(m => m.GetProperty("userId").GetString() == independent.UserId.ToString()).GetProperty("passwordResettable").GetBoolean());
+        // Master admin kendi parolasını sıfırlayamaz (kendi kaydıyla açıldı); /me/password kullanır.
+        Assert.Equal("not_managed", (await admin.PostAsync(Url(admin, admin.UserId), new { password = "something-new-123" })).Str("code"));
+    }
+
+    [Fact]
+    public async Task A_user_managed_by_one_workspace_cannot_be_reset_from_another()
+    {
+        var adminA = await Api.RegisterAsync(factory);
+        var adminB = await Api.RegisterAsync(factory);
+        var created = await adminA.CreateUserAsync(role: "app_user");
+        var userId = created.Id("userId");
+        await adminB.AddMemberAsync(await Api.LoginAsync(factory, created.Str("email"), "temporary-pass-1"), "reader");
+
+        var r = await adminB.PostAsync(Url(adminB, userId), new { password = "stolen-account-123" });
+        Assert.True(r.Is(HttpStatusCode.Conflict), r.ToString());
+        Assert.Equal("not_managed", r.Str("code"));
+    }
+
+    [Fact]
+    public async Task Only_admins_can_reset_and_input_is_validated()
+    {
+        var admin = await Api.RegisterAsync(factory);
+        var outsider = await Api.RegisterAsync(factory);
+        var editor = await admin.NewUserAsync(factory, "editor");
+        var target = (await admin.CreateUserAsync()).Id("userId");
+
+        Assert.True((await editor.PostAsync(Url(admin, target), new { password = "whatever-1234" })).Is(HttpStatusCode.Forbidden));
+        Assert.True((await outsider.PostAsync(Url(admin, target), new { password = "whatever-1234" })).Is(HttpStatusCode.NotFound));
+        Assert.True((await admin.PostAsync(Url(admin, Guid.NewGuid()), new { password = "whatever-1234" })).Is(HttpStatusCode.NotFound));
+        Assert.Equal("weak_password", (await admin.PostAsync(Url(admin, target), new { password = "short" })).Str("code"));
+        Assert.Equal("weak_password", (await admin.PostAsync(Url(admin, target), new { })).Str("code"));
+    }
+}
