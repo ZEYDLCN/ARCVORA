@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, ApiError } from '../api';
 import { IconFolder, IconPlus, IconSparkle } from '../components/icons';
-import { Shell, type NavItem } from '../components/Shell';
+import { AppsShell } from '../components/AppsShell';
+import type { NavItem } from '../components/Shell';
 import { TechLogo } from '../components/TechLogo';
 import type { PaletteItem } from '../components/CommandPalette';
 import type { LogoId } from '../lib/logos.generated';
 import type { ProfileInfo, ProjectSummary, WorkspaceInfo } from '../types';
 
 interface Props {
-  user: { displayName: string };
+  user: { id: string; displayName: string };
   workspaces: WorkspaceInfo[];
+  workspace: WorkspaceInfo;
   onOpen: (id: string) => void;
   onLogout: () => void;
   dark: boolean;
@@ -18,7 +20,7 @@ interface Props {
 
 const profileLogo: Record<string, LogoId> = { aspnetcore: 'dotnet', springboot: 'springboot' };
 
-export function Projects({ user, workspaces, onOpen, onLogout, dark, onTheme }: Props) {
+export function Projects({ user, workspaces, workspace, onOpen, onLogout, dark, onTheme }: Props) {
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null);
   const [profiles, setProfiles] = useState<ProfileInfo[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -55,8 +57,8 @@ export function Projects({ user, workspaces, onOpen, onLogout, dark, onTheme }: 
   ], [projects]);
 
   return (
-    <Shell nav={nav} navTitle="Çalışma alanı" user={user} dark={dark} onTheme={onTheme} onLogout={onLogout}
-      searchItems={search} searchPlaceholder="Proje veya eylem ara…">
+    <AppsShell route={{ name: 'projects' }} archItems={nav} user={user} workspace={workspace} dark={dark} onTheme={onTheme} onLogout={onLogout}
+      searchItems={search} searchPlaceholder="Sayfa, proje veya eylem ara…">
       <div className="page-head">
         <h1>{creating ? 'Yeni proje' : 'Projeler'}</h1>
         <p className="tagline">Fikrini anlat, kararlarını netleştir, mimariyi birlikte geliştir.</p>
@@ -117,6 +119,6 @@ export function Projects({ user, workspaces, onOpen, onLogout, dark, onTheme }: 
           </>
         )}
       </div>
-    </Shell>
+    </AppsShell>
   );
 }
