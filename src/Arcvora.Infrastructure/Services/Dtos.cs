@@ -60,8 +60,23 @@ public sealed record ArtifactDto(Guid Id, Guid ProjectId, int VersionNumber, str
     string GeneratorVersion, string ModelHash, string ContentHash, string FileName, string ContentType, long Size,
     DateTimeOffset CreatedAt);
 
-public sealed record MemberDto(Guid UserId, string Email, string DisplayName, string Role, bool CanAccept);
+public sealed record MemberDto(Guid UserId, string Email, string DisplayName, string Role, bool CanAccept,
+    Guid? ManagerId = null, bool MustChangePassword = false);
 
 public sealed record AddMemberRequest(string? Email, string? Role, bool? CanAccept);
+
+/// <summary>Yönetici tarafından yeni hesap açma. Parola geçicidir; kullanıcı ilk girişte değiştirmeye çağrılır.</summary>
+public sealed record CreateUserRequest(string? Email, string? DisplayName, string? Password, string? Role, Guid? ManagerId);
+
+/// <summary>Üye güncelleme. <c>ClearManager</c> true ise doğrudan yönetici kaldırılır.</summary>
+public sealed record UpdateMemberRequest(string? Role, bool? CanAccept, Guid? ManagerId, bool? ClearManager, string? DisplayName);
+
+public sealed record ChangePasswordRequest(string? CurrentPassword, string? NewPassword);
+
+public sealed record GroupDto(Guid Id, string Name, IReadOnlyList<Guid> MemberIds);
+
+public sealed record GroupNameRequest(string? Name);
+
+public sealed record GroupMembersRequest(IReadOnlyList<Guid>? UserIds);
 
 public sealed record AuditItem(long Id, DateTimeOffset At, string Action, string? Actor, string? ObjectType, string? ObjectId, string? DetailJson);
