@@ -46,6 +46,8 @@ public sealed class AppDefinition
     /// <summary>Son yayın numarası.</summary>
     public int VersionCount { get; set; }
     public Guid CreatedBy { get; set; }
+    /// <summary>Demo verisi (bkz. <c>User.IsDemo</c>).</summary>
+    public bool IsDemo { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 }
@@ -93,6 +95,8 @@ public sealed class FlowRequest
     /// <summary>Şu an beklenen adımın dizini; tamamlanınca son çalışan adımın dizini kalır.</summary>
     public int CurrentStepIndex { get; set; }
     public string? IdempotencyKey { get; set; }
+    /// <summary>Demo verisi (bkz. <c>User.IsDemo</c>).</summary>
+    public bool IsDemo { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
     public DateTimeOffset? CompletedAt { get; set; }

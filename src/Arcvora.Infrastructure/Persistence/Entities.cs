@@ -46,6 +46,8 @@ public sealed class User
     /// kendi kaydıyla açılmış hesaplar (null) başka bir şirketin çalışma alanına da üye olabilir ve asla başkası tarafından sıfırlanamaz.
     /// </summary>
     public Guid? ManagedByWorkspaceId { get; set; }
+    /// <summary>Deneme/tanıtım (demo) verisi: tek tuşla silinebilir; e-posta bildirimi gönderilmez.</summary>
+    public bool IsDemo { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
 }
 
@@ -75,6 +77,8 @@ public sealed class Group
     public Guid Id { get; set; }
     public Guid WorkspaceId { get; set; }
     public string Name { get; set; } = "";
+    /// <summary>Demo verisi (bkz. <c>User.IsDemo</c>).</summary>
+    public bool IsDemo { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
 }
 
