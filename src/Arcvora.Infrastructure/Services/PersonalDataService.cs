@@ -10,7 +10,7 @@ namespace Arcvora.Infrastructure.Services;
 
 public sealed record FormerUserDto(Guid Id, string DisplayName, string Email, DateTimeOffset CreatedAt);
 
-public sealed record PersonalDataDto(DateTimeOffset ExportedAt, JsonElement User, JsonElement Requests, JsonElement Decisions, JsonElement Delegations, JsonElement Files, JsonElement Notifications);
+public sealed record PersonalDataDto(DateTimeOffset ExportedAt, JsonElement User, JsonElement Requests, JsonElement Decisions, JsonElement Delegations, JsonElement Files, JsonElement Notifications, JsonElement Leave);
 
 /// <summary>
 /// KVKK: kişinin kendi verisini (veya master admin'in bir üyeninkini) dışa aktarması ve ayrılan kullanıcının anonimleştirilmesi.
@@ -56,10 +56,14 @@ public sealed class PersonalDataService(ArcvoraDbContext db, AppAccessService ac
                            where a.WorkspaceId == workspaceId && a.UploadedBy == userId
                            select new { a.FileName, a.ContentType, a.Size, a.CreatedAt, requestNumber = r.Number }).ToListAsync(ct);
 
+        // İzin hakları, düşümler, iadeler ve düzeltmeler (kayıt defteri); düşüm/iade satırları talep numarasını taşır.
+        var leave = await db.LeaveEntries.AsNoTracking().Where(e => e.WorkspaceId == workspaceId && e.UserId == userId).OrderBy(e => e.Year).ThenBy(e => e.CreatedAt)
+            .Select(e => new { e.Year, e.Kind, e.Days, e.Note, e.RequestNumber, createdAt = e.CreatedAt }).ToListAsync(ct);
+
         JsonElement J(object o) => JsonSerializer.SerializeToElement(o, new JsonSerializerOptions(JsonSerializerDefaults.Web));
         return new PersonalDataDto(clock.GetUtcNow(),
             J(new { id = u.Id, email = u.Email, displayName = u.DisplayName, role = RoleNames.ToApi(m.Role), manager = managerName, createdAt = u.CreatedAt }),
-            J(requestRows), J(decisions), J(delegations), J(files), J(new { emailEnabled = !u.EmailOptOut }));
+            J(requestRows), J(decisions), J(delegations), J(files), J(new { emailEnabled = !u.EmailOptOut }), J(leave));
     }
 
     /// <summary>Bu çalışma alanının açtığı, artık hiçbir çalışma alanında üye olmayan ve henüz anonimleştirilmemiş hesaplar.</summary>

@@ -146,7 +146,7 @@ SMTP kuruluysa (`DEPLOY_COMPANY.md` §5a) sistem şu durumlarda **Türkçe e-pos
 
 - **Saklama süresi:** sonuçlanmış talepler (onaylı/reddedilmiş/iptal) seçilen süreden sonra silinebilir. Açık talepler ve **muhasebede işlenmemiş kayıtlar asla silinmez**. Önce **önizleme** (kaç talep silinir) gösterilir, siz **onaylayınca** silinir; “otomatik sil” yalnızca bilerek açılırsa bakım turunda çalışır. Talep silinince görevleri, geçmişi ve **ekleri** birlikte gider.
 - **Anonimleştirme:** çalışma alanından çıkarılmış hesabın adı/e-postası **geri döndürülemez biçimde** silinir; geçmiş talepler “Silinmiş kullanıcı” adıyla korunur (denetim ve muhasebe kaydı bozulmaz).
-- **Kişisel veri dışa aktarma (Kullanıcılar sekmesi):** bir kişinin sistemdeki verisi — hesap bilgisi, açtığı talepler (alan değerleriyle), verdiği kararlar, vekâletleri, yüklediği dosyaların listesi ve bildirim tercihi — JSON olarak indirilir (KVKK m.11 başvurularında kullanılır). Dosyaların kendisi pakete konmaz.
+- **Kişisel veri dışa aktarma (Kullanıcılar sekmesi):** bir kişinin sistemdeki verisi — hesap bilgisi, açtığı talepler (alan değerleriyle), verdiği kararlar, vekâletleri, yüklediği dosyaların listesi, izin hakları ve düşümleri ve bildirim tercihi — JSON olarak indirilir (KVKK m.11 başvurularında kullanılır). Dosyaların kendisi pakete konmaz.
 - Bunlar araçlardır; **saklama süreleri ve aydınlatma metni** şirketin hukuk danışmanıyla belirlenmelidir.
 
 ## 6g) Listeler (ana veri)
