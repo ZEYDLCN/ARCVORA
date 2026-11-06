@@ -120,6 +120,32 @@ public static class AppsEndpoints
             return Results.File(data, "text/csv; charset=utf-8", name);
         });
 
+        // ------------------------------------------------------- resmî tatiller ve izin bakiyesi
+        secured.MapGet("/workspaces/{id:guid}/holidays", async (Guid id, string? year, ClaimsPrincipal u, LeaveService s, CancellationToken ct) =>
+            Results.Ok(await s.HolidaysAsync(Endpoints.UserId(u), id, year, ct)));
+        secured.MapPost("/workspaces/{id:guid}/holidays", async (Guid id, AddHolidayRequest r, ClaimsPrincipal u, LeaveService s, CancellationToken ct) =>
+        {
+            var h = await s.AddHolidayAsync(Endpoints.UserId(u), id, r, ct);
+            return Results.Created($"/api/workspaces/{id}/holidays/{h.Id}", h);
+        });
+        secured.MapPost("/workspaces/{id:guid}/holidays/seed-fixed", async (Guid id, SeedHolidaysRequest r, ClaimsPrincipal u, LeaveService s, CancellationToken ct) =>
+            Results.Ok(await s.SeedFixedAsync(Endpoints.UserId(u), id, r.Year, ct)));
+        secured.MapDelete("/workspaces/{id:guid}/holidays/{holidayId:guid}", async (Guid id, Guid holidayId, ClaimsPrincipal u, LeaveService s, CancellationToken ct) =>
+        {
+            await s.DeleteHolidayAsync(Endpoints.UserId(u), id, holidayId, ct);
+            return Results.NoContent();
+        });
+        secured.MapGet("/workspaces/{id:guid}/leave/me", async (Guid id, string? year, ClaimsPrincipal u, LeaveService s, CancellationToken ct) =>
+            Results.Ok(await s.MineAsync(Endpoints.UserId(u), id, year, ct)));
+        secured.MapGet("/workspaces/{id:guid}/leave/balances", async (Guid id, string? year, ClaimsPrincipal u, LeaveService s, CancellationToken ct) =>
+            Results.Ok(await s.BalancesAsync(Endpoints.UserId(u), id, year, ct)));
+        secured.MapPost("/workspaces/{id:guid}/leave/entries", async (Guid id, AddLeaveEntryRequest r, ClaimsPrincipal u, LeaveService s, CancellationToken ct) =>
+            Results.Created($"/api/workspaces/{id}/leave/balances", await s.AddEntryAsync(Endpoints.UserId(u), id, r, ct)));
+        secured.MapPost("/workspaces/{id:guid}/leave/distribute", async (Guid id, DistributeRequest r, ClaimsPrincipal u, LeaveService s, CancellationToken ct) =>
+            Results.Ok(await s.DistributeAsync(Endpoints.UserId(u), id, r.Year, ct)));
+        secured.MapPost("/workspaces/{id:guid}/leave/carryover", async (Guid id, CarryoverRequest r, ClaimsPrincipal u, LeaveService s, CancellationToken ct) =>
+            Results.Ok(await s.CarryoverAsync(Endpoints.UserId(u), id, r, ct)));
+
         // --------------------------------------------------------- yönetilen listeler (ana veri)
         secured.MapGet("/workspaces/{id:guid}/lists", async (Guid id, ClaimsPrincipal u, DataListService s, CancellationToken ct) =>
             Results.Ok(await s.ListAsync(Endpoints.UserId(u), id, ct)));

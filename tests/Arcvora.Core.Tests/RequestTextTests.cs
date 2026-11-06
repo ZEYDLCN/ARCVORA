@@ -97,3 +97,17 @@ public class RequestTextDelegationTests
             Text("reassigned", Ayse, $$"""{"stepName":"Yönetici onayı","from":"{{Mehmet}}","to":"{{Ayse}}"}"""));
     }
 }
+
+public class RequestTextLeaveTests
+{
+    private static string Text(string kind, string detail) => RequestText.Event(kind, null, JsonDocument.Parse(detail).RootElement.Clone(), new Dictionary<Guid, string>());
+
+    [Fact]
+    public void Leave_reservation_and_refund_are_explained_in_the_timeline()
+    {
+        Assert.Equal("5 gün izin 2027 yılı bakiyenizden ayrıldı (kalan: 9 gün).", Text("leave_reserved", """{"days":5,"year":2027,"balanceAfter":9}"""));
+        Assert.Equal("3,5 gün izin 2027 yılı bakiyenizden ayrıldı (kalan: 10,5 gün).", Text("leave_reserved", """{"days":3.5,"year":2027,"balanceAfter":10.5}"""));
+        Assert.Equal("5 gün izin 2027 yılı bakiyenize iade edildi.", Text("leave_refunded", """{"days":5,"year":2027}"""));
+        Assert.Contains("?", Text("leave_reserved", "{}"));                         // eksik ayrıntı çökertmez
+    }
+}

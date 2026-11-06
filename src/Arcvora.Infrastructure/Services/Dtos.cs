@@ -61,7 +61,7 @@ public sealed record ArtifactDto(Guid Id, Guid ProjectId, int VersionNumber, str
     DateTimeOffset CreatedAt);
 
 public sealed record MemberDto(Guid UserId, string Email, string DisplayName, string Role, bool CanAccept,
-    Guid? ManagerId = null, bool MustChangePassword = false, bool PasswordResettable = false);
+    Guid? ManagerId = null, bool MustChangePassword = false, bool PasswordResettable = false, DateOnly? HireDate = null);
 
 public sealed record ResetPasswordRequest(string? Password);
 
@@ -71,7 +71,7 @@ public sealed record AddMemberRequest(string? Email, string? Role, bool? CanAcce
 public sealed record CreateUserRequest(string? Email, string? DisplayName, string? Password, string? Role, Guid? ManagerId, bool? SendInvite = null);
 
 /// <summary>Üye güncelleme. <c>ClearManager</c> true ise doğrudan yönetici kaldırılır.</summary>
-public sealed record UpdateMemberRequest(string? Role, bool? CanAccept, Guid? ManagerId, bool? ClearManager, string? DisplayName);
+public sealed record UpdateMemberRequest(string? Role, bool? CanAccept, Guid? ManagerId, bool? ClearManager, string? DisplayName, string? HireDate = null, bool? ClearHireDate = null);
 
 public sealed record ChangePasswordRequest(string? CurrentPassword, string? NewPassword);
 

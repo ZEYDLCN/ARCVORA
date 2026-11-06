@@ -111,6 +111,14 @@ public sealed class MemberService(ArcvoraDbContext db, ProjectAccessService acce
             await ValidateManagerAsync(workspaceId, userId, managerId, ct);
             m.ManagerId = managerId;
         }
+        if (req.ClearHireDate == true) m.HireDate = null;
+        else if (req.HireDate is not null)
+        {
+            if (!DateOnly.TryParseExact(req.HireDate.Trim(), "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var hire)
+                || hire.Year < 1900 || hire > DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime).AddDays(366))
+                throw new RequestValidationException("invalid_date", "İşe giriş tarihi yyyy-AA-gg biçiminde, 1900'den sonra ve en fazla bir yıl ilerisi olmalı.");
+            m.HireDate = hire;
+        }
         if (req.DisplayName is not null)
         {
             var name = req.DisplayName.Trim();
@@ -248,5 +256,5 @@ public sealed class MemberService(ArcvoraDbContext db, ProjectAccessService acce
 
     private static MemberDto ToDto(Membership m) => new(m.UserId, m.User?.Email ?? "", m.User?.DisplayName ?? "",
         RoleNames.ToApi(m.Role), m.Role == WorkspaceRole.Admin || m.CanAccept, m.ManagerId, m.User?.MustChangePassword ?? false,
-        m.User?.ManagedByWorkspaceId == m.WorkspaceId);
+        m.User?.ManagedByWorkspaceId == m.WorkspaceId, m.HireDate);
 }

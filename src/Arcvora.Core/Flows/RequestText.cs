@@ -31,7 +31,9 @@ public static class RequestText
     public static string Event(string kind, Guid? actorId, JsonElement? detail, IReadOnlyDictionary<Guid, string> people)
     {
         var who = actorId is { } a ? (people.TryGetValue(a, out var n) ? n : "Bir kullanıcı") : "Sistem";
-        string Str(string name) => detail is { ValueKind: JsonValueKind.Object } d && d.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "";
+        string Str(string name) => detail is { ValueKind: JsonValueKind.Object } d && d.TryGetProperty(name, out var v) ? (v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : v.ValueKind == JsonValueKind.Number ? v.GetRawText() : "") : "";
+        string Num(string name) => detail is { ValueKind: JsonValueKind.Object } d0 && d0.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number
+            ? v.GetDecimal().ToString("0.##", System.Globalization.CultureInfo.InvariantCulture).Replace('.', ',') : "?";
         var step = Str("stepName");
         var comment = Str("comment");
         // Vekil karar verdiyse "Vekil, Müdür adına": kayıtta hem kararı veren hem adına karar verilen görünür.
@@ -64,6 +66,8 @@ public static class RequestText
                 var handed = detail is { ValueKind: JsonValueKind.Object } d && d.TryGetProperty("replacements", out var rep) && rep.ValueKind == JsonValueKind.Array && rep.GetArrayLength() > 0;
                 return $"{removed} çalışma alanından çıkarıldığı için “{step}” adımı {(handed ? "master admin’e yönlendirildi" : "kalan onaylayıcılara bırakıldı")}.";
             }
+            case "leave_reserved": return $"{Num("days")} gün izin {Str("year")} yılı bakiyenizden ayrıldı (kalan: {Num("balanceAfter")} gün).";
+            case "leave_refunded": return $"{Num("days")} gün izin {Str("year")} yılı bakiyenize iade edildi.";
             case "completed": return "Talep onaylandı.";
             case "accounting_queued": return "Muhasebe kuyruğuna eklendi.";
             case "accounting_sent": return "Muhasebe sistemine gönderildi.";

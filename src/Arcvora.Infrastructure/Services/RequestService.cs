@@ -11,7 +11,7 @@ using Npgsql;
 namespace Arcvora.Infrastructure.Services;
 
 /// <summary>Akış uygulamalarının çalışma zamanı: talep açma, onay/ret, iptal, listeleme. Kurallar çekirdekte (<see cref="FlowEngine"/>).</summary>
-public sealed class RequestService(ArcvoraDbContext db, AppAccessService access, IRequestHooks hooks, RequestVisibility visibility, DelegationService delegations, EmailNotifier notifier, DataListService lists, TimeProvider clock)
+public sealed class RequestService(ArcvoraDbContext db, AppAccessService access, IRequestHooks hooks, RequestVisibility visibility, DelegationService delegations, EmailNotifier notifier, DataListService lists, LeaveService leave, TimeProvider clock)
 {
     public const int MaxCommentLength = 1000;
     private const int ListLimit = 200;
@@ -46,7 +46,8 @@ public sealed class RequestService(ArcvoraDbContext db, AppAccessService access,
         await RequireUsableAsync(userId, member, app, ct);
         var version = await db.AppVersions.AsNoTracking().FirstAsync(v => v.Id == app.PublishedVersionId, ct);
         var def = AppDesignService.Deserialize(version.DefinitionJson);
-        return new AppFormDto(ToMy(app, version.Number), def, await lists.ActiveItemsAsync(app.WorkspaceId, FormValidator.ListIds(def), ct));
+        var holidays = UsesWorkDays(def) ? (await leave.CalendarAsync(app.WorkspaceId, ct)).Days.OrderBy(d => d.Key).Select(d => new FormHolidayDto(d.Key, d.Value)).ToList() : [];
+        return new AppFormDto(ToMy(app, version.Number), def, await lists.ActiveItemsAsync(app.WorkspaceId, FormValidator.ListIds(def), ct), holidays);
     }
 
     public async Task<IReadOnlyList<DirectoryEntry>> DirectoryAsync(Guid userId, Guid workspaceId, CancellationToken ct)
@@ -75,7 +76,8 @@ public sealed class RequestService(ArcvoraDbContext db, AppAccessService access,
         var version = await db.AppVersions.AsNoTracking().FirstAsync(v => v.Id == app.PublishedVersionId, ct);
         var def = AppDesignService.Deserialize(version.DefinitionJson);
 
-        var form = FormValidator.Validate(def, data ?? new Dictionary<string, JsonElement>(), await lists.ActiveItemsAsync(app.WorkspaceId, FormValidator.ListIds(def), ct));
+        var form = FormValidator.Validate(def, data ?? new Dictionary<string, JsonElement>(), await lists.ActiveItemsAsync(app.WorkspaceId, FormValidator.ListIds(def), ct),
+            UsesWorkDays(def) ? await leave.CalendarAsync(app.WorkspaceId, ct) : null);
         var issues = form.Issues.ToList();
         var userFields = FormValidator.UserFieldIds(def, form.Values);
         if (userFields.Count > 0)
@@ -102,6 +104,9 @@ public sealed class RequestService(ArcvoraDbContext db, AppAccessService access,
         request.Number = FlowValues.Number(def.Prefix, now.Year, await NextNumberAsync(app.WorkspaceId, def.Prefix, now.Year, ct));
         db.FlowRequests.Add(request);
         AddEvent(request, userId, RequestEventKinds.Submitted, new { app = app.Name, version = version.Number }, now);
+        // İzin bakiyesi: gün sayısı kişi kilidi altında denetlenip rezerve edilir (yetersizse 422; işlem geri alınır).
+        if (await leave.ReserveAsync(request, def, form.Values, ct) is { } reserved)
+            AddEvent(request, userId, RequestEventKinds.LeaveReserved, new { days = reserved.Days, year = reserved.Year, balanceAfter = reserved.BalanceAfter }, now);
         await AdvanceAsync(request, app, def, form.Values, new Requester(userId, member.ManagerId), dir, 0, now, ct);
         try
         {
@@ -214,6 +219,7 @@ public sealed class RequestService(ArcvoraDbContext db, AppAccessService access,
             r.CompletedAt = now;
             r.UpdatedAt = now;
             AddEvent(r, userId, RequestEventKinds.Cancelled, null, now);
+            if (await leave.RefundAsync(r, ct) is { } back) AddEvent(r, null, RequestEventKinds.LeaveRefunded, new { days = back.Days, year = back.Year }, now);
             await notifier.ResultAsync(r, await db.Apps.AsNoTracking().FirstAsync(a => a.Id == r.AppId, ct), "cancelled", userId, null, null, ct);
             try
             {
@@ -301,6 +307,7 @@ public sealed class RequestService(ArcvoraDbContext db, AppAccessService access,
             {
                 request.Status = RequestStatus.Rejected;
                 request.CompletedAt = now;
+                if (await leave.RefundAsync(request, ct) is { } back) AddEvent(request, null, RequestEventKinds.LeaveRefunded, new { days = back.Days, year = back.Year }, now);
                 await notifier.ResultAsync(request, app, "rejected", userId, task.StepName, text, ct);
             }
             else if (result.Outcome == StepOutcome.Approved)
@@ -425,6 +432,8 @@ public sealed class RequestService(ArcvoraDbContext db, AppAccessService access,
         cmd.Parameters.AddWithValue("y", year);
         return (int)(await cmd.ExecuteScalarAsync(ct))!;
     }
+
+    private static bool UsesWorkDays(FlowDefinition def) => def.Fields.Any(f => f.Computed is { Op: ComputedOp.WorkDays });
 
     private Task RequireUsableAsync(Guid userId, Membership member, AppDefinition app, CancellationToken ct) =>
         access.RequireUsableAsync(userId, member, app, ct);
