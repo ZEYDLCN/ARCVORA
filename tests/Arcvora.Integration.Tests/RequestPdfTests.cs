@@ -70,7 +70,7 @@ public class RequestPdfTests
     {
         var (ok, text) = Extract(RequestPdf.Build(Sample()));
         if (!ok) return;
-        foreach (var expected in new[] { "IZN-2026-0007", "İzin Talebi", "Çağlar Öztürk", "Şükrü Ğünay", "Örnek Gıda Sanayi A.Ş.", "1.234,50 TRY", "Uygun, iyi tatiller.", "ABCD-1234-EF56", "ONAYLANDI", "Onayladı" })
+        foreach (var expected in new[] { "IZN-2026-0007", "İzin Talebi", "Çağlar Öztürk", "Şükrü Ğünay", "Örnek Gıda Sanayi A.Ş.", "1.234,50 TRY", "Uygun, iyi tatiller.", "ABCD-1234-EF56", "Onaylandı", "Onayladı" })
             Assert.Contains(expected, text);
     }
 
@@ -137,13 +137,26 @@ public class RequestPdfTests
     }
 
     [Fact]
+    public void The_document_follows_the_reference_layout_sections_and_table_headings_in_order()
+    {
+        var (ok, text) = Extract(RequestPdf.Build(Sample()));
+        if (!ok) return;
+        var order = new[] { "ARCVORA", "Talep bilgileri", "Onay akışı", "İşlem geçmişi", "Doğrulama kodu" }.Select(t => (t, i: text.IndexOf(t, StringComparison.Ordinal))).ToList();
+        Assert.All(order, o => Assert.True(o.i >= 0, $"'{o.t}' yok"));
+        Assert.Equal(order.Select(o => o.i).OrderBy(i => i), order.Select(o => o.i));            // bölümler referanstaki sırada
+        foreach (var heading in new[] { "Adım", "Onaylayan", "Karar", "Tarih" }) Assert.Contains(heading, text);
+        Assert.DoesNotContain("Zaman çizelgesi", text);                                           // eski bölüm adı
+        Assert.Contains("Örnek Gıda Sanayi A.Ş.", text);                                          // şirket adı başlıkta
+    }
+
+    [Fact]
     public void Missing_sections_and_in_review_requests_still_render()
     {
         var pdf = RequestPdf.Build(Sample([], [], [], [], status: "in_review"));
         Assert.Equal(1, Pages(pdf));
         var (ok, text) = Extract(pdf);
         if (!ok) return;
-        Assert.Contains("İNCELEMEDE", text);                          // durum rozeti Türkçe büyük harfle (i→İ)
+        Assert.Contains("İncelemede", text);                          // durum rozeti (referans tasarım: cümle biçimi, simgeli)
     }
 
     [Fact]
