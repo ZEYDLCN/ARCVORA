@@ -446,9 +446,12 @@ public sealed class RequestService(ArcvoraDbContext db, AppAccessService access,
         return q.Where(r => r.Status == parsed);
     }
 
-    private async Task<IReadOnlyList<RequestSummaryDto>> ListAsync(IQueryable<FlowRequest> q, CancellationToken ct)
+    private async Task<IReadOnlyList<RequestSummaryDto>> ListAsync(IQueryable<FlowRequest> q, CancellationToken ct) =>
+        await SummariesAsync(await q.OrderByDescending(r => r.CreatedAt).ThenByDescending(r => r.Id).Take(ListLimit).ToListAsync(ct), ct);
+
+    /// <summary>Talep satırlarını liste özetlerine çevirir (uygulama adı, talep eden adı, bekleyen adım). Sıra korunur.</summary>
+    public async Task<IReadOnlyList<RequestSummaryDto>> SummariesAsync(IReadOnlyList<FlowRequest> requests, CancellationToken ct)
     {
-        var requests = await q.OrderByDescending(r => r.CreatedAt).ThenByDescending(r => r.Id).Take(ListLimit).ToListAsync(ct);
         if (requests.Count == 0) return [];
         var appIds = requests.Select(r => r.AppId).Distinct().ToList();
         var userIds = requests.Select(r => r.RequesterId).Distinct().ToList();

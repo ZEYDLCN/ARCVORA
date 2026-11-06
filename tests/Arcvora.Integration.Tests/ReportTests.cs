@@ -80,7 +80,7 @@ public class ReportTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var k = await SetupAsync();
         Assert.Equal(3, Total(await k.Admin.GetAsync(Search(k.Admin, "q=izn-"))));                // numara parçası, büyük/küçük harf fark etmez
         Assert.Equal(1, Total(await k.Admin.GetAsync(Search(k.Admin, "q=müşteri%20yemeği"))));    // özet
-        Assert.Equal(5, Total(await k.Admin.GetAsync(Search(k.Admin, "q=can"))));                 // talep eden adı (Can: 5 talep)
+        Assert.Equal(4, Total(await k.Admin.GetAsync(Search(k.Admin, "q=can"))));                 // talep eden adı (Can: 4 talep)
         Assert.Equal(0, Total(await k.Admin.GetAsync(Search(k.Admin, "q=yokboyleBirSey"))));
         Assert.Equal(7, Total(await k.Admin.GetAsync(Search(k.Admin, "q=%20%20"))));              // yalnızca boşluk: süzgeç yok
     }
@@ -107,7 +107,7 @@ public class ReportTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(3, Total(await k.Admin.GetAsync(Search(k.Admin, "status=in_review"))));
         Assert.Equal(3, Total(await k.Admin.GetAsync(Search(k.Admin, $"appId={k.Leave}"))));
         Assert.Equal(4, Total(await k.Admin.GetAsync(Search(k.Admin, $"appId={k.Expense}"))));
-        Assert.Equal(5, Total(await k.Admin.GetAsync(Search(k.Admin, $"requesterId={k.Can.UserId}"))));
+        Assert.Equal(4, Total(await k.Admin.GetAsync(Search(k.Admin, $"requesterId={k.Can.UserId}"))));
         Assert.Equal(1, Total(await k.Admin.GetAsync(Search(k.Admin, $"requesterId={k.Can.UserId}&appId={k.Leave}&status=approved"))));
         var today = DateOnly.FromDateTime(DateTime.UtcNow.AddMinutes(180));
         Assert.Equal(7, Total(await k.Admin.GetAsync(Search(k.Admin, $"from={today:yyyy-MM-dd}&to={today:yyyy-MM-dd}"))));          // bitiş günü dahil

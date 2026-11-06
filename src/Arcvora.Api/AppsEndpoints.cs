@@ -107,6 +107,19 @@ public static class AppsEndpoints
             return Results.File(data, "text/csv; charset=utf-8", name);
         });
 
+        // ------------------------------------------------------------ arama ve raporlar (master admin)
+        secured.MapGet("/workspaces/{id:guid}/requests/search", async (Guid id, string? q, string? status, Guid? appId, Guid? requesterId, string? from, string? to,
+            string? page, string? pageSize, bool? includeDemo, ClaimsPrincipal u, ReportService s, CancellationToken ct) =>
+            Results.Ok(await s.SearchAsync(Endpoints.UserId(u), id, q, status, appId, requesterId, from, to, page, pageSize, includeDemo ?? true, ct)));
+        secured.MapGet("/workspaces/{id:guid}/reports/summary", async (Guid id, string? from, string? to, Guid? appId, string? overdueHours, bool? includeDemo, ClaimsPrincipal u, ReportService s, CancellationToken ct) =>
+            Results.Ok(await s.SummaryAsync(Endpoints.UserId(u), id, from, to, appId, overdueHours, includeDemo ?? false, ct)));
+        secured.MapGet("/workspaces/{id:guid}/reports/requests.csv", async (Guid id, string? q, string? status, Guid? appId, Guid? requesterId, string? from, string? to,
+            bool? includeDemo, string? delimiter, ClaimsPrincipal u, ReportService s, CancellationToken ct) =>
+        {
+            var (data, name) = await s.ExportCsvAsync(Endpoints.UserId(u), id, q, status, appId, requesterId, from, to, includeDemo ?? true, delimiter, ct);
+            return Results.File(data, "text/csv; charset=utf-8", name);
+        });
+
         // ----------------------------------------------------------------------- e-posta
         secured.MapGet("/workspaces/{id:guid}/email", async (Guid id, ClaimsPrincipal u, EmailAdminService s, CancellationToken ct) =>
             Results.Ok(await s.StatusAsync(Endpoints.UserId(u), id, ct)));
