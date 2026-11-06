@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { IconKey, IconMail, IconShield, IconUser } from '../components/icons';
 import { api, ApiError } from '../api';
 import { Hero } from '../components/Hero';
 import { Logo } from '../components/Logo';
@@ -45,16 +46,17 @@ export function Auth({ onAuth, initialError }: { onAuth: (r: AuthResult) => void
               <button type="button" role="tab" aria-selected={mode === 'login'} onClick={() => setMode('login')}>Giriş</button>
               <button type="button" role="tab" aria-selected={mode === 'register'} onClick={() => setMode('register')}>Kayıt ol</button>
             </div>
-            {mode === 'register' && (<><label htmlFor="name">Ad</label><input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" /></>)}
+            {mode === 'register' && (<><label htmlFor="name">Ad</label><div className="with-ico"><span className="wi" aria-hidden="true"><IconUser size={18} /></span><input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" /></div></>)}
             <label htmlFor="email">E-posta</label>
-            <input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
+            <div className="with-ico"><span className="wi" aria-hidden="true"><IconMail size={18} /></span><input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" /></div>
             <label htmlFor="password">Parola {mode === 'register' && <span className="muted">(en az 10 karakter)</span>}</label>
-            <input id="password" type="password" required minLength={mode === 'register' ? 10 : undefined} value={password}
-              onChange={(e) => setPassword(e.target.value)} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} />
+            <div className="with-ico"><span className="wi" aria-hidden="true"><IconKey size={18} /></span>
+              <input id="password" type="password" required minLength={mode === 'register' ? 10 : undefined} value={password}
+                onChange={(e) => setPassword(e.target.value)} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} /></div>
             {error && <div className="notice error" role="alert" style={{ marginTop: 12 }}>{error}</div>}
             <p style={{ marginTop: 18 }}><button className="btn primary" disabled={busy} style={{ width: '100%', padding: '12px 16px' }}>{mode === 'login' ? 'Giriş yap' : 'Hesap oluştur'}</button></p>
             {sso && mode === 'login' && (
-              <p style={{ marginTop: 10 }}><a className="btn" href="/api/auth/oidc/login" style={{ display: 'block', textAlign: 'center', padding: '12px 16px' }}>{sso.label}</a></p>
+              <p style={{ marginTop: 10 }}><a className="btn" href="/api/auth/oidc/login" style={{ justifyContent: 'center', padding: '12px 16px', width: '100%' }}><IconShield size={17} />{sso.label}</a></p>
             )}
           </form>
         </div>
