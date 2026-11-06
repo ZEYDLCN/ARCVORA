@@ -1,16 +1,19 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api, ApiError } from '../api';
 import { Hero } from '../components/Hero';
 import { Logo } from '../components/Logo';
 import type { AuthResult } from '../types';
 
-export function Auth({ onAuth }: { onAuth: (r: AuthResult) => void }) {
+export function Auth({ onAuth, initialError }: { onAuth: (r: AuthResult) => void; initialError?: string }) {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(initialError ?? null);
   const [busy, setBusy] = useState(false);
+  const [sso, setSso] = useState<{ label: string } | null>(null);
+  useEffect(() => { if (initialError) setError(initialError); }, [initialError]);
+  useEffect(() => { api.providers().then((p) => setSso(p.oidc ? { label: p.oidcLabel ?? 'Şirket hesabıyla giriş' } : null)).catch(() => setSso(null)); }, []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,6 +53,9 @@ export function Auth({ onAuth }: { onAuth: (r: AuthResult) => void }) {
               onChange={(e) => setPassword(e.target.value)} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} />
             {error && <div className="notice error" role="alert" style={{ marginTop: 12 }}>{error}</div>}
             <p style={{ marginTop: 18 }}><button className="btn primary" disabled={busy} style={{ width: '100%', padding: '12px 16px' }}>{mode === 'login' ? 'Giriş yap' : 'Hesap oluştur'}</button></p>
+            {sso && mode === 'login' && (
+              <p style={{ marginTop: 10 }}><a className="btn" href="/api/auth/oidc/login" style={{ display: 'block', textAlign: 'center', padding: '12px 16px' }}>{sso.label}</a></p>
+            )}
           </form>
         </div>
       </main>
