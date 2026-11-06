@@ -1,5 +1,5 @@
 import type {
-  AccountingEntry, AccountingSettings, AppDetail, AttachmentInfo, DemoSeed, DemoStatus, AppForm, AppGrants, AppSummary, Artifact, AuthResult, DirectoryEntry, FlowDefinition,
+  AccountingEntry, AccountingSettings, AppDetail, AttachmentInfo, Delegation, DemoSeed, DemoStatus, AppForm, AppGrants, AppSummary, Artifact, AuthResult, DirectoryEntry, FlowDefinition,
   GroupInfo, Job, Member, MyApp, MyTask, ProfileInfo, ProjectDetail, ProjectSummary, ProposalDetail, ProposalSummary, RequestDetail,
   RequestSummary, VerifyResult, View, Finding, Model, VersionInfo, WorkspaceInfo,
 } from './types';
@@ -135,6 +135,11 @@ export const api = {
     request<Member>('POST', `/workspaces/${ws}/users`, b),
   updateMember: (ws: string, userId: string, b: Record<string, unknown>) => request<Member>('PATCH', `/workspaces/${ws}/members/${userId}`, b),
   removeMember: (ws: string, userId: string) => request<void>('DELETE', `/workspaces/${ws}/members/${userId}`),
+  delegations: (ws: string, scope: 'mine' | 'all' = 'mine') => request<Delegation[]>('GET', `/workspaces/${ws}/delegations?scope=${scope}`),
+  createDelegation: (ws: string, body: { toUserId: string; startsOn: string; endsOn: string; reason?: string; fromUserId?: string }) =>
+    request<Delegation>('POST', `/workspaces/${ws}/delegations`, body),
+  revokeDelegation: (ws: string, id: string) => request<Delegation>('DELETE', `/workspaces/${ws}/delegations/${id}`),
+  reassignTask: (taskId: string, toUserId: string) => request<RequestDetail>('POST', `/tasks/${taskId}/reassign`, { toUserId }),
   demoStatus: (ws: string) => request<DemoStatus>('GET', `/workspaces/${ws}/demo-data`),
   seedDemo: (ws: string) => request<DemoSeed>('POST', `/workspaces/${ws}/demo-data`, {}),
   removeDemo: (ws: string) => request<void>('DELETE', `/workspaces/${ws}/demo-data`),

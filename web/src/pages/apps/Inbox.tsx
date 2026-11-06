@@ -39,6 +39,7 @@ export function Inbox() {
                 </span>
                 <span className="meta">
                   <span className="badge neutral">{t.stepName}</span>
+                  {t.onBehalfOfName && <span className="badge info" title="Bu görev başka bir kişiye atanmış; vekâlet gereği siz de karar verebilirsiniz">{t.onBehalfOfName} adına (vekâleten)</span>}
                   {t.fallback && <span className="badge warn" title={`Size atanma nedeni: ${fallbackLabel(t.fallback)} master admin’e yönlendirildi`}>Yönlendirilmiş görev</span>}
                   <span className="muted">{when(t.decidedAt ?? t.createdAt)}</span>
                   {t.comment && <span className="muted">“{t.comment}”</span>}

@@ -55,6 +55,7 @@ export function AppsShell({ user, workspace, dark, onTheme, onLogout, route, arc
         item({ name: 'requests' }, 'Taleplerim', <IconFile />),
         item({ name: 'inbox' }, 'Onay kutusu', <IconInbox />, pending),
         ...(canUseAccounting(workspace) ? [item({ name: 'accounting' }, 'Muhasebe', <IconPackage />)] : []),
+        item({ name: 'delegations' }, 'Vekâletlerim', <IconChecklist />),
         item({ name: 'verify' }, 'Belge doğrula', <IconShield />),
       ],
     }];

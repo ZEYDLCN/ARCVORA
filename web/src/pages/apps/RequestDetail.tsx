@@ -5,17 +5,21 @@ import { RequestBadge, TaskBadge } from '../../components/StatusBadge';
 import { eventText, fallbackLabel, stepStates } from '../../lib/requestText';
 import { formatValue } from '../../lib/flow';
 import { AttachmentList } from '../../components/AttachmentList';
-import type { RequestDetail as Detail } from '../../types';
+import type { DirectoryEntry, RequestDetail as Detail } from '../../types';
 import { errorText, when } from './common';
 
-export function RequestDetail({ id }: { id: string }) {
+export function RequestDetail({ id, isAdmin = false }: { id: string; isAdmin?: boolean }) {
   const [d, setD] = useState<Detail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [comment, setComment] = useState('');
   const [busy, setBusy] = useState(false);
+  const [people, setPeople] = useState<DirectoryEntry[]>([]);
+  const [reassign, setReassign] = useState<Record<string, string>>({});
 
   const load = useCallback(() => { api.requestDetail(id).then((r) => { setD(r); setError(null); }).catch((e) => setError(errorText(e, 'Talep yüklenemedi.'))); }, [id]);
   useEffect(() => { setD(null); load(); }, [load]);
+  const workspaceId = d?.summary.workspaceId;
+  useEffect(() => { if (isAdmin && workspaceId) api.directory(workspaceId).then(setPeople).catch(() => setPeople([])); }, [isAdmin, workspaceId]);
 
   const act = async (fn: () => Promise<Detail>) => {
     setBusy(true);
@@ -106,7 +110,18 @@ export function RequestDetail({ id }: { id: string }) {
           <ul className="list" style={{ marginTop: 6 }}>
             {d.tasks.map((t) => (
               <li key={t.id} className="row" style={{ gap: 10 }}>
-                <span style={{ flex: 1 }}>{t.stepName} · <b>{d.people[t.assigneeId] ?? '—'}</b>{t.comment ? <span className="muted"> — {t.comment}</span> : null}</span>
+                <span style={{ flex: 1 }}>{t.stepName} · <b>{d.people[t.assigneeId] ?? '—'}</b>
+                  {t.decidedBy && t.decidedBy !== t.assigneeId ? <span className="muted"> (vekil: {d.people[t.decidedBy] ?? '—'})</span> : null}
+                  {t.comment ? <span className="muted"> — {t.comment}</span> : null}</span>
+                {isAdmin && t.status === 'pending' && s.status === 'in_review' && (
+                  <span className="row" style={{ gap: 6 }}>
+                    <select aria-label={`${t.stepName} görevini yeniden ata`} value={reassign[t.id] ?? ''} onChange={(e) => setReassign({ ...reassign, [t.id]: e.target.value })}>
+                      <option value="">Yeniden ata…</option>
+                      {people.filter((p) => p.id !== t.assigneeId && p.id !== s.requesterId).map((p) => <option key={p.id} value={p.id}>{p.displayName}</option>)}
+                    </select>
+                    <button className="btn small" disabled={busy || !reassign[t.id]} onClick={() => void act(() => api.reassignTask(t.id, reassign[t.id]))}>Ata</button>
+                  </span>
+                )}
                 <TaskBadge status={t.status} />
               </li>
             ))}

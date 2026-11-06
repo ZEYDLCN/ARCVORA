@@ -130,6 +130,8 @@ export interface RequestDetail {
 export interface MyTask {
   id: string; requestId: string; requestNumber: string; appName: string; icon: string; summary: string; requesterName: string;
   stepName: string; status: TaskStatus; fallback?: string; comment?: string; createdAt: string; decidedAt?: string;
+  /** Görev başkasına atanmış ve ben vekil olarak görüyorsam: asıl onaylayıcı. */
+  onBehalfOfId?: string; onBehalfOfName?: string;
 }
 export interface Member { userId: string; email: string; displayName: string; role: string; canAccept: boolean; managerId?: string; mustChangePassword: boolean; passwordResettable: boolean }
 export interface GroupInfo { id: string; name: string; memberIds: string[] }
@@ -145,3 +147,8 @@ export interface VerifyResult { valid: boolean; number?: string; status?: Reques
 export interface DemoStatus { present: boolean; users: number; groups: number; apps: number; requests: number; attachments: number }
 export interface DemoUser { id: string; email: string; displayName: string; title: string; temporaryPassword: string }
 export interface DemoSeed { users: DemoUser[]; groups: number; apps: number; requests: number; attachments: number }
+export type DelegationStatus = 'upcoming' | 'active' | 'expired' | 'revoked';
+export interface Delegation {
+  id: string; fromUserId: string; fromName: string; toUserId: string; toName: string; startsOn: string; endsOn: string;
+  reason?: string; status: DelegationStatus; createdAt: string; revokedAt?: string;
+}

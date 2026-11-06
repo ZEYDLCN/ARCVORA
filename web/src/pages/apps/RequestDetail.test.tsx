@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RequestDetail as Detail } from '../../types';
 
-const api = vi.hoisted(() => ({ requestDetail: vi.fn(), approveTask: vi.fn(), rejectTask: vi.fn(), cancelRequest: vi.fn(), attachmentBlob: vi.fn(), downloadRequestPdf: vi.fn() }));
+const api = vi.hoisted(() => ({ requestDetail: vi.fn(), approveTask: vi.fn(), rejectTask: vi.fn(), cancelRequest: vi.fn(), attachmentBlob: vi.fn(), downloadRequestPdf: vi.fn(), directory: vi.fn(), reassignTask: vi.fn() }));
 vi.mock('../../api', async (orig) => ({ ...(await orig<typeof import('../../api')>()), api }));
 const { RequestDetail } = await import('./RequestDetail');
 
@@ -26,7 +26,7 @@ const base = (over: Partial<Detail> = {}): Detail => ({
   people: { u1: 'Çalışan', u2: 'Yönetici' }, canCancel: false, attachments: [], ...over,
 });
 
-const render = async (id = 'r1') => { await act(async () => { root.render(<RequestDetail id={id} />); await Promise.resolve(); await Promise.resolve(); }); };
+const render = async (id = 'r1', isAdmin = false) => { await act(async () => { root.render(<RequestDetail id={id} isAdmin={isAdmin} />); await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); }); };
 const button = (text: string) => [...host.querySelectorAll('button')].find((b) => b.textContent?.trim() === text) as HTMLButtonElement | undefined;
 const typeComment = (v: string) => act(() => {
   const el = host.querySelector('#decision-comment') as HTMLTextAreaElement;
@@ -140,5 +140,31 @@ describe('RequestDetail', () => {
     expect(api.downloadRequestPdf).toHaveBeenCalledWith('r3', 'IZN-2026-0001.pdf');
     await act(async () => { button('PDF indir / yazdır')!.click(); await Promise.resolve(); await Promise.resolve(); });
     expect(host.querySelector('[role=alert]')!.textContent).toContain('PDF oluşturulamadı');
+  });
+
+  it('vekilin verdiği karar görevlerde "vekil" olarak belirtilir', async () => {
+    api.requestDetail.mockResolvedValue(base({
+      tasks: [{ id: 't1', assigneeId: 'u2', stepIndex: 0, stepId: 's1', stepName: 'Yönetici onayı', status: 'approved', createdAt: '2026-11-05T10:00:00Z', decidedAt: '2026-11-05T11:00:00Z', decidedBy: 'u3' }],
+      people: { u1: 'Çalışan', u2: 'Yönetici', u3: 'Vekil Veli' },
+    }));
+    await render('rv');
+    expect(host.textContent).toContain('(vekil: Vekil Veli)');
+  });
+
+  it('yalnızca master admin bekleyen görevi yeniden atayabilir', async () => {
+    api.requestDetail.mockResolvedValue(base());
+    api.directory.mockResolvedValue([{ id: 'u1', displayName: 'Çalışan' }, { id: 'u2', displayName: 'Yönetici' }, { id: 'u4', displayName: 'Selin' }]);
+    api.reassignTask.mockResolvedValue(base());
+    await render('ra', false);
+    expect(host.querySelector('select[aria-label*="yeniden ata"]')).toBeNull();
+    act(() => root.unmount());
+    root = createRoot(host);
+    await render('rb', true);
+    const sel = host.querySelector('select[aria-label*="yeniden ata"]') as HTMLSelectElement;
+    expect([...sel.options].map((o) => o.textContent)).toEqual(['Yeniden ata…', 'Selin']);          // atanan ve talep eden listede yok
+    expect(button('Ata')!.disabled).toBe(true);
+    act(() => { Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')!.set!.call(sel, 'u4'); sel.dispatchEvent(new Event('change', { bubbles: true })); });
+    await act(async () => { button('Ata')!.click(); await Promise.resolve(); });
+    expect(api.reassignTask).toHaveBeenCalledWith('t1', 'u4');
   });
 });

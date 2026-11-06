@@ -18,6 +18,12 @@ describe('eventText', () => {
     expect(eventText(ev('rejected', { stepName: 'X', comment: 'yoğun' }, 'b'), people)).toBe('Burak “X” adımında reddetti: yoğun');
     expect(eventText(ev('approved', { stepName: 'X' }, 'b'), people)).toBe('Burak “X” adımını onayladı.');
   });
+  it('vekil karar verdiyse adına karar verdiği kişiyi yazar; devri anlatır', () => {
+    expect(eventText(ev('approved', { stepName: 'Y', comment: 'tamam', onBehalfOf: 'a' }, 'b'), people)).toBe('Burak, Ayşe adına “Y” adımını onayladı: tamam');
+    expect(eventText(ev('rejected', { stepName: 'Y', comment: 'hayır', onBehalfOf: 'a' }, 'b'), people)).toBe('Burak, Ayşe adına “Y” adımında reddetti: hayır');
+    expect(eventText(ev('approved', { stepName: 'Y', onBehalfOf: 'zzz' }, 'b'), people)).toContain('Bir kullanıcı adına');
+    expect(eventText(ev('reassigned', { stepName: 'Y', from: 'a', to: 'b' }, 'a'), people)).toBe('Ayşe “Y” görevinin onaylayıcısını değiştirdi: Ayşe → Burak.');
+  });
   it('atlanan adım, iptal, tamamlanma ve muhasebe olayları', () => {
     expect(eventText(ev('step_skipped', { stepName: 'GM' }), people)).toContain('atlandı');
     expect(eventText(ev('cancelled', {}, 'a'), people)).toBe('Ayşe talebi iptal etti.');

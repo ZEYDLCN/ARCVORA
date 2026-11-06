@@ -28,7 +28,7 @@ afterEach(() => { act(() => root.unmount()); host.remove(); });
 describe('AppsShell rol bazlı menü', () => {
   it('app kullanıcısı yalnızca Uygulamalar ve Hesap bölümlerini görür', async () => {
     await render(ws('app_user'));
-    expect(navLabels()).toEqual(['Uygulamalarım', 'Taleplerim', 'Onay kutusu', 'Belge doğrula', 'Parolamı değiştir']);
+    expect(navLabels()).toEqual(['Uygulamalarım', 'Taleplerim', 'Onay kutusu', 'Vekâletlerim', 'Belge doğrula', 'Parolamı değiştir']);
     expect(host.querySelector('#content')).not.toBeNull();
   });
 

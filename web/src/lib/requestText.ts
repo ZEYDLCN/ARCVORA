@@ -35,6 +35,10 @@ export function fallbackLabel(reason: string | undefined): string | null {
 
 const str = (v: unknown): string => (typeof v === 'string' ? v : '');
 
+/** Vekil karar verdiyse ", Müdür adına" (kayıtta hem kararı veren hem adına karar verilen görünür). */
+const behalf = (d: Record<string, unknown>, people: Record<string, string>): string =>
+  typeof d.onBehalfOf === 'string' ? `, ${people[d.onBehalfOf] ?? 'Bir kullanıcı'} adına` : '';
+
 /** Zaman çizelgesi satırı: kimin ne yaptığını Türkçe bir cümleyle anlatır. */
 export function eventText(e: RequestEventInfo, people: Record<string, string>): string {
   const who = e.actorId ? (people[e.actorId] ?? 'Bir kullanıcı') : 'Sistem';
@@ -48,8 +52,9 @@ export function eventText(e: RequestEventInfo, people: Record<string, string>): 
       return `“${step}” adımı başladı. Onaylayacak: ${names}${fb ? ` (${fb} master admin’e yönlendirildi)` : ''}.`;
     }
     case 'step_skipped': return `“${step}” adımı koşul sağlanmadığı için atlandı.`;
-    case 'approved': return `${who} “${step}” adımını onayladı${str(d.comment) ? `: ${str(d.comment)}` : '.'}`;
-    case 'rejected': return `${who} “${step}” adımında reddetti${str(d.comment) ? `: ${str(d.comment)}` : '.'}`;
+    case 'approved': return `${who}${behalf(d, people)} “${step}” adımını onayladı${str(d.comment) ? `: ${str(d.comment)}` : '.'}`;
+    case 'rejected': return `${who}${behalf(d, people)} “${step}” adımında reddetti${str(d.comment) ? `: ${str(d.comment)}` : '.'}`;
+    case 'reassigned': return `${who} “${step}” görevinin onaylayıcısını değiştirdi: ${people[str(d.from)] ?? 'Bir kullanıcı'} → ${people[str(d.to)] ?? 'Bir kullanıcı'}.`;
     case 'cancelled': return `${who} talebi iptal etti.`;
     case 'approver_removed': {
       const removed = typeof d.removedId === 'string' ? (people[d.removedId] ?? 'Bir onaylayıcı') : 'Bir onaylayıcı';
