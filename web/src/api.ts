@@ -1,5 +1,5 @@
 import type {
-  AccountingEntry, AccountingSettings, AppDetail, AttachmentInfo, Delegation, DemoSeed, DemoStatus, EmailOutboxRow, EmailStatus, AppForm, AppGrants, AppSummary, Artifact, AuthResult, DirectoryEntry, FlowDefinition,
+  AccountingEntry, AccountingSettings, AppDetail, AttachmentInfo, AuditPage, FormerUser, Report, RetentionInfo, RetentionPreview, SearchPage, Delegation, DemoSeed, DemoStatus, EmailOutboxRow, EmailStatus, AppForm, AppGrants, AppSummary, Artifact, AuthResult, DirectoryEntry, FlowDefinition,
   GroupInfo, Job, Member, MyApp, MyTask, ProfileInfo, ProjectDetail, ProjectSummary, ProposalDetail, ProposalSummary, RequestDetail,
   RequestSummary, VerifyResult, View, Finding, Model, VersionInfo, WorkspaceInfo,
 } from './types';
@@ -51,6 +51,12 @@ async function request<T>(method: string, path: string, body?: unknown, extra?: 
     throw new ApiError(res.status, p.code ?? 'error', p.title ?? `İstek başarısız (${res.status}).`, p.details);
   }
   return data as T;
+}
+
+/** Sorgu dizesi: boş/undefined değerler atılır. */
+export function qs(p: Record<string, string | number | boolean | undefined>): string {
+  const e = Object.entries(p).filter(([, v]) => v !== undefined && v !== '' && v !== false);
+  return e.length === 0 ? '' : '?' + e.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`).join('&');
 }
 
 export function setSessionToken(token: string | null): void { memoryToken = token; }
@@ -140,6 +146,30 @@ export const api = {
     request<Delegation>('POST', `/workspaces/${ws}/delegations`, body),
   revokeDelegation: (ws: string, id: string) => request<Delegation>('DELETE', `/workspaces/${ws}/delegations/${id}`),
   reassignTask: (taskId: string, toUserId: string) => request<RequestDetail>('POST', `/tasks/${taskId}/reassign`, { toUserId }),
+  searchRequests: (ws: string, p: Record<string, string | number | boolean | undefined>) => request<SearchPage>('GET', `/workspaces/${ws}/requests/search${qs(p)}`),
+  report: (ws: string, p: Record<string, string | number | boolean | undefined>) => request<Report>('GET', `/workspaces/${ws}/reports/summary${qs(p)}`),
+  audit: (ws: string, p: Record<string, string | number | boolean | undefined>) => request<AuditPage>('GET', `/workspaces/${ws}/audit${qs(p)}`),
+  retention: (ws: string) => request<RetentionInfo>('GET', `/workspaces/${ws}/retention`),
+  updateRetention: (ws: string, body: { closedRequestMonths?: number; clear?: boolean; autoPurge?: boolean }) => request<RetentionInfo>('PUT', `/workspaces/${ws}/retention`, body),
+  retentionPreview: (ws: string) => request<RetentionPreview>('POST', `/workspaces/${ws}/retention/preview`, {}),
+  retentionPurge: (ws: string) => request<{ purged: number; skipped: number }>('POST', `/workspaces/${ws}/retention/purge`, { confirm: true }),
+  deleteRequest: (id: string) => request<void>('DELETE', `/requests/${id}`),
+  formerUsers: (ws: string) => request<FormerUser[]>('GET', `/workspaces/${ws}/former-users`),
+  anonymizeUser: (ws: string, userId: string) => request<{ anonymized: boolean }>('POST', `/workspaces/${ws}/members/${userId}/anonymize`, {}),
+  /** Kimlik doğrulamalı dosya indirme (CSV/JSON): fetch + blob. */
+  async downloadFile(path: string, fallbackName: string): Promise<void> {
+    const token = memoryToken ?? getToken();
+    const res = await fetch(`/api${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    if (!res.ok) throw new ApiError(res.status, 'download_failed', 'Dosya indirilemedi.');
+    const url = URL.createObjectURL(await res.blob());
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = /filename="?([^";]+)"?/.exec(res.headers.get('content-disposition') ?? '')?.[1] ?? fallbackName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  },
   emailStatus: (ws: string) => request<EmailStatus>('GET', `/workspaces/${ws}/email`),
   updateEmail: (ws: string, body: { emailEnabled?: boolean; remindersEnabled?: boolean }) => request<EmailStatus>('PUT', `/workspaces/${ws}/email`, body),
   sendTestEmail: (ws: string) => request<{ sent: boolean; to: string }>('POST', `/workspaces/${ws}/email/test`, {}),

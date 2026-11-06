@@ -5,11 +5,14 @@ import { generatePassword, roleLabels, roleOptions } from '../../lib/roles';
 import type { AccountingSettings, GroupInfo, Member } from '../../types';
 import { errorText, type Ctx } from './common';
 import { DemoData } from './DemoData';
+import { AdminRequests } from './AdminRequests';
+import { AuditLog } from './AuditLog';
 import { EmailAdmin } from './EmailAdmin';
-import { RequestList } from './MyRequests';
+import { Reports } from './Reports';
+import { Retention } from './Retention';
 
-type Tab = 'users' | 'groups' | 'accounting' | 'requests' | 'email' | 'demo';
-const tabs: { id: Tab; label: string }[] = [{ id: 'users', label: 'Kullanıcılar' }, { id: 'groups', label: 'Gruplar' }, { id: 'requests', label: 'Tüm talepler' }, { id: 'accounting', label: 'Muhasebe ayarları' }, { id: 'email', label: 'E-posta' }, { id: 'demo', label: 'Demo veri' }];
+type Tab = 'users' | 'groups' | 'accounting' | 'requests' | 'reports' | 'retention' | 'audit' | 'email' | 'demo';
+const tabs: { id: Tab; label: string }[] = [{ id: 'users', label: 'Kullanıcılar' }, { id: 'groups', label: 'Gruplar' }, { id: 'requests', label: 'Tüm talepler' }, { id: 'reports', label: 'Raporlar' }, { id: 'accounting', label: 'Muhasebe ayarları' }, { id: 'email', label: 'E-posta' }, { id: 'retention', label: 'Saklama ve KVKK' }, { id: 'audit', label: 'Denetim' }, { id: 'demo', label: 'Demo veri' }];
 
 export function Admin({ sub, workspace, user }: Ctx & { sub: string }) {
   const tab = (tabs.some((t) => t.id === sub) ? sub : 'users') as Tab;
@@ -25,7 +28,10 @@ export function Admin({ sub, workspace, user }: Ctx & { sub: string }) {
       <div className="page-body">
         {tab === 'users' && <Users ws={workspace.id} me={user.id} />}
         {tab === 'groups' && <Groups ws={workspace.id} />}
-        {tab === 'requests' && <RequestList workspaceId={workspace.id} all />}
+        {tab === 'requests' && <AdminRequests ws={workspace.id} />}
+        {tab === 'reports' && <Reports ws={workspace.id} />}
+        {tab === 'retention' && <Retention ws={workspace.id} />}
+        {tab === 'audit' && <AuditLog ws={workspace.id} />}
         {tab === 'accounting' && <AccountingSettingsForm ws={workspace.id} />}
         {tab === 'email' && <EmailAdmin ws={workspace.id} />}
         {tab === 'demo' && <DemoData ws={workspace.id} />}
@@ -135,6 +141,8 @@ function Users({ ws, me }: { ws: string; me: string }) {
                             void guard(async () => { await api.resetPassword(ws, m.userId, password); setCreated({ email: m.email, password, reset: true }); });
                           }}>Parola sıfırla</button>
                       )}
+                      <button className="btn small" disabled={busy} title="Kişisel verileri JSON olarak indirir (KVKK)"
+                        onClick={() => void guard(() => api.downloadFile(`/workspaces/${ws}/members/${m.userId}/data-export`, 'kisisel-veri.json'))}>Verisini indir</button>
                       {m.userId !== me && (
                         <button className="btn small danger" disabled={busy} onClick={() => { if (window.confirm(`${m.displayName} çalışma alanından çıkarılsın mı? Bekleyen onay görevleri master admin’e devredilir.`)) void guard(() => api.removeMember(ws, m.userId)); }}>Çıkar</button>
                       )}

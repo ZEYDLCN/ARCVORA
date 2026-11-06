@@ -154,3 +154,16 @@ export interface Delegation {
 }
 export interface EmailStatus { configured: boolean; emailEnabled: boolean; remindersEnabled: boolean; pending: number; failed: number; from?: string }
 export interface EmailOutboxRow { id: string; to: string; kind: string; subject: string; status: 'pending' | 'sent' | 'failed' | 'skipped'; attempts: number; lastError?: string; createdAt: string; sentAt?: string }
+export interface SearchPage { items: RequestSummary[]; total: number; page: number; pageSize: number }
+export interface AppReportRow { appId: string; name: string; total: number; inReview: number; approved: number; rejected: number; cancelled: number; avgHours?: number; medianHours?: number }
+export interface ApproverRow { userId: string; name: string; pending: number; oldestPendingHours?: number; decided: number }
+export interface OverdueRow { requestId: string; number: string; appName: string; step: string; assignee: string; ageHours: number }
+export interface Report {
+  from: string; to: string; total: number; byStatus: Record<string, number>; apps: AppReportRow[]; approvers: ApproverRow[];
+  daily: { day: string; count: number }[]; overdue: OverdueRow[];
+}
+export interface RetentionInfo { closedRequestMonths?: number; autoPurge: boolean }
+export interface RetentionPreview { eligible: number; skippedAccounting: number; months?: number }
+export interface AuditRow { id: number; at: string; actorId?: string; actorName?: string; action: string; objectType?: string; objectId?: string; detail?: Record<string, unknown> }
+export interface AuditPage { items: AuditRow[]; total: number; page: number; pageSize: number }
+export interface FormerUser { id: string; displayName: string; email: string; createdAt: string }
