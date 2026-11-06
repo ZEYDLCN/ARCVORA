@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../api';
+import { IconCalendar, IconPlus, IconUsers } from '../../components/icons';
+import { CardTitle } from '../../components/ui';
 import { formatDate } from '../../lib/flow';
 import type { Holiday, LeaveRow } from '../../types';
 import { errorText } from './common';
@@ -36,19 +38,20 @@ export function LeaveAdmin({ ws }: { ws: string }) {
   return (
     <div className="cards" style={{ maxWidth: 960 }}>
       <div className="card">
-        <div className="row" style={{ gap: 10 }}>
-          <label htmlFor="lv-year" style={{ margin: 0 }}>Yıl</label>
-          <select id="lv-year" value={year} onChange={(e) => setYear(Number(e.target.value))}>{years.map((y) => <option key={y} value={y}>{y}</option>)}</select>
+        <div className="field" style={{ maxWidth: 260 }}>
+          <label htmlFor="lv-year" style={{ marginTop: 0 }}>Yıl</label>
+          <div className="with-ico"><span className="wi" aria-hidden="true"><IconCalendar size={18} /></span>
+            <select id="lv-year" value={year} onChange={(e) => setYear(Number(e.target.value))}>{years.map((y) => <option key={y} value={y}>{y}</option>)}</select></div>
         </div>
         {error && <div className="notice error" role="alert" style={{ marginTop: 8 }}>{error}</div>}
         {notice && <div className="notice" role="status" style={{ marginTop: 8 }}>{notice}</div>}
       </div>
 
       <div className="card">
-        <h3>Resmî tatil takvimi · {year}</h3>
+        <CardTitle icon={<IconCalendar size={19} />}>Resmî tatil takvimi · {year}</CardTitle>
         <p className="muted">“İş günü” hesabı bu takvimi kullanır. Tarihi sabit tatiller tek tuşla eklenir; dinî bayramların tarihleri her yıl değiştiği için elle girin.</p>
-        <p><button className="btn" disabled={busy} onClick={() => void run(async () => { const r = await api.seedHolidays(ws, year); setNotice(`${r.added} tatil eklendi${r.skipped ? `, ${r.skipped} zaten vardı` : ''}.`); })}>Sabit resmî tatilleri ekle</button></p>
-        {holidays?.length === 0 && <p className="muted">Bu yıl için tatil tanımlı değil.</p>}
+        <p><button className="btn" disabled={busy} onClick={() => void run(async () => { const r = await api.seedHolidays(ws, year); setNotice(`${r.added} tatil eklendi${r.skipped ? `, ${r.skipped} zaten vardı` : ''}.`); })}><IconPlus size={16} />Sabit resmî tatilleri ekle</button></p>
+        {holidays?.length === 0 && <p className="muted" style={{ margin: '4px 0 8px' }}>Bu yıl için tatil tanımlı değil.</p>}
         <ul className="list">
           {holidays?.map((h) => (
             <li key={h.id} className="row" style={{ gap: 10 }}>
@@ -57,16 +60,17 @@ export function LeaveAdmin({ ws }: { ws: string }) {
             </li>
           ))}
         </ul>
-        <form className="inline-form" style={{ marginTop: 10 }} onSubmit={(e) => { e.preventDefault(); void run(async () => { await api.addHoliday(ws, { date: hol.date, name: hol.name, halfDay: hol.half }); setHol({ date: '', name: '', half: false }); }, 'Tatil eklendi.'); }}>
+        <h4 style={{ marginTop: 14 }}>Yeni tatil</h4>
+        <form className="inline-form" style={{ marginTop: 4 }} onSubmit={(e) => { e.preventDefault(); void run(async () => { await api.addHoliday(ws, { date: hol.date, name: hol.name, halfDay: hol.half }); setHol({ date: '', name: '', half: false }); }, 'Tatil eklendi.'); }}>
           <div><label htmlFor="hl-date">Tarih</label><input id="hl-date" type="date" required value={hol.date} onChange={(e) => setHol({ ...hol, date: e.target.value })} /></div>
           <div><label htmlFor="hl-name">Ad</label><input id="hl-name" type="text" required maxLength={100} placeholder="Ramazan Bayramı 1. gün" value={hol.name} onChange={(e) => setHol({ ...hol, name: e.target.value })} /></div>
           <label className="check-row" style={{ margin: 0 }}><input type="checkbox" checked={hol.half} onChange={(e) => setHol({ ...hol, half: e.target.checked })} /> Yarım gün</label>
-          <button className="btn primary" disabled={busy || !hol.date || !hol.name.trim()}>Tatil ekle</button>
+          <button className="btn primary" disabled={busy || !hol.date || !hol.name.trim()}><IconPlus size={16} />Tatil ekle</button>
         </form>
       </div>
 
       <div className="card">
-        <h3>İzin bakiyeleri · {year}</h3>
+        <CardTitle icon={<IconUsers size={19} />}>İzin bakiyeleri · {year}</CardTitle>
         <p className="muted">
           Kıdem hakkı 4857 sayılı Kanun m.53’e göre işe giriş tarihinden hesaplanır (1–5 yıl: 14, 5–15 yıl: 20, 15+ yıl: 26 gün; yaş/sözleşme istisnaları için düzeltme ekleyin).
           İşe giriş tarihini Kullanıcılar sekmesinden girin.
@@ -95,7 +99,7 @@ export function LeaveAdmin({ ws }: { ws: string }) {
             <select id="le-kind" value={entry.kind} onChange={(e) => setEntry({ ...entry, kind: e.target.value })}><option value="entitlement">Hak</option><option value="carryover">Devir</option><option value="adjustment">Düzeltme (+/−)</option></select></div>
           <div><label htmlFor="le-days">Gün</label><input id="le-days" type="text" inputMode="decimal" required placeholder="14" value={entry.days} onChange={(e) => setEntry({ ...entry, days: e.target.value })} /></div>
           <div><label htmlFor="le-note">Not</label><input id="le-note" type="text" maxLength={200} value={entry.note} onChange={(e) => setEntry({ ...entry, note: e.target.value })} /></div>
-          <button className="btn primary" disabled={busy || !entry.userId || !entry.days}>Kaydı ekle</button>
+          <button className="btn primary" disabled={busy || !entry.userId || !entry.days}><IconPlus size={16} />Kaydı ekle</button>
         </form>
       </div>
     </div>

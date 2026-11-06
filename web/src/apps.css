@@ -187,3 +187,8 @@ input[type='checkbox'] { accent-color: var(--accent); }
   .page-head { padding: 22px 18px 6px; } .page-body { padding: 8px 14px 28px; }
   .card { padding: 16px; border-radius: 22px; }
 }
+
+/* Alan içi simge (ör. yıl seçicisinde takvim): simge solda, seçici ona göre iç boşluk alır */
+.with-ico { position: relative; }
+.with-ico .wi { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--ico); display: grid; place-items: center; pointer-events: none; }
+.with-ico select, .with-ico input { padding-left: 44px; }
