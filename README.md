@@ -145,10 +145,10 @@ and every new request shows its **impact** on the existing design. Diagrams (com
 
 | Katman | Kapsam | Komut |
 |---|---|---|
-| Birim (Core) | model, kimlikler, profiller, doğrulayıcı, yama, etki, görünümler, AI hattı — **130** test | `dotnet test tests/Arcvora.Core.Tests` |
-| Entegrasyon | gerçek PostgreSQL: erişim, sürümler, işler, yerel model istemcisi — **93** test | `dotnet test tests/Arcvora.Integration.Tests` |
-| Web | düzen algoritması, grup bağımlılıkları, açılış animasyonu, arama paleti — **58** vitest testi | `cd web && npm test` |
-| Uçtan uca | API + tarayıcı (Playwright), **340'tan fazla doğrulama**: roller, eşzamanlılık, XSS/enjeksiyon, hız sınırı, üretim yapılandırması | `scripts/e2e.sh` · `--local` · `--prod` |
+| Birim (Core) | model, kimlikler, profiller, doğrulayıcı, yama, etki, görünümler, AI hattı; Apps: akış motoru, form doğrulama, vekâlet, izin/tatil, e-posta şablonları, dosya türü, arama katlama — **357** test | `dotnet test tests/Arcvora.Core.Tests` |
+| Entegrasyon | gerçek PostgreSQL: erişim, sürümler, işler, yerel model istemcisi; Apps: roller, akış, muhasebe, ekler, PDF, vekâlet, e-posta (gerçek SMTP soketi), rapor/KVKK, listeler, izin bakiyesi, SSO (sahte IdP), statik site/PWA, özellikler arası QA senaryoları — **459** test | `dotnet test tests/Arcvora.Integration.Tests` |
+| Web | düzen algoritması, grup bağımlılıkları, açılış animasyonu, arama paleti; Apps sayfaları, dosya alanı, SSO dönüşü, service worker/PWA — **275** vitest testi | `cd web && npm test` |
+| Uçtan uca | API + tarayıcı (Playwright) + gerçek SMTP alıcısı, **~690 doğrulama** (`--prod`): roller, eşzamanlılık, XSS/enjeksiyon, hız sınırı, üretim yapılandırması, Apps G yolculukları (fiş yükleme, PDF, vekâlet+e-posta, KVKK), mobil taşma ve PWA (çevrimdışı kabuk) | `scripts/e2e.sh` · `--local` · `--prod` |
 
 Uçtan uca testler henüz CI'da çalışmıyor; yerelde çalıştırılır. Ayrıntı: [Testler](#testler).
 
