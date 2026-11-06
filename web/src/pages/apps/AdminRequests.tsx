@@ -50,7 +50,7 @@ export function AdminRequests({ ws }: { ws: string }) {
           <div><label htmlFor="rq-to">Bitiş (dahil)</label><input id="rq-to" type="date" value={form.to} onChange={(e) => setForm({ ...form, to: e.target.value })} /></div>
         </div>
         <p className="row" style={{ marginTop: 10 }}>
-          <button className="btn primary">Ara</button>
+          <button className="btn primary"><IconSearch size={16} />Ara</button>
           <button type="button" className="btn" disabled={busy} onClick={() => { setBusy(true); void api.downloadFile(`/workspaces/${ws}/reports/requests.csv${qsOf(applied)}`, 'talepler.csv').catch((e) => setError(errorText(e))).finally(() => setBusy(false)); }}>CSV indir</button>
         </p>
       </form>

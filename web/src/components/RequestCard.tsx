@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { AppIcon } from './AppIcon';
 import { IconClock, IconExternal } from './icons';
-import { DemoChip, plainName, SummaryBlock } from './ui';
+import { DemoChip, plainName, SummaryBoxes, SummaryLine } from './ui';
 import type { SummaryPart } from '../types';
 
 export interface RequestCardProps {
@@ -41,9 +41,10 @@ export function RequestCard(p: RequestCardProps) {
             {p.isDemo && <DemoChip />}
             {p.badge}
           </span>
-          <SummaryBlock parts={p.parts} fallback={p.summary} />
+          <SummaryLine parts={p.parts} fallback={p.summary} />
         </span>
       </span>
+      <SummaryBoxes parts={p.parts} />
       {p.chips && <span className="rc-chips">{p.chips}</span>}
       {p.time && <span className="rc-time"><IconClock size={15} />{p.time}</span>}
       {p.note && <span className="rc-note">“{p.note}”</span>}

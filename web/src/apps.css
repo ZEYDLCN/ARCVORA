@@ -202,3 +202,8 @@ input[type='checkbox'] { accent-color: var(--accent); }
 .step-strip .step svg { flex: none; }
 .timeline li { padding-left: 2px; }
 @media (max-width: 560px) { .kv-table { grid-template-columns: minmax(96px, 40%) 1fr; } }
+
+/* Tek kalan istatistik kutusu (ör. 5. kutu) iki sütunlu düzende yarım kalmasın */
+@media (max-width: 899px) { .stat-grid.wide .stat-tile:last-child:nth-child(odd) { grid-column: 1 / -1; } }
+/* Telefonda satır içi formların düğmesi tam genişlik */
+@media (max-width: 720px) { .inline-form > button, .inline-form > .btn { flex: 1 1 100%; justify-content: center; } .field.year-field { max-width: none !important; } }

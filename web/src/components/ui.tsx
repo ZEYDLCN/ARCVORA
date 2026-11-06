@@ -54,22 +54,20 @@ const toneIcon: Record<Tone, (size: number) => ReactNode> = {
 };
 export const ToneIcon = ({ tone, size = 14 }: { tone: Tone; size?: number }) => <>{toneIcon[tone](size)}</>;
 
-/**
- * Talebin özet parçaları: tarih/tutar/sayı parçaları etiketli mini kutular olur, metin parçaları (tür, açıklama) tek satırda toplanır.
- * Parça yoksa (eski kayıt/bozuk tanım) düz özet yazısı gösterilir.
- */
-export function SummaryBlock({ parts, fallback }: { parts?: SummaryPart[]; fallback?: string }) {
+/** Özetin metin satırı: metin parçaları (tür, açıklama…) " · " ile birleşir; parça yoksa düz özet yazısı. */
+export function SummaryLine({ parts, fallback }: { parts?: SummaryPart[]; fallback?: string }) {
   if (!parts || parts.length === 0) return fallback ? <span className="sb-line">{fallback}</span> : null;
-  const boxes = parts.filter((p) => p.kind !== 'text').slice(0, 4);
   const lines = parts.filter((p) => p.kind === 'text').map((p) => p.text);
+  return lines.length > 0 ? <span className="sb-line">{lines.join(' · ')}</span> : null;
+}
+
+/** Özetin etiketli kutuları: tarih/tutar/sayı parçaları (en çok 4), tarihlerde takvim simgesiyle. */
+export function SummaryBoxes({ parts }: { parts?: SummaryPart[] }) {
+  const boxes = (parts ?? []).filter((p) => p.kind !== 'text').slice(0, 4);
+  if (boxes.length === 0) return null;
   return (
-    <>
-      {lines.length > 0 && <span className="sb-line">{lines.join(' · ')}</span>}
-      {boxes.length > 0 && (
-        <span className="mini-fields">
-          {boxes.map((p) => <MiniField key={p.key} label={p.label} value={p.text} icon={p.kind === 'date' ? <IconCalendar size={15} /> : undefined} />)}
-        </span>
-      )}
-    </>
+    <span className="mini-fields">
+      {boxes.map((p) => <MiniField key={p.key} label={p.label} value={p.text} icon={p.kind === 'date' ? <IconCalendar size={15} /> : undefined} />)}
+    </span>
   );
 }

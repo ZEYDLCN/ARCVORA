@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { IconSliders } from '../../components/icons';
 import { api } from '../../api';
 import type { AuditPage } from '../../types';
 import { errorText, when } from './common';
@@ -30,7 +31,7 @@ export function AuditLog({ ws }: { ws: string }) {
           <div><label htmlFor="au-from">Başlangıç</label><input id="au-from" type="date" value={form.from} onChange={(e) => setForm({ ...form, from: e.target.value })} /></div>
           <div><label htmlFor="au-to">Bitiş (dahil)</label><input id="au-to" type="date" value={form.to} onChange={(e) => setForm({ ...form, to: e.target.value })} /></div>
         </div>
-        <p style={{ marginTop: 10 }}><button className="btn primary">Süz</button></p>
+        <p style={{ marginTop: 10 }}><button className="btn primary"><IconSliders size={16} />Süz</button></p>
       </form>
       {error && <div className="notice error" role="alert">{error}</div>}
       {data === null && !error && <p className="muted">Yükleniyor…</p>}

@@ -38,7 +38,7 @@ export function LeaveAdmin({ ws }: { ws: string }) {
   return (
     <div className="cards" style={{ maxWidth: 960 }}>
       <div className="card">
-        <div className="field" style={{ maxWidth: 260 }}>
+        <div className="field year-field" style={{ maxWidth: 260 }}>
           <label htmlFor="lv-year" style={{ marginTop: 0 }}>Yıl</label>
           <div className="with-ico"><span className="wi" aria-hidden="true"><IconCalendar size={18} /></span>
             <select id="lv-year" value={year} onChange={(e) => setYear(Number(e.target.value))}>{years.map((y) => <option key={y} value={y}>{y}</option>)}</select></div>
