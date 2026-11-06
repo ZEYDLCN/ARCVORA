@@ -21,6 +21,9 @@ public static class RequestPdf
     private static readonly XColor Line = XColor.FromArgb(214, 219, 226);
     private static readonly XColor Accent = XColor.FromArgb(37, 99, 235);
     private static readonly XColor Soft = XColor.FromArgb(244, 246, 249);
+    private static readonly XColor Teal = XColor.FromArgb(15, 143, 135);
+    private static readonly XColor Violet = XColor.FromArgb(124, 92, 240);
+    private static readonly XColor TintGreen = XColor.FromArgb(236, 248, 240);
 
     public static byte[] Build(RequestPdfModel m)
     {
@@ -39,7 +42,7 @@ public static class RequestPdf
         if (m.Attachments.Count > 0) { w.Section("Ekler"); w.Attachments(m.Attachments); }
         w.Section("Onay akışı");
         w.Approvals(m.Approvals);
-        if (m.Timeline.Count > 0) { w.Section("Zaman çizelgesi"); w.Timeline(m.Timeline); }
+        if (m.Timeline.Count > 0) { w.Section("İşlem geçmişi"); w.Timeline(m.Timeline); }
         w.Footers();
 
         using var ms = new MemoryStream();
@@ -164,61 +167,119 @@ public static class RequestPdf
             return lines;
         }
 
+        /// <summary>Logo işareti (tırtıklı halka + kemer + iki düğüm; web logosuyla aynı geometri), (x, y) sol üst, <paramref name="size"/> kenar.</summary>
+        private void LogoMark(double x, double y, double size)
+        {
+            var k = size / 32.0;
+            XPoint P(double px, double py) => new(x + px * k, y + py * k);
+            var ring = new List<XPoint>();
+            for (var i = 0; i < 96; i++)
+            {
+                var t = i / 96.0 * Math.PI * 2;
+                var r = 11.2 + 2.1 * Math.Cos(8 * t);
+                ring.Add(P(16 + r * Math.Cos(t), 16 + r * Math.Sin(t)));
+            }
+            _g.DrawPolygon(new XPen(Violet, 3.1 * k) { LineJoin = XLineJoin.Round }, ring.ToArray());
+            var arch = new XPen(Violet, 2.4 * k) { LineCap = XLineCap.Round };
+            _g.DrawLine(arch, P(11.2, 21.2), P(11.2, 17.1));
+            _g.DrawArc(arch, x + 11.2 * k, y + 12.3 * k, 9.6 * k, 9.6 * k, 180, 180);
+            _g.DrawLine(arch, P(20.8, 17.1), P(20.8, 21.2));
+            var node = new XSolidBrush(XColor.FromArgb(61, 214, 198));
+            _g.DrawEllipse(node, x + (11.2 - 1.9) * k, y + (21.6 - 1.9) * k, 3.8 * k, 3.8 * k);
+            _g.DrawEllipse(node, x + (20.8 - 1.9) * k, y + (21.6 - 1.9) * k, 3.8 * k, 3.8 * k);
+        }
+
         public void Header()
         {
-            Text("ARCVORA Apps", _smallBold, Accent, Margin, _y);
+            LogoMark(Margin, _y - 3, 20);
+            Text("ARCVORA", _smallBold, Ink, Margin + 26, _y + 1);
+            Text("Apps", _small, Violet, Margin + 26 + Width("ARCVORA ", _smallBold), _y + 1);
             var ws = Clean(_m.WorkspaceName);
-            Text(ws, _small, Muted, PageW - Margin - Width(ws, _small), _y);
-            _y += 22;
+            Text(ws, _small, Muted, PageW - Margin - Width(ws, _small), _y + 1);
+            _y += 34;
 
-            Text(Clean(_m.Number), new XFont(PdfFonts.Family, 21, XFontStyleEx.Bold), Ink, Margin, _y);
+            // Başlık: uygulama adı; sağda durum rozeti (açık dolgu, çerçeveli, simgeli, cümle biçimli)
+            Text(Clean(_m.AppName), new XFont(PdfFonts.Family, 20, XFontStyleEx.Bold), Ink, Margin, _y);
             var (fg, bg) = _m.Status switch
             {
-                "approved" => (XColor.FromArgb(21, 128, 61), XColor.FromArgb(220, 252, 231)),
-                "rejected" => (XColor.FromArgb(185, 28, 28), XColor.FromArgb(254, 226, 226)),
-                "cancelled" => (XColor.FromArgb(75, 85, 99), XColor.FromArgb(229, 231, 235)),
-                _ => (XColor.FromArgb(180, 83, 9), XColor.FromArgb(254, 243, 199)),
+                "approved" => (XColor.FromArgb(21, 128, 61), XColor.FromArgb(236, 253, 243)),
+                "rejected" => (XColor.FromArgb(185, 28, 28), XColor.FromArgb(254, 235, 235)),
+                "cancelled" => (XColor.FromArgb(75, 85, 99), XColor.FromArgb(238, 240, 243)),
+                _ => (XColor.FromArgb(146, 94, 8), XColor.FromArgb(255, 247, 222)),
             };
-            var label = TrUpper(Clean(_m.StatusLabel));
-            var lw = Width(label, _smallBold) + 22;
-            _g.DrawRoundedRectangle(new XSolidBrush(bg), PageW - Margin - lw, _y + 5, lw, 20, 10, 10);
-            Text(label, _smallBold, fg, PageW - Margin - lw + 11, _y + 10);
-            _y += 32;
+            var label = Clean(_m.StatusLabel);
+            var lw = Width(label, _smallBold) + 34;
+            var bx = PageW - Margin - lw;
+            _g.DrawRoundedRectangle(new XPen(fg, 0.9), new XSolidBrush(bg), bx, _y + 2, lw, 22, 11, 11);
+            StatusGlyph(bx + 9, _y + 6, 13, fg);
+            Text(label, _smallBold, fg, bx + 26, _y + 8);
+            _y += 27;
 
-            Text(Clean(_m.AppName), new XFont(PdfFonts.Family, 12, XFontStyleEx.Regular), Muted, Margin, _y);
-            _y += 18;
+            Text(Clean(_m.Number), new XFont(PdfFonts.Family, 12, XFontStyleEx.Bold), Ink, Margin, _y);
+            _y += 19;
             var meta = $"Oluşturma: {Stamp(_m.CreatedAt, _m.UtcOffsetMinutes)}" + (_m.CompletedAt is { } done ? $"   ·   Sonuç: {Stamp(done, _m.UtcOffsetMinutes)}" : "");
             Text(meta, _small, Muted, Margin, _y);
             _y += 16;
-            _g.DrawLine(new XPen(Accent, 1.4), Margin, _y, PageW - Margin, _y);
-            _y += 14;
+            _g.DrawLine(new XPen(Teal, 1.2), Margin, _y, PageW - Margin, _y);
+            _y += 10;
+        }
+
+        /// <summary>Durum simgesi: onay (tik), ret (çarpı), iptal (eksi), inceleme (saat) — daire içinde.</summary>
+        private void StatusGlyph(double x, double y, double size, XColor c)
+        {
+            var pen = new XPen(c, 1.1) { LineCap = XLineCap.Round, LineJoin = XLineJoin.Round };
+            _g.DrawEllipse(pen, x, y, size, size);
+            double cx = x + size / 2, cy = y + size / 2, d = size * 0.22;
+            switch (_m.Status)
+            {
+                case "approved":
+                    _g.DrawLines(pen, [new XPoint(cx - d * 1.3, cy), new XPoint(cx - d * 0.3, cy + d), new XPoint(cx + d * 1.4, cy - d * 1.0)]);
+                    break;
+                case "rejected":
+                    _g.DrawLine(pen, cx - d, cy - d, cx + d, cy + d);
+                    _g.DrawLine(pen, cx + d, cy - d, cx - d, cy + d);
+                    break;
+                case "cancelled":
+                    _g.DrawLine(pen, cx - d * 1.2, cy, cx + d * 1.2, cy);
+                    break;
+                default:
+                    _g.DrawLine(pen, cx, cy - d * 1.4, cx, cy);
+                    _g.DrawLine(pen, cx, cy, cx + d, cy + d * 0.6);
+                    break;
+            }
         }
 
         public void Section(string title)
         {
-            Ensure(48);
-            _y += 8;
+            Ensure(56);
+            _y += 10;
             Text(title, _h2, Ink, Margin, _y);
             _y += 19;
+            _g.DrawLine(new XPen(Teal, 0.9), Margin, _y, PageW - Margin, _y);
+            _y += 7;
         }
 
         public void KeyValues(IEnumerable<(string Label, string Value)> rows)
         {
-            const double labelW = 150, gap = 10;
-            var valueW = ContentW - labelW - gap;
+            const double labelW = 150, pad = 7;
+            var valueW = ContentW - labelW - 2 * pad;
+            var grid = new XPen(Line, 0.6);
             foreach (var (label, value) in rows)
             {
-                var l = Wrap(label, _bold, labelW);
+                var l = Wrap(label, _bold, labelW - 2 * pad);
                 var v = Wrap(value, _body, valueW);
                 var lines = Math.Max(l.Count, v.Count);
-                var h = lines * 13 + 7;
-                if (h > PageH - Bottom - Margin - 40) { v = v.Take((int)((PageH - Bottom - Margin - 60) / 13)).ToList(); lines = Math.Max(l.Count, v.Count); h = lines * 13 + 7; }
+                var h = lines * 13 + 9;
+                if (h > PageH - Bottom - Margin - 40) { v = v.Take((int)((PageH - Bottom - Margin - 60) / 13)).ToList(); lines = Math.Max(l.Count, v.Count); h = lines * 13 + 9; }
                 Ensure(h);
-                for (var i = 0; i < l.Count; i++) Text(l[i], _bold, Muted, Margin, _y + 3 + i * 13);
-                for (var i = 0; i < v.Count; i++) Text(v[i], _body, Ink, Margin + labelW + gap, _y + 3 + i * 13);
+                _g.DrawRectangle(new XSolidBrush(Soft), Margin, _y, labelW, h);
+                _g.DrawRectangle(grid, Margin, _y, labelW, h);
+                _g.DrawRectangle(grid, Margin + labelW, _y, ContentW - labelW, h);
+                for (var i = 0; i < l.Count; i++) Text(l[i], _bold, XColor.FromArgb(72, 80, 94), Margin + pad, _y + 4.5 + i * 13);
+                for (var i = 0; i < v.Count; i++) Text(v[i], _body, Ink, Margin + labelW + pad, _y + 4.5 + i * 13);
                 _y += h;
-                _g.DrawLine(new XPen(Line, 0.5), Margin, _y, PageW - Margin, _y);
             }
+            _y += 4;
         }
 
         public void Attachments(IReadOnlyList<PdfAttachment> files)
@@ -278,36 +339,55 @@ public static class RequestPdf
                 _y += 18;
                 return;
             }
-            double[] cw = [108, 100, 60, 78, ContentW - 108 - 100 - 60 - 78];
-            string[] heads = ["Adım", "Onaylayan", "Karar", "Tarih", "Yorum"];
+            double[] cw = [150, 140, 80, ContentW - 150 - 140 - 80];
+            string[] heads = ["Adım", "Onaylayan", "Karar", "Tarih"];
+            var grid = new XPen(Line, 0.6);
             void Head()
             {
-                Ensure(26);
+                Ensure(28);
                 _g.DrawRectangle(new XSolidBrush(Soft), Margin, _y, ContentW, 20);
+                _g.DrawRectangle(grid, Margin, _y, ContentW, 20);
                 var x = Margin;
-                for (var i = 0; i < heads.Length; i++) { Text(heads[i], _smallBold, Muted, x + 5, _y + 6); x += cw[i]; }
-                _y += 22;
+                for (var i = 0; i < heads.Length; i++) { Text(heads[i], _smallBold, Muted, x + 6, _y + 6); x += cw[i]; }
+                _y += 20;
             }
             Head();
             foreach (var r in rows)
             {
                 var cells = new[]
                 {
-                    Wrap(r.Step, _body, cw[0] - 8), Wrap(r.Who, _body, cw[1] - 8), Wrap(r.Decision, _bold, cw[2] - 8),
-                    Wrap(r.At is { } at ? Stamp(at, _m.UtcOffsetMinutes) : "—", _body, cw[3] - 8), Wrap(string.IsNullOrWhiteSpace(r.Comment) ? "—" : r.Comment!, _body, cw[4] - 8),
+                    Wrap(r.Step, _body, cw[0] - 12), Wrap(r.Who, _body, cw[1] - 12), Wrap(r.Decision, _bold, cw[2] - 12),
+                    Wrap(r.At is { } at ? Stamp(at, _m.UtcOffsetMinutes) : "—", _body, cw[3] - 12),
                 };
-                var h = cells.Max(c => c.Count) * 13 + 8;
+                var h = cells.Max(c => c.Count) * 13 + 9;
                 if (_y + h > PageH - Bottom) { NewPage(); Head(); }
                 var x = Margin;
                 for (var i = 0; i < cells.Length; i++)
                 {
-                    for (var j = 0; j < cells[i].Count; j++) Text(cells[i][j], i == 2 ? _bold : _body, i == 2 ? DecisionColor(r.Decision) : Ink, x + 5, _y + 4 + j * 13);
+                    _g.DrawRectangle(grid, x, _y, cw[i], h);
+                    for (var j = 0; j < cells[i].Count; j++) Text(cells[i][j], i == 2 ? _bold : _body, i == 2 ? DecisionColor(r.Decision) : Ink, x + 6, _y + 4.5 + j * 13);
                     x += cw[i];
                 }
                 _y += h;
-                _g.DrawLine(new XPen(Line, 0.5), Margin, _y, PageW - Margin, _y);
+                if (!string.IsNullOrWhiteSpace(r.Comment)) CommentBox(r.Comment!);
             }
             _y += 6;
+        }
+
+        /// <summary>Karar yorumu: açık yeşil kutu, solda konuşma balonu simgesi (referanstaki "Uygun, iyi tatiller.").</summary>
+        private void CommentBox(string comment)
+        {
+            const double pad = 8, icon = 22;
+            var lines = Wrap(comment, _body, ContentW - 2 * pad - icon);
+            var h = lines.Count * 13 + 10;
+            Ensure(h);
+            _g.DrawRectangle(new XPen(XColor.FromArgb(205, 232, 214), 0.6), new XSolidBrush(TintGreen), Margin, _y, ContentW, h);
+            var pen = new XPen(Teal, 1.0) { LineJoin = XLineJoin.Round };
+            double bx = Margin + pad, by = _y + 6;
+            _g.DrawRoundedRectangle(pen, bx, by, 12, 9, 3, 3);
+            _g.DrawLines(pen, [new XPoint(bx + 3, by + 9), new XPoint(bx + 2.5, by + 12.5), new XPoint(bx + 6.5, by + 9)]);
+            for (var i = 0; i < lines.Count; i++) Text(lines[i], _body, XColor.FromArgb(22, 101, 52), Margin + pad + icon, _y + 5 + i * 13);
+            _y += h;
         }
 
         private static XColor DecisionColor(string d) => d switch
@@ -319,14 +399,19 @@ public static class RequestPdf
 
         public void Timeline(IReadOnlyList<PdfTimelineRow> rows)
         {
-            const double stampW = 92;
-            foreach (var r in rows)
+            const double stampW = 92, dot = 4.5, x0 = Margin + 8;
+            var linePen = new XPen(Line, 0.8);
+            for (var n = 0; n < rows.Count; n++)
             {
-                var lines = Wrap(r.Text, _small, ContentW - stampW - 8);
-                var h = lines.Count * 11.5 + 5;
+                var r = rows[n];
+                var lines = Wrap(r.Text, _body, ContentW - stampW - 30);
+                var h = lines.Count * 13 + 8;
                 Ensure(h);
-                Text(Stamp(r.At, _m.UtcOffsetMinutes), _small, Muted, Margin, _y);
-                for (var i = 0; i < lines.Count; i++) Text(lines[i], _small, Ink, Margin + stampW + 8, _y + i * 11.5);
+                if (n < rows.Count - 1) _g.DrawLine(linePen, x0, _y + 8 + dot, x0, _y + h + 4);       // işaretçiler arası dikey çizgi
+                _g.DrawEllipse(new XPen(Violet, 1.1), new XSolidBrush(n == rows.Count - 1 ? Violet : XColor.FromArgb(255, 255, 255)), x0 - dot, _y + 4, dot * 2, dot * 2);
+                for (var i = 0; i < lines.Count; i++) Text(lines[i], _body, Ink, Margin + 24, _y + 4 + i * 13);
+                var st = Stamp(r.At, _m.UtcOffsetMinutes);
+                Text(st, _small, Muted, PageW - Margin - Width(st, _small), _y + 5);
                 _y += h;
             }
         }
@@ -341,13 +426,15 @@ public static class RequestPdf
             for (var i = 0; i < total; i++)
             {
                 using var g = XGraphics.FromPdfPage(_doc.Pages[i], XGraphicsPdfPageOptions.Append);
-                var y = PageH - 48;
+                var y = PageH - 52;
                 g.DrawLine(new XPen(Line, 0.6), Margin, y - 8, PageW - Margin, y - 8);
                 g.DrawString($"Doğrulama kodu: {Clean(_m.VerificationCode)}", _smallBold, new XSolidBrush(Ink), new XPoint(Margin, y), XStringFormats.TopLeft);
                 var right = $"Sayfa {i + 1}/{total}";
                 g.DrawString(right, _small, new XSolidBrush(Muted), new XPoint(PageW - Margin - _measure.MeasureString(right, _small).Width, y), XStringFormats.TopLeft);
-                g.DrawString($"Bu belge ARCVORA Apps tarafından {Stamp(_m.GeneratedAt, _m.UtcOffsetMinutes)} ({zone}) tarihinde oluşturuldu. Kodun geçerliliği sistemden sorgulanabilir.",
+                g.DrawString($"Bu belge ARCVORA Apps tarafından {Stamp(_m.GeneratedAt, _m.UtcOffsetMinutes)} ({zone}) tarihinde oluşturuldu.",
                     _small, new XSolidBrush(Muted), new XPoint(Margin, y + 13), XStringFormats.TopLeft);
+                g.DrawString("Kodun geçerliliği ARCVORA Apps’te “Belge doğrula” sayfasından sorgulanabilir.",
+                    _small, new XSolidBrush(Muted), new XPoint(Margin, y + 24), XStringFormats.TopLeft);
             }
         }
     }

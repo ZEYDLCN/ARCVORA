@@ -66,7 +66,7 @@ public class RequestPdfApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
         await k.Boss.PostAsync($"/api/tasks/{await k.Boss.MyPendingTaskAsync(k.Request)}/approve", new { comment = "Uygun, onaylandı." });
         var text = Text((await Pdf(k.Emp, k.Request)).Bytes);
         if (text.Length == 0) return;
-        foreach (var expected in new[] { "Fişli Masraf", "Çağlar Çalışan", "Şükrü Yönetici", "1.234,50 TRY", "Uygun, onaylandı.", "Yönetici onayı", "ONAYLANDI", "Talep onaylandı." })
+        foreach (var expected in new[] { "Fişli Masraf", "Çağlar Çalışan", "Şükrü Yönetici", "1.234,50 TRY", "Uygun, onaylandı.", "Yönetici onayı", "Onaylandı", "Talep onaylandı." })
             Assert.Contains(expected, text);
         Assert.Matches(@"MSF-\d{4}-0001", text);
     }
@@ -75,17 +75,17 @@ public class RequestPdfApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
     public async Task In_review_rejected_and_cancelled_requests_print_their_status()
     {
         var k = await SetupAsync();
-        Assert.Contains("İNCELEMEDE", Text((await Pdf(k.Emp, k.Request)).Bytes), StringComparison.Ordinal);
+        Assert.Contains("İncelemede", Text((await Pdf(k.Emp, k.Request)).Bytes), StringComparison.Ordinal);
 
         var rejected = (await k.Emp.SubmitAsync(k.App, new { amount = 10m }))["summary"].GetProperty("id").GetGuid();
         await k.Boss.PostAsync($"/api/tasks/{await k.Boss.MyPendingTaskAsync(rejected)}/reject", new { comment = "Fiş yok" });
         var t = Text((await Pdf(k.Emp, rejected)).Bytes);
-        if (t.Length > 0) { Assert.Contains("REDDEDİLDİ", t); Assert.Contains("Fiş yok", t); }
+        if (t.Length > 0) { Assert.Contains("Reddedildi", t); Assert.Contains("Fiş yok", t); }
 
         var cancelled = (await k.Emp.SubmitAsync(k.App, new { amount = 11m }))["summary"].GetProperty("id").GetGuid();
         await k.Emp.PostAsync($"/api/requests/{cancelled}/cancel");
         var c = Text((await Pdf(k.Emp, cancelled)).Bytes);
-        if (c.Length > 0) Assert.Contains("İPTAL EDİLDİ", c);
+        if (c.Length > 0) Assert.Contains("İptal edildi", c);
     }
 
     [Fact]
