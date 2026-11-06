@@ -1,0 +1,24 @@
+{
+  "name": "ARCVORA Apps",
+  "short_name": "ARCVORA",
+  "description": "Şirket içi akış ve onay platformu: izin, avans, masraf talepleri.",
+  "lang": "tr",
+  "dir": "ltr",
+  "id": "/",
+  "start_url": "/#/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#091a20",
+  "background_color": "#091a20",
+  "categories": ["business", "productivity"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Onay kutusu", "short_name": "Onaylar", "url": "/#/inbox", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Taleplerim", "short_name": "Taleplerim", "url": "/#/requests", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}
