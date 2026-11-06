@@ -110,9 +110,12 @@ export interface AppGrants { userIds: string[]; groupIds: string[] }
 
 export type RequestStatus = 'in_review' | 'approved' | 'rejected' | 'cancelled';
 export type TaskStatus = 'pending' | 'approved' | 'rejected' | 'skipped';
+/** Listelerde etiketli kutular için özetin yapılandırılmış hâli (tür: date/money/number/text). */
+export interface SummaryPart { key: string; label: string; kind: 'date' | 'money' | 'number' | 'text'; text: string }
 export interface RequestSummary {
   id: string; workspaceId: string; number: string; appId: string; appName: string; icon: string; status: RequestStatus; summary: string;
   requesterId: string; requesterName: string; createdAt: string; completedAt?: string; currentStepName?: string;
+  summaryParts?: SummaryPart[]; isDemo?: boolean;
 }
 export interface TaskInfo {
   id: string; assigneeId: string; stepIndex: number; stepId: string; stepName: string; status: TaskStatus; comment?: string;
@@ -132,6 +135,7 @@ export interface MyTask {
   stepName: string; status: TaskStatus; fallback?: string; comment?: string; createdAt: string; decidedAt?: string;
   /** Görev başkasına atanmış ve ben vekil olarak görüyorsam: asıl onaylayıcı. */
   onBehalfOfId?: string; onBehalfOfName?: string;
+  summaryParts?: SummaryPart[]; isDemo?: boolean;
 }
 export interface Member { userId: string; email: string; displayName: string; role: string; canAccept: boolean; managerId?: string; mustChangePassword: boolean; passwordResettable: boolean; hireDate?: string }
 export interface GroupInfo { id: string; name: string; memberIds: string[] }

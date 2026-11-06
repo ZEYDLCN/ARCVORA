@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../api';
 import { go } from '../../components/AppsShell';
-import { AppIcon } from '../../components/AppIcon';
+import { RequestCard } from '../../components/RequestCard';
+import { IconSearch, IconUser } from '../../components/icons';
+import { EmptyState } from '../../components/ui';
 import { RequestBadge } from '../../components/StatusBadge';
 import { requestStatusLabel } from '../../lib/requestText';
 import type { AppSummary, SearchPage } from '../../types';
@@ -55,18 +57,15 @@ export function AdminRequests({ ws }: { ws: string }) {
       {error && <div className="notice error" role="alert">{error}</div>}
       {data === null && !error && <p className="muted">Yükleniyor…</p>}
       {data && <p className="muted">{data.total} talep{data.total > 0 ? ` · sayfa ${data.page}/${pages}` : ''}</p>}
-      {data?.items.length === 0 && <div className="empty-state"><b>Talep yok</b><span>Bu aramaya uyan talep bulunmuyor.</span></div>}
+      {data?.items.length === 0 && <EmptyState icon={<IconSearch size={30} />} title="Talep yok">Bu aramaya uyan talep bulunmuyor.</EmptyState>}
       <ul className="list">
         {data?.items.map((r) => (
           <li key={r.id}>
-            <button className="item" onClick={() => go({ name: 'request', id: r.id })}>
-              <span className="row">
-                <AppIcon name={r.icon} />
-                <span style={{ flex: 1, minWidth: 0 }}><span className="title">{r.number} · {r.appName}</span><span className="muted" style={{ display: 'block' }}>{r.summary || '—'}</span></span>
-                <RequestBadge status={r.status} />
-              </span>
-              <span className="meta"><span className="badge neutral">{r.requesterName}</span><span className="muted">{when(r.createdAt)}</span>{r.currentStepName && <span className="badge info">Bekleyen: {r.currentStepName}</span>}</span>
-            </button>
+            <RequestCard icon={r.icon} number={r.number} appName={r.appName} person={r.requesterName} isDemo={r.isDemo}
+              summary={`${r.appName} · ${r.summary || '—'}`} parts={r.summaryParts ? [{ key: '_app', label: 'Uygulama', kind: 'text', text: r.appName }, ...r.summaryParts] : undefined}
+              badge={<RequestBadge status={r.status} />}
+              chips={r.currentStepName ? <span className="chip-soft"><IconUser size={14} />Bekleyen: {r.currentStepName}</span> : undefined}
+              time={when(r.createdAt)} onOpen={() => go({ name: 'request', id: r.id })} />
           </li>
         ))}
       </ul>

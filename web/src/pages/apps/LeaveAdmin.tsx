@@ -34,7 +34,7 @@ export function LeaveAdmin({ ws }: { ws: string }) {
   const years = [now - 1, now, now + 1];
 
   return (
-    <div className="stack" style={{ maxWidth: 960 }}>
+    <div className="cards" style={{ maxWidth: 960 }}>
       <div className="card">
         <div className="row" style={{ gap: 10 }}>
           <label htmlFor="lv-year" style={{ margin: 0 }}>Yıl</label>

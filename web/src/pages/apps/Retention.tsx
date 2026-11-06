@@ -29,7 +29,7 @@ export function Retention({ ws }: { ws: string }) {
 
   const months = info?.closedRequestMonths;
   return (
-    <div className="stack" style={{ maxWidth: 860 }}>
+    <div className="cards" style={{ maxWidth: 860 }}>
       <div className="card">
         <h3>Saklama süresi</h3>
         <p className="muted">Sonuçlanmış (onaylı, reddedilmiş, iptal) talepler bu süreden sonra silinebilir. Açık talepler ve muhasebede işlenmemiş kayıtlar asla silinmez. Talebin görevleri, geçmişi ve ekleri (dosyalar dahil) birlikte silinir.</p>

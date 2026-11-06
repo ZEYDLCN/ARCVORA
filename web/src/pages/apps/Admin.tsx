@@ -12,20 +12,32 @@ import { LeaveAdmin } from './LeaveAdmin';
 import { ListsAdmin } from './ListsAdmin';
 import { Reports } from './Reports';
 import { Retention } from './Retention';
+import { SectionSwitcher } from '../../components/SectionSwitcher';
 
 type Tab = 'users' | 'groups' | 'accounting' | 'requests' | 'reports' | 'retention' | 'audit' | 'email' | 'lists' | 'leave' | 'demo';
-const tabs: { id: Tab; label: string }[] = [{ id: 'users', label: 'Kullanıcılar' }, { id: 'groups', label: 'Gruplar' }, { id: 'requests', label: 'Tüm talepler' }, { id: 'lists', label: 'Listeler' }, { id: 'leave', label: 'İzin ve tatiller' }, { id: 'reports', label: 'Raporlar' }, { id: 'accounting', label: 'Muhasebe ayarları' }, { id: 'email', label: 'E-posta' }, { id: 'retention', label: 'Saklama ve KVKK' }, { id: 'audit', label: 'Denetim' }, { id: 'demo', label: 'Demo veri' }];
+const tabs: { id: Tab; label: string; title: string; tagline: string }[] = [
+  { id: 'users', label: 'Kullanıcılar', title: 'Kullanıcılar', tagline: 'Hesapları, rolleri ve doğrudan yöneticileri yönetin. Uygulama bazlı yetkiler “Uygulama tasarla” içindeki Yetkiler sekmesindedir.' },
+  { id: 'groups', label: 'Gruplar', title: 'Gruplar', tagline: 'Onay ve muhasebe ekipleri için kullanıcı grupları.' },
+  { id: 'requests', label: 'Tüm talepler', title: 'Tüm talepler', tagline: 'Çalışma alanındaki talepleri arayın, süzün ve dışa aktarın.' },
+  { id: 'lists', label: 'Listeler', title: 'Listeler', tagline: 'Formlarda seçenek olarak kullanılan ortak listeleri tek yerden yönetin.' },
+  { id: 'leave', label: 'İzin ve tatiller', title: 'İzin ve tatiller', tagline: 'İzin bakiyelerini ve resmî tatil takvimini yönetin.' },
+  { id: 'reports', label: 'Raporlar', title: 'Raporlar', tagline: 'Talep sayılarını, süreleri ve onaylayıcı yükünü görüntüleyin.' },
+  { id: 'accounting', label: 'Muhasebe ayarları', title: 'Muhasebe ayarları', tagline: 'Onaylanan taleplerin muhasebe aktarımı ve webhook ayarı.' },
+  { id: 'email', label: 'E-posta', title: 'E-posta', tagline: 'Bildirim e-postalarının durumu, test gönderimi ve gönderim kuyruğu.' },
+  { id: 'retention', label: 'Saklama ve KVKK', title: 'Saklama ve KVKK', tagline: 'Saklama süresi, kişisel veri dışa aktarma ve anonimleştirme.' },
+  { id: 'audit', label: 'Denetim', title: 'Denetim', tagline: 'Kim, ne zaman, hangi işlemi yaptı.' },
+  { id: 'demo', label: 'Demo veri', title: 'Demo veri', tagline: 'Sistemi denemek ve göstermek için örnek kullanıcı, uygulama ve talepler.' },
+];
 
 export function Admin({ sub, workspace, user }: Ctx & { sub: string }) {
   const tab = (tabs.some((t) => t.id === sub) ? sub : 'users') as Tab;
+  const current = tabs.find((t) => t.id === tab)!;
   return (
     <>
       <div className="page-head">
-        <h1>Yönetim</h1>
-        <p className="tagline">Kullanıcıları, gruplarını ve muhasebe aktarımını yönetin. Uygulama bazlı yetkiler “Uygulama tasarla” içindeki Yetkiler sekmesindedir.</p>
-        <div className="tabs" style={{ marginTop: 10 }}><div className="seg" role="tablist">
-          {tabs.map((t) => <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => go({ name: 'admin', sub: t.id })}>{t.label}</button>)}
-        </div></div>
+        <h1>{current.title}</h1>
+        <p className="tagline">{current.tagline}</p>
+        <SectionSwitcher sections={tabs} value={tab} label="Yönetim" onChange={(id) => go({ name: 'admin', sub: id })} />
       </div>
       <div className="page-body">
         {tab === 'users' && <Users ws={workspace.id} me={user.id} />}

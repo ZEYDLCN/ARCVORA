@@ -25,7 +25,7 @@ export function Reports({ ws }: { ws: string }) {
 
   const maxDay = Math.max(1, ...(r?.daily.map((d) => d.count) ?? [1]));
   return (
-    <div className="stack" style={{ maxWidth: 960 }}>
+    <div className="cards" style={{ maxWidth: 960 }}>
       <div className="card">
         <div className="mini-grid">
           <div><label htmlFor="rp-from">Başlangıç</label><input id="rp-from" type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} /></div>

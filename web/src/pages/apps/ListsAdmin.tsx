@@ -30,7 +30,7 @@ export function ListsAdmin({ ws }: { ws: string }) {
   const lines = (t: string) => t.split('\n').map((x) => x.trim()).filter(Boolean);
 
   return (
-    <div className="stack" style={{ maxWidth: 900 }}>
+    <div className="cards" style={{ maxWidth: 900 }}>
       {error && <div className="notice error" role="alert">{error}</div>}
       {notice && <div className="notice" role="status">{notice}</div>}
 

@@ -30,7 +30,7 @@ export function EmailAdmin({ ws }: { ws: string }) {
   };
 
   return (
-    <div className="stack" style={{ maxWidth: 900 }}>
+    <div className="cards" style={{ maxWidth: 900 }}>
       <div className="card">
         <h3>E-posta bildirimleri</h3>
         {error && <div className="notice error" role="alert">{error}</div>}
