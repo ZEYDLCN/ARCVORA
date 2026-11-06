@@ -25,6 +25,8 @@ public sealed class ArcvoraDbContext(DbContextOptions<ArcvoraDbContext> options)
     public DbSet<AccountingEntry> AccountingEntries => Set<AccountingEntry>();
     public DbSet<AccountingSettings> AccountingSettings => Set<AccountingSettings>();
     public DbSet<Delegation> Delegations => Set<Delegation>();
+    public DbSet<EmailMessage> EmailMessages => Set<EmailMessage>();
+    public DbSet<NotificationSettings> NotificationSettings => Set<NotificationSettings>();
     public DbSet<Attachment> Attachments => Set<Attachment>();
     public DbSet<AttachmentBlob> AttachmentBlobs => Set<AttachmentBlob>();
 
@@ -155,6 +157,27 @@ public sealed class ArcvoraDbContext(DbContextOptions<ArcvoraDbContext> options)
             e.HasKey(x => x.WorkspaceId);
             e.Property(x => x.WebhookUrl).HasMaxLength(500);
             e.Property(x => x.WebhookSecret).HasMaxLength(200);
+            e.HasOne<Workspace>().WithMany().HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<EmailMessage>(e =>
+        {
+            e.Property(x => x.ToAddress).HasMaxLength(320);
+            e.Property(x => x.ToName).HasMaxLength(200);
+            e.Property(x => x.Kind).HasMaxLength(30);
+            e.Property(x => x.Subject).HasMaxLength(200);
+            e.Property(x => x.DedupeKey).HasMaxLength(120);
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.LastError).HasMaxLength(500);
+            e.HasIndex(x => x.DedupeKey).IsUnique().HasFilter("\"DedupeKey\" IS NOT NULL");      // aynı olay için ikinci mail yok
+            e.HasIndex(x => new { x.Status, x.NextAttemptAt });
+            e.HasIndex(x => new { x.WorkspaceId, x.CreatedAt });
+            e.HasOne<Workspace>().WithMany().HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<NotificationSettings>(e =>
+        {
+            e.HasKey(x => x.WorkspaceId);
             e.HasOne<Workspace>().WithMany().HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
         });
 

@@ -104,3 +104,34 @@ public sealed class LocaleOptions
     /// <summary>UTC'ye göre sabit fark (dakika; Türkiye UTC+3 = 180). Saat dilimi veritabanı gerektirmez (Docker'da da çalışır).</summary>
     public int UtcOffsetMinutes { get; set; } = 180;
 }
+
+/// <summary>
+/// E-posta bildirimleri (SMTP). Varsayılan KAPALI: yapılandırılmadıkça hiçbir mail kuyruğa alınmaz.
+/// Parola yalnızca ortamdan/yapılandırmadan okunur; API yanıtlarında ve hata iletilerinde asla yer almaz.
+/// </summary>
+public sealed class EmailOptions
+{
+    public bool Enabled { get; set; }
+    public string Host { get; set; } = "";
+    public int Port { get; set; } = 587;
+    /// <summary>"starttls" (587), "ssl" (465, doğrudan TLS) veya "none" (yalnızca güvenilir iç ağ / yerel geliştirme).</summary>
+    public string Security { get; set; } = "starttls";
+    public string User { get; set; } = "";
+    public string Password { get; set; } = "";
+    /// <summary>Gönderen adresi (zorunlu).</summary>
+    public string From { get; set; } = "";
+    public string FromName { get; set; } = "ARCVORA Apps";
+    /// <summary>Maillerdeki bağlantıların kökü (ör. https://apps.firma.com). Boşsa mailde bağlantı olmaz.</summary>
+    public string PublicUrl { get; set; } = "";
+    /// <summary>Şirket içi, kendinden imzalı sertifikalı posta sunucuları için. Güvenlik riski: yalnızca zorunluysa açın.</summary>
+    public bool AllowInvalidCertificate { get; set; }
+    public int TimeoutSeconds { get; set; } = 15;
+    public int MaxAttempts { get; set; } = 6;
+    public int RetryBaseSeconds { get; set; } = 60;
+    public int PollIntervalMs { get; set; } = 2000;
+    public int LeaseSeconds { get; set; } = 120;
+    /// <summary>Onay bekleyen görev için ilk hatırlatma, sonraki hatırlatmalar arası ve en çok kaç hatırlatma.</summary>
+    public int ReminderAfterHours { get; set; } = 24;
+    public int ReminderRepeatHours { get; set; } = 24;
+    public int MaxReminders { get; set; } = 3;
+}

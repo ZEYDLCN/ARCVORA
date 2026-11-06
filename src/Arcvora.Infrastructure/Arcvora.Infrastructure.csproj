@@ -21,6 +21,8 @@
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
     <!-- Yazdırılabilir PDF çıktısı: MIT lisanslı, platformdan bağımsız (GDI+/WPF gerektirmez). Yazı tipi aşağıda gömülüdür. -->
     <PackageReference Include="PDFsharp" Version="6.1.1" />
+    <!-- E-posta (SMTP): MIT lisanslı, STARTTLS/SSL ve sertifika doğrulaması düzgün; başlık enjeksiyonuna karşı MIME katmanı. -->
+    <PackageReference Include="MailKit" Version="4.8.0" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Documents\Fonts\*.ttf" LogicalName="Fonts.%(Filename)%(Extension)" />

@@ -121,6 +121,9 @@ public sealed class ApprovalTask
     public Guid? DecidedBy { get; set; }
     public DateTimeOffset? DecidedAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
+    /// <summary>Gönderilen hatırlatma sayısı ve sonuncunun zamanı (bekleyen görevler için).</summary>
+    public int ReminderCount { get; set; }
+    public DateTimeOffset? RemindedAt { get; set; }
 }
 
 /// <summary>Değişmez zaman çizelgesi: yalnızca eklenir.</summary>
@@ -220,4 +223,40 @@ public sealed class Delegation
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? RevokedAt { get; set; }
     public Guid? RevokedBy { get; set; }
+}
+
+public enum EmailStatus { Pending, Sent, Failed, Skipped }
+
+/// <summary>
+/// Gönderilecek e-posta (transactional outbox): olayı oluşturan işlemle aynı işlemde yazılır; işçi SMTP ile gönderir.
+/// <see cref="DedupeKey"/> aynı olay için ikinci bir mail oluşmasını engeller.
+/// </summary>
+public sealed class EmailMessage
+{
+    public Guid Id { get; set; }
+    public Guid WorkspaceId { get; set; }
+    public Guid? ToUserId { get; set; }
+    public string ToAddress { get; set; } = "";
+    public string ToName { get; set; } = "";
+    public string Kind { get; set; } = "";
+    public string Subject { get; set; } = "";
+    public string TextBody { get; set; } = "";
+    public string HtmlBody { get; set; } = "";
+    public string? DedupeKey { get; set; }
+    public Guid? RequestId { get; set; }
+    public EmailStatus Status { get; set; } = EmailStatus.Pending;
+    public int Attempts { get; set; }
+    public DateTimeOffset? NextAttemptAt { get; set; }
+    public string? LastError { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset? SentAt { get; set; }
+}
+
+/// <summary>Çalışma alanı başına bildirim ayarı. Kayıt yoksa her şey açıktır.</summary>
+public sealed class NotificationSettings
+{
+    public Guid WorkspaceId { get; set; }
+    public bool EmailEnabled { get; set; } = true;
+    public bool RemindersEnabled { get; set; } = true;
+    public DateTimeOffset UpdatedAt { get; set; }
 }

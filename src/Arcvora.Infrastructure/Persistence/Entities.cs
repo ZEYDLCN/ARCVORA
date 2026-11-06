@@ -48,6 +48,8 @@ public sealed class User
     public Guid? ManagedByWorkspaceId { get; set; }
     /// <summary>Deneme/tanıtım (demo) verisi: tek tuşla silinebilir; e-posta bildirimi gönderilmez.</summary>
     public bool IsDemo { get; set; }
+    /// <summary>true: kullanıcı e-posta bildirimlerini kapattı (hesap sayfasından).</summary>
+    public bool EmailOptOut { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
 }
 
