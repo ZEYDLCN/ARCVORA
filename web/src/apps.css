@@ -207,3 +207,8 @@ input[type='checkbox'] { accent-color: var(--accent); }
 @media (max-width: 899px) { .stat-grid.wide .stat-tile:last-child:nth-child(odd) { grid-column: 1 / -1; } }
 /* Telefonda satır içi formların düğmesi tam genişlik */
 @media (max-width: 720px) { .inline-form > button, .inline-form > .btn { flex: 1 1 100%; justify-content: center; } .field.year-field { max-width: none !important; } }
+
+/* Tablo hücrelerindeki alanlar: dar sütunda ok/simge yazıyı kesmesin */
+td select, td input[type='text'], td input[type='number'], td input[type='date'] { min-height: 36px; border-radius: 12px; padding-top: 6px; padding-bottom: 6px; }
+td select { min-width: 130px; padding-left: 12px; padding-right: 34px; background-position: right 10px center; background-size: 16px; }
+td input[type='date'] { min-width: 150px; padding-left: 38px; background-position: 11px center; background-size: 16px; }

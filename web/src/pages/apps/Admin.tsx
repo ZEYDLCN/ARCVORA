@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import { IconUser, IconUsers } from '../../components/icons';
+import { CardTitle } from '../../components/ui';
 import { api } from '../../api';
 import { go } from '../../components/AppsShell';
 import { generatePassword, roleLabels, roleOptions } from '../../lib/roles';
@@ -93,7 +95,7 @@ function Users({ ws, me }: { ws: string; me: string }) {
         </div>
       )}
       <form className="card" style={{ maxWidth: 900, marginBottom: 16 }} onSubmit={create}>
-        <h3>Yeni kullanıcı</h3>
+        <CardTitle icon={<IconUser size={19} />}>Yeni kullanıcı</CardTitle>
         <div className="mini-grid">
           <div><label htmlFor="u-name">Ad soyad</label><input id="u-name" type="text" required maxLength={200} value={form.displayName} onChange={(e) => setForm({ ...form, displayName: e.target.value })} /></div>
           <div><label htmlFor="u-mail">E-posta</label><input id="u-mail" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
@@ -229,7 +231,7 @@ function GroupCard({ group, members, busy, onSave, onRename, onDelete }: {
         <button className="btn" disabled={busy || !name.trim() || name === group.name} onClick={() => void onRename(name)}>Adı kaydet</button>
         <button className="btn danger" disabled={busy} onClick={() => { if (window.confirm(`“${group.name}” grubu silinsin mi?`)) void onDelete(); }}>Sil</button>
       </div>
-      <h3 style={{ marginTop: 14 }}>Üyeler ({picked.length})</h3>
+      <CardTitle icon={<IconUsers size={19} />}><span style={{ display: 'block', marginTop: 14 }}>Üyeler ({picked.length})</span></CardTitle>
       <div className="person-pick" role="group" aria-label={`${group.name} üyeleri`}>
         {members.map((m) => (
           <label key={m.userId}>

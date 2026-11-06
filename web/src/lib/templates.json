@@ -167,7 +167,7 @@
     "id": "expense",
     "name": "Masraf bildirimi",
     "icon": "receipt",
-    "description": "Harcama tarihi, tutar, kategori ve açıklama; yönetici onaylar, 5.000 TRY üzeri tutarlar master admin onayına gider. Onaylanınca muhasebe kuyruğuna düşer. (Fiş/belge yükleme sonraki sürümdedir.)",
+    "description": "Harcama tarihi, tutar, kategori ve açıklama; yönetici onaylar, 5.000 TRY üzeri tutarlar master admin onayına gider. Onaylanınca muhasebe kuyruğuna düşer. Fiş/fatura talebe eklenir ve onaylayıcı ile PDF çıktıda görünür.",
     "definition": {
       "schema": 1,
       "prefix": "MSR",
