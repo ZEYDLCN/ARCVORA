@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api';
 import { go } from '../../components/AppsShell';
+import { IconChart, IconCheckCircle, IconClock, IconFile, IconLayers, IconMinusCircle, IconUsers, IconXCircle } from '../../components/icons';
+import { CardTitle, EmptyState, StatTile } from '../../components/ui';
 import { formatDate } from '../../lib/flow';
 import { requestStatusLabel } from '../../lib/requestText';
 import type { Report } from '../../types';
@@ -42,10 +44,13 @@ export function Reports({ ws }: { ws: string }) {
       {r && (
         <>
           <div className="card">
-            <h3>Özet · {formatDate(r.from)} – {formatDate(r.to)}</h3>
-            <div className="row" style={{ gap: 18, flexWrap: 'wrap' }}>
-              <div><div className="muted">Toplam</div><b style={{ fontSize: 26 }}>{r.total}</b></div>
-              {(['in_review', 'approved', 'rejected', 'cancelled'] as const).map((s) => <div key={s}><div className="muted">{requestStatusLabel[s]}</div><b style={{ fontSize: 26 }}>{r.byStatus[s] ?? 0}</b></div>)}
+            <CardTitle icon={<IconChart size={19} />}><b>Özet</b> <span className="muted" style={{ fontWeight: 500 }}>· {formatDate(r.from)} – {formatDate(r.to)}</span></CardTitle>
+            <div className="stat-grid wide">
+              <StatTile icon={<IconLayers size={17} />} label="Toplam" value={r.total} />
+              <StatTile icon={<IconClock size={17} />} label={requestStatusLabel.in_review} value={r.byStatus.in_review ?? 0} tone="warn" />
+              <StatTile icon={<IconCheckCircle size={17} />} label={requestStatusLabel.approved} value={r.byStatus.approved ?? 0} tone="ok" />
+              <StatTile icon={<IconXCircle size={17} />} label={requestStatusLabel.rejected} value={r.byStatus.rejected ?? 0} tone="bad" />
+              <StatTile icon={<IconMinusCircle size={17} />} label={requestStatusLabel.cancelled} value={r.byStatus.cancelled ?? 0} tone="neutral" />
             </div>
             {r.daily.length > 0 && (
               <div className="bars" role="img" aria-label="Günlük talep sayısı">
@@ -55,26 +60,26 @@ export function Reports({ ws }: { ws: string }) {
           </div>
 
           <div className="card">
-            <h3>Uygulamalar</h3>
-            {r.apps.length === 0 && <p className="muted">Bu dönemde talep yok.</p>}
-            <div className="table-wrap"><table>
+            <CardTitle icon={<IconFile size={19} />}>Uygulamalar</CardTitle>
+            {r.apps.length === 0 && <EmptyState icon={<IconFile size={34} />} title="Bu dönemde talep yok." />}
+            {r.apps.length > 0 && <div className="table-wrap"><table>
               <thead><tr><th>Uygulama</th><th>Toplam</th><th>İncelemede</th><th>Onaylı</th><th>Reddedilen</th><th>İptal</th><th>Ort. süre</th><th>Medyan</th></tr></thead>
               <tbody>{r.apps.map((a) => <tr key={a.appId}><td>{a.name}</td><td>{a.total}</td><td>{a.inReview}</td><td>{a.approved}</td><td>{a.rejected}</td><td>{a.cancelled}</td><td>{hours(a.avgHours)}</td><td>{hours(a.medianHours)}</td></tr>)}</tbody>
-            </table></div>
+            </table></div>}
           </div>
 
           <div className="card">
-            <h3>Onaylayıcı yükü</h3>
-            {r.approvers.length === 0 && <p className="muted">Kayıt yok.</p>}
-            <div className="table-wrap"><table>
+            <CardTitle icon={<IconUsers size={19} />}>Onaylayıcı yükü</CardTitle>
+            {r.approvers.length === 0 && <EmptyState icon={<IconUsers size={34} />} title="Kayıt yok." />}
+            {r.approvers.length > 0 && <div className="table-wrap"><table>
               <thead><tr><th>Kişi</th><th>Bekleyen</th><th>En eski bekleyen</th><th>Karar verilen</th></tr></thead>
               <tbody>{r.approvers.map((a) => <tr key={a.userId}><td>{a.name}</td><td>{a.pending}</td><td>{hours(a.oldestPendingHours)}</td><td>{a.decided}</td></tr>)}</tbody>
-            </table></div>
+            </table></div>}
           </div>
 
           <div className="card">
-            <h3>Geciken görevler <span className="muted">(en eski 20, {overdue} saatten uzun)</span></h3>
-            {r.overdue.length === 0 && <p className="muted">Geciken görev yok.</p>}
+            <CardTitle icon={<IconClock size={19} />} aside={<>en eski 20, {overdue} saatten uzun</>}>Geciken görevler</CardTitle>
+            {r.overdue.length === 0 && <EmptyState icon={<IconCheckCircle size={34} />} title="Geciken görev yok." />}
             <ul className="list">
               {r.overdue.map((o) => (
                 <li key={`${o.requestId}-${o.step}-${o.assignee}`}><button className="item" onClick={() => go({ name: 'request', id: o.requestId })}>
