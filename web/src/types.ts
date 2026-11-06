@@ -152,3 +152,5 @@ export interface Delegation {
   id: string; fromUserId: string; fromName: string; toUserId: string; toName: string; startsOn: string; endsOn: string;
   reason?: string; status: DelegationStatus; createdAt: string; revokedAt?: string;
 }
+export interface EmailStatus { configured: boolean; emailEnabled: boolean; remindersEnabled: boolean; pending: number; failed: number; from?: string }
+export interface EmailOutboxRow { id: string; to: string; kind: string; subject: string; status: 'pending' | 'sent' | 'failed' | 'skipped'; attempts: number; lastError?: string; createdAt: string; sentAt?: string }

@@ -21,6 +21,7 @@ describe('parseRoute', () => {
     expect(parseRoute('#/admin/groups')).toEqual({ name: 'admin', sub: 'groups' });
     expect(parseRoute('#/admin/ACCOUNTING')).toEqual({ name: 'admin', sub: 'accounting' });
     expect(parseRoute('#/admin/demo')).toEqual({ name: 'admin', sub: 'demo' });
+    expect(parseRoute('#/admin/email')).toEqual({ name: 'admin', sub: 'email' });
     expect(parseRoute('#/admin/requests')).toEqual({ name: 'admin', sub: 'requests' });
     expect(parseRoute('#/admin/baska')).toEqual({ name: 'home' });
   });

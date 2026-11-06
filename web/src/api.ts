@@ -1,5 +1,5 @@
 import type {
-  AccountingEntry, AccountingSettings, AppDetail, AttachmentInfo, Delegation, DemoSeed, DemoStatus, AppForm, AppGrants, AppSummary, Artifact, AuthResult, DirectoryEntry, FlowDefinition,
+  AccountingEntry, AccountingSettings, AppDetail, AttachmentInfo, Delegation, DemoSeed, DemoStatus, EmailOutboxRow, EmailStatus, AppForm, AppGrants, AppSummary, Artifact, AuthResult, DirectoryEntry, FlowDefinition,
   GroupInfo, Job, Member, MyApp, MyTask, ProfileInfo, ProjectDetail, ProjectSummary, ProposalDetail, ProposalSummary, RequestDetail,
   RequestSummary, VerifyResult, View, Finding, Model, VersionInfo, WorkspaceInfo,
 } from './types';
@@ -131,7 +131,7 @@ export const api = {
 
   // ---- yönetim: kullanıcı ve grup
   members: (ws: string) => request<Member[]>('GET', `/workspaces/${ws}/members`),
-  createUser: (ws: string, b: { email: string; displayName: string; password: string; role: string; managerId?: string }) =>
+  createUser: (ws: string, b: { email: string; displayName: string; password: string; role: string; managerId?: string; sendInvite?: boolean }) =>
     request<Member>('POST', `/workspaces/${ws}/users`, b),
   updateMember: (ws: string, userId: string, b: Record<string, unknown>) => request<Member>('PATCH', `/workspaces/${ws}/members/${userId}`, b),
   removeMember: (ws: string, userId: string) => request<void>('DELETE', `/workspaces/${ws}/members/${userId}`),
@@ -140,6 +140,13 @@ export const api = {
     request<Delegation>('POST', `/workspaces/${ws}/delegations`, body),
   revokeDelegation: (ws: string, id: string) => request<Delegation>('DELETE', `/workspaces/${ws}/delegations/${id}`),
   reassignTask: (taskId: string, toUserId: string) => request<RequestDetail>('POST', `/tasks/${taskId}/reassign`, { toUserId }),
+  emailStatus: (ws: string) => request<EmailStatus>('GET', `/workspaces/${ws}/email`),
+  updateEmail: (ws: string, body: { emailEnabled?: boolean; remindersEnabled?: boolean }) => request<EmailStatus>('PUT', `/workspaces/${ws}/email`, body),
+  sendTestEmail: (ws: string) => request<{ sent: boolean; to: string }>('POST', `/workspaces/${ws}/email/test`, {}),
+  emailOutbox: (ws: string, status?: string) => request<EmailOutboxRow[]>('GET', `/workspaces/${ws}/email/outbox${status ? `?status=${status}` : ''}`),
+  retryEmail: (ws: string, id: string) => request<EmailOutboxRow>('POST', `/workspaces/${ws}/email/outbox/${id}/retry`, {}),
+  myNotifications: () => request<{ emailEnabled: boolean }>('GET', '/me/notifications'),
+  setMyNotifications: (emailEnabled: boolean) => request<{ emailEnabled: boolean }>('PUT', '/me/notifications', { emailEnabled }),
   demoStatus: (ws: string) => request<DemoStatus>('GET', `/workspaces/${ws}/demo-data`),
   seedDemo: (ws: string) => request<DemoSeed>('POST', `/workspaces/${ws}/demo-data`, {}),
   removeDemo: (ws: string) => request<void>('DELETE', `/workspaces/${ws}/demo-data`),

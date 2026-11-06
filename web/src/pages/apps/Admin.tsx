@@ -5,10 +5,11 @@ import { generatePassword, roleLabels, roleOptions } from '../../lib/roles';
 import type { AccountingSettings, GroupInfo, Member } from '../../types';
 import { errorText, type Ctx } from './common';
 import { DemoData } from './DemoData';
+import { EmailAdmin } from './EmailAdmin';
 import { RequestList } from './MyRequests';
 
-type Tab = 'users' | 'groups' | 'accounting' | 'requests' | 'demo';
-const tabs: { id: Tab; label: string }[] = [{ id: 'users', label: 'Kullanıcılar' }, { id: 'groups', label: 'Gruplar' }, { id: 'requests', label: 'Tüm talepler' }, { id: 'accounting', label: 'Muhasebe ayarları' }, { id: 'demo', label: 'Demo veri' }];
+type Tab = 'users' | 'groups' | 'accounting' | 'requests' | 'email' | 'demo';
+const tabs: { id: Tab; label: string }[] = [{ id: 'users', label: 'Kullanıcılar' }, { id: 'groups', label: 'Gruplar' }, { id: 'requests', label: 'Tüm talepler' }, { id: 'accounting', label: 'Muhasebe ayarları' }, { id: 'email', label: 'E-posta' }, { id: 'demo', label: 'Demo veri' }];
 
 export function Admin({ sub, workspace, user }: Ctx & { sub: string }) {
   const tab = (tabs.some((t) => t.id === sub) ? sub : 'users') as Tab;
@@ -26,6 +27,7 @@ export function Admin({ sub, workspace, user }: Ctx & { sub: string }) {
         {tab === 'groups' && <Groups ws={workspace.id} />}
         {tab === 'requests' && <RequestList workspaceId={workspace.id} all />}
         {tab === 'accounting' && <AccountingSettingsForm ws={workspace.id} />}
+        {tab === 'email' && <EmailAdmin ws={workspace.id} />}
         {tab === 'demo' && <DemoData ws={workspace.id} />}
       </div>
     </>
@@ -38,7 +40,7 @@ function Users({ ws, me }: { ws: string; me: string }) {
   const [members, setMembers] = useState<Member[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<{ email: string; password: string; reset?: boolean } | null>(null);
-  const [form, setForm] = useState({ email: '', displayName: '', password: generatePassword(), role: 'app_user', managerId: '' });
+  const [form, setForm] = useState({ email: '', displayName: '', password: generatePassword(), role: 'app_user', managerId: '', invite: false });
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => { api.members(ws).then(setMembers).catch((e) => setError(errorText(e, 'Kullanıcılar yüklenemedi.'))); }, [ws]);
@@ -53,9 +55,9 @@ function Users({ ws, me }: { ws: string; me: string }) {
   const create = (e: React.FormEvent) => {
     e.preventDefault();
     void guard(async () => {
-      await api.createUser(ws, { email: form.email, displayName: form.displayName, password: form.password, role: form.role, managerId: form.managerId || undefined });
+      await api.createUser(ws, { email: form.email, displayName: form.displayName, password: form.password, role: form.role, managerId: form.managerId || undefined, sendInvite: form.invite || undefined });
       setCreated({ email: form.email, password: form.password });
-      setForm({ email: '', displayName: '', password: generatePassword(), role: 'app_user', managerId: '' });
+      setForm({ email: '', displayName: '', password: generatePassword(), role: 'app_user', managerId: '', invite: false });
     });
   };
 
@@ -90,6 +92,10 @@ function Users({ ws, me }: { ws: string; me: string }) {
               {members?.map((m) => <option key={m.userId} value={m.userId}>{m.displayName}</option>)}
             </select>
           </div>
+        </div>
+        <div className="check-row" style={{ marginTop: 10 }}>
+          <input id="u-invite" type="checkbox" checked={form.invite} onChange={(e) => setForm({ ...form, invite: e.target.checked })} />
+          <label htmlFor="u-invite" style={{ margin: 0 }}>Davet e-postası gönder <span className="muted">(giriş adresini bildirir; parola e-postayla gönderilmez, ayrıca iletmelisiniz)</span></label>
         </div>
         <p className="row" style={{ marginTop: 12 }}>
           <button className="btn primary" disabled={busy}>Kullanıcıyı oluştur</button>

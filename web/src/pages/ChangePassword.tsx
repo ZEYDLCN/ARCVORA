@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { api } from '../api';
 import { Logo } from '../components/Logo';
 import { errorText } from './apps/common';
+import { NotificationPrefs } from './apps/NotificationPrefs';
 
 const MIN = 10;
 
@@ -50,7 +51,7 @@ export function ChangePassword({ forced, onDone, onLogout }: Props) {
     </form>
   );
 
-  if (!forced) return <><div className="page-head"><h1>Hesap</h1><p className="tagline">Giriş parolanızı değiştirin.</p></div><div className="page-body">{form}</div></>;
+  if (!forced) return <><div className="page-head"><h1>Hesap</h1><p className="tagline">Giriş parolanızı ve bildirim tercihlerinizi yönetin.</p></div><div className="page-body">{form}<NotificationPrefs /></div></>;
   return (
     <>
       <div className="bg" aria-hidden="true" />
