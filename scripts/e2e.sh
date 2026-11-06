@@ -29,6 +29,7 @@ need curl "curl gerekli."
 export PGHOST="${PGHOST:-localhost}" PGUSER="${PGUSER:-postgres}" PGPASSWORD="${PGPASSWORD:-postgres}"
 DB="arcvora_e2e_$$"
 API_PORT="${E2E_API_PORT:-5290}"; WEB_PORT="${E2E_WEB_PORT:-5291}"; MOCK_PORT="${E2E_MOCK_PORT:-11599}"
+SMTP_PORT="${E2E_SMTP_PORT:-2525}"; SMTP_HTTP_PORT="${E2E_SMTP_HTTP_PORT:-2526}"
 MODEL="qwen-mock"
 LOGS="$(mktemp -d)"
 PIDS=()
@@ -62,6 +63,7 @@ fi
 port_free "$API_PORT" "API" || exit 2
 [ "$UI" = 1 ] && [ "$MODE" != prod ] && { port_free "$WEB_PORT" "web" || exit 2; }
 [ "$MODE" = local ] && { port_free "$MOCK_PORT" "sahte model" || exit 2; }
+port_free "$SMTP_HTTP_PORT" "SMTP alıcısı" || exit 2
 
 echo "→ API derleniyor…"
 dotnet build src/Arcvora.Api --nologo -v q -c Debug >"$LOGS/build.log" 2>&1 || { echo "✗ Derleme başarısız:"; tail -20 "$LOGS/build.log"; exit 1; }
@@ -80,8 +82,14 @@ start_mock() { # fault ("" veya repair)
   wait_http "http://127.0.0.1:$MOCK_PORT/v1/models" "sahte model" 20
 }
 
+echo "→ SMTP alıcısı başlatılıyor (e-posta uçtan uca denetimi)…"
+SMTP_PORT="$SMTP_PORT" SMTP_HTTP_PORT="$SMTP_HTTP_PORT" node scripts/e2e/smtp-sink.mjs >"$LOGS/smtp-sink.log" 2>&1 &
+PIDS+=("$!")
+wait_http "http://127.0.0.1:$SMTP_HTTP_PORT/" "SMTP alıcısı" 20 || exit 1
+EMAIL_ENV=(Email__Enabled=true Email__Host=127.0.0.1 "Email__Port=$SMTP_PORT" Email__Security=none Email__From=noreply@e2e.test "Email__PublicUrl=http://127.0.0.1:${WEB_PORT}" Email__PollIntervalMs=500)
+
 API_ENV=(ASPNETCORE_ENVIRONMENT=Development "ASPNETCORE_URLS=http://127.0.0.1:$API_PORT" RateLimit__AuthPerMinute=1000
-  "ConnectionStrings__Arcvora=Host=$PGHOST;Database=$DB;Username=$PGUSER;Password=$PGPASSWORD")
+  "ConnectionStrings__Arcvora=Host=$PGHOST;Database=$DB;Username=$PGUSER;Password=$PGPASSWORD" "${EMAIL_ENV[@]}")
 if [ "$MODE" = local ]; then
   start_mock "" || exit 1; PIDS+=("$MOCK_PID")
   API_ENV+=(Ai__Provider=local "Ai__Local__BaseUrl=http://127.0.0.1:$MOCK_PORT" "Ai__Local__Model=$MODEL" Ai__TimeoutSeconds=120)
@@ -93,7 +101,7 @@ if [ "$MODE" = prod ]; then
   ( cd "$LOGS/pub" && exec env ASPNETCORE_ENVIRONMENT=Production "ASPNETCORE_URLS=http://127.0.0.1:$API_PORT" \
       Jwt__Key="e2e-uretim-anahtari-en-az-32-karakter-0123456789abcdef" \
       "DATABASE_URL=postgres://$PGUSER:$PGPASSWORD@$PGHOST:5432/$DB?sslmode=disable" \
-      Database__MigrateOnStartup=true Worker__InProcess=true ForwardedHeaders__Enabled=true RateLimit__AuthPerMinute=1000 \
+      Database__MigrateOnStartup=true Worker__InProcess=true ForwardedHeaders__Enabled=true RateLimit__AuthPerMinute=1000 "${EMAIL_ENV[@]}" \
       dotnet Arcvora.Api.dll >"$LOGS/api.log" 2>&1 ) &
 else
   ( cd src/Arcvora.Api && exec env "${API_ENV[@]}" dotnet bin/Debug/net8.0/Arcvora.Api.dll >"$LOGS/api.log" 2>&1 ) &
@@ -121,6 +129,7 @@ api_extras() {
   step "Yaşam döngüsü (düzenleme, yama, açık soru, denetim, silme)" node scripts/e2e/api-lifecycle.mjs
   step "Uç durumlar (kimlik, doğrulama, güvenlik, sürüm, dışa aktarma, öneri durumları)" node scripts/e2e/api-edge.mjs
   step "Akış uygulamaları (kullanıcı/rol, şablon, onay akışı, muhasebe webhook'u, CSV, yalıtım)" node scripts/e2e/apps-journey.mjs
+  step "G fazı (ek/fiş, PDF+doğrulama, vekâlet+e-posta, Türkçe arama, rapor, liste, izin bakiyesi, KVKK)" env SMTP_SINK_URL="http://127.0.0.1:$SMTP_HTTP_PORT" node scripts/e2e/apps-g-journey.mjs
 }
 
 if [ "$MODE" = local ]; then
