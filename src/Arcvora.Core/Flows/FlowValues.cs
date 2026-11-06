@@ -7,8 +7,14 @@ using Arcvora.Core.Model;
 namespace Arcvora.Core.Flows;
 
 /// <summary>Normalleştirilmiş talep verisinin JSON'a yazılması/okunması, tanım özeti ve talep numarası.</summary>
+/// <summary>Özetin tek bir parçası: alan anahtarı, etiketi, türü (date/money/number/text) ve okunur metni.</summary>
+public sealed record SummaryPart(string Key, string Label, string Kind, string Text);
+
 public static class FlowValues
 {
+    /// <summary>Özet alanlarının yapılandırılmış hâli (arayüzde etiketli kutular için).</summary>
+    public static IReadOnlyList<SummaryPart> SummaryParts(FlowDefinition def, IReadOnlyDictionary<string, object?> values) => [];
+
     public static string ToJson(IReadOnlyDictionary<string, object?> values) =>
         JsonSerializer.Serialize(values.Where(kv => kv.Value is not null).OrderBy(kv => kv.Key, StringComparer.Ordinal).ToDictionary(kv => kv.Key, kv => kv.Value), ArcvoraJson.Options);
 
