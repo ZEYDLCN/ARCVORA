@@ -81,3 +81,8 @@ td .actions { display: flex; gap: 6px; flex-wrap: wrap; }
 /* Raporlar */
 .bars { display: flex; align-items: flex-end; gap: 3px; height: 66px; margin-top: 14px; overflow-x: auto; }
 .bars .bar { flex: 0 0 10px; min-width: 10px; background: var(--accent); border-radius: 4px 4px 0 0; opacity: .85; }
+
+/* Yönetim sayfalarının kart yığını: ızgara sütunu içeriğin en küçük genişliğine (ör. geniş tablo) kadar uzayıp telefonda taşmasın;
+   tablolar kendi sarmalayıcısında (.table-wrap) yatay kayar. */
+.stack { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+.stack > * { min-width: 0; }
