@@ -22,6 +22,8 @@ public static class RequestEventKinds
     public const string Cancelled = "cancelled";
     public const string ApproverRemoved = "approver_removed";
     public const string Reassigned = "reassigned";
+    public const string LeaveReserved = "leave_reserved";
+    public const string LeaveRefunded = "leave_refunded";
     public const string Completed = "completed";
     public const string AccountingQueued = "accounting_queued";
     public const string AccountingSent = "accounting_sent";
@@ -293,4 +295,43 @@ public sealed class DataListItem
     public string Value { get; set; } = "";
     public bool Active { get; set; } = true;
     public int Sort { get; set; }
+}
+
+/// <summary>Resmî tatil (çalışma alanına özel). <see cref="HalfDay"/>: yarım gün (ör. arife); iş günü sayımında 0,5 sayılır.</summary>
+public sealed class Holiday
+{
+    public Guid Id { get; set; }
+    public Guid WorkspaceId { get; set; }
+    public DateOnly Date { get; set; }
+    public string Name { get; set; } = "";
+    public bool HalfDay { get; set; }
+}
+
+public static class LeaveKinds
+{
+    public const string Entitlement = "entitlement";
+    public const string Adjustment = "adjustment";
+    public const string Carryover = "carryover";
+    public const string Usage = "usage";
+    public const string Refund = "refund";
+}
+
+/// <summary>
+/// İzin bakiyesi defteri (yalnızca eklenir). Bakiye = bir kişinin bir yıl için kayıtlarının toplamı: hak/devir/düzeltme artı, kullanım eksi
+/// (talep gönderilince rezerve), iade artı (talep reddedilince/iptal edilince). <see cref="RequestId"/> bilinçli olarak yabancı anahtar değildir:
+/// talep silinse (saklama süresi) bile defter kalır.
+/// </summary>
+public sealed class LeaveEntry
+{
+    public Guid Id { get; set; }
+    public Guid WorkspaceId { get; set; }
+    public Guid UserId { get; set; }
+    public int Year { get; set; }
+    public string Kind { get; set; } = "";
+    public decimal Days { get; set; }
+    public string? Note { get; set; }
+    public Guid? RequestId { get; set; }
+    public string? RequestNumber { get; set; }
+    public Guid? CreatedBy { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
 }

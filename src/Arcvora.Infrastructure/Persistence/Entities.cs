@@ -71,6 +71,8 @@ public sealed class Membership
     public bool CanAccept { get; set; } = true;
     /// <summary>Doğrudan yönetici (aynı çalışma alanının üyesi). "Yönetici onayı" adımını çözer.</summary>
     public Guid? ManagerId { get; set; }
+    /// <summary>İşe giriş tarihi: kıdeme göre yıllık izin hakkı hesabında kullanılır (isteğe bağlı).</summary>
+    public DateOnly? HireDate { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public User? User { get; set; }
 }

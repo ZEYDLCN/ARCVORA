@@ -28,6 +28,8 @@ public sealed class ArcvoraDbContext(DbContextOptions<ArcvoraDbContext> options)
     public DbSet<EmailMessage> EmailMessages => Set<EmailMessage>();
     public DbSet<NotificationSettings> NotificationSettings => Set<NotificationSettings>();
     public DbSet<RetentionSettings> RetentionSettings => Set<RetentionSettings>();
+    public DbSet<Holiday> Holidays => Set<Holiday>();
+    public DbSet<LeaveEntry> LeaveEntries => Set<LeaveEntry>();
     public DbSet<DataList> DataLists => Set<DataList>();
     public DbSet<DataListItem> DataListItems => Set<DataListItem>();
     public DbSet<Attachment> Attachments => Set<Attachment>();
@@ -175,6 +177,24 @@ public sealed class ArcvoraDbContext(DbContextOptions<ArcvoraDbContext> options)
             e.HasIndex(x => x.DedupeKey).IsUnique().HasFilter("\"DedupeKey\" IS NOT NULL");      // aynı olay için ikinci mail yok
             e.HasIndex(x => new { x.Status, x.NextAttemptAt });
             e.HasIndex(x => new { x.WorkspaceId, x.CreatedAt });
+            e.HasOne<Workspace>().WithMany().HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<Holiday>(e =>
+        {
+            e.Property(x => x.Name).HasMaxLength(100);
+            e.HasIndex(x => new { x.WorkspaceId, x.Date }).IsUnique();
+            e.HasOne<Workspace>().WithMany().HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<LeaveEntry>(e =>
+        {
+            e.Property(x => x.Kind).HasMaxLength(20);
+            e.Property(x => x.Days).HasPrecision(7, 2);
+            e.Property(x => x.Note).HasMaxLength(200);
+            e.Property(x => x.RequestNumber).HasMaxLength(30);
+            e.HasIndex(x => new { x.WorkspaceId, x.UserId, x.Year });
+            e.HasIndex(x => x.RequestId);
             e.HasOne<Workspace>().WithMany().HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
         });
 
