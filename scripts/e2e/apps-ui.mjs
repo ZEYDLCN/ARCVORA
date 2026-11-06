@@ -108,7 +108,7 @@ try {
   await setFirstPassword(workerS, workerTempOverride.value, 'Calisan-Yeni-Parola-1');
   check('çalışan Uygulamalarım sayfasına yönlendirildi', await workerS.visible(W.getByRole('heading', { name: 'Uygulamalarım' })));
   const wNav = await navLabels(W);
-  check('çalışan menüsü yalnızca Uygulamalar ve Hesap', wNav.join('|') === 'Uygulamalarım|Taleplerim|Onay kutusu|Parolamı değiştir', wNav.join('|'));
+  check('çalışan menüsü yalnızca uygulama araçları ve Hesap (mimari/yönetim yok)', wNav.join('|') === 'Uygulamalarım|Taleplerim|Onay kutusu|Vekâletlerim|Belge doğrula|Parolamı değiştir', wNav.join('|'));
   check('mimari/yönetim menüsü yok', !wNav.some((l) => ['Projeler', 'Uygulama tasarla', 'Kullanıcılar ve yetkiler', 'Muhasebe'].includes(l)));
   check('uygulama kartı görünür', await workerS.visible(W.locator('.proj-card', { hasText: 'İzin talebi' })));
 

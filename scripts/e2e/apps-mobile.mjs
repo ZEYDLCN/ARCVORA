@@ -7,6 +7,7 @@ import { API_URL, call, check, finish, section } from './lib.mjs';
 const uniq = `${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`;
 const PROD = process.env.E2E_PROD === '1';
 const PHONE = { width: 390, height: 844 };
+let problemsBeforeOffline;
 
 const s = await openSession({ viewport: PHONE });
 const { page } = s;
@@ -20,7 +21,12 @@ try {
   const seed = await call('POST', `/api/workspaces/${ws}/demo-data`, { token: login.body.token });
   check('demo veri üretildi', seed.status === 201, seed.body);
 
-  const overflow = () => page.evaluate(() => ({ sw: document.documentElement.scrollWidth, iw: window.innerWidth }));
+  // Hem belge hem ana içerik kapsayıcısı (.page-body, kendi içinde kayar) taşmamalı: yalnızca belgeye bakmak, sağdan kesilen
+  // kartları kaçırır. Tablolar kendi .table-wrap sarmalayıcısında kayabilir, o kabul edilir. Dönen değer: taşan piksel.
+  const overflow = () => page.evaluate(() => {
+    const pb = document.querySelector('.page-body');
+    return Math.max(document.documentElement.scrollWidth - window.innerWidth, pb ? pb.scrollWidth - pb.clientWidth : 0);
+  });
   const routes = [
     '#/apps', '#/requests', '#/inbox', '#/delegations', '#/verify', '#/account', '#/design', '#/accounting',
     '#/admin/users', '#/admin/groups', '#/admin/requests', '#/admin/lists', '#/admin/leave', '#/admin/reports',
@@ -31,30 +37,31 @@ try {
     await page.goto(`${WEB}/${r}`);
     await page.waitForTimeout(700);
     const o = await overflow();
-    check(`${r}: taşma yok (kaydırma genişliği ${o.sw} ≤ ${o.iw})`, o.sw <= o.iw + 1);
+    check(`${r}: yatay taşma yok (${o} px)`, o <= 1);
     await s.shot(`mobil${r.replace(/[#/]+/g, '-')}`);
   }
 
   section('Mobil: talep ayrıntısı (ek, PDF, olay akışı) ve talep formu');
-  await page.goto(`${WEB}/#/requests`);
-  await page.waitForTimeout(800);
-  const firstReq = page.locator('a[href^="#/requests/"]').first();
+  // Demo talepler demo kullanıcılarındır: yönetici bunları "Tüm talepler" listesinde görür.
+  await page.goto(`${WEB}/#/admin/requests`);
+  await page.waitForTimeout(1000);
+  const firstReq = page.locator('button.item').first();
   if (await firstReq.count()) {
     await firstReq.click();
-    await page.waitForTimeout(800);
+    await page.waitForTimeout(1000);
     const o = await overflow();
-    check(`talep ayrıntısı taşmaz (${o.sw} ≤ ${o.iw})`, o.sw <= o.iw + 1);
+    check(`talep ayrıntısı taşmaz (${o} px)`, o <= 1);
     await s.shot('mobil-talep-ayrinti');
-  } else check('talepler listesinde en az bir demo talep var', false);
+  } else check('tüm talepler listesinde en az bir demo talep var', false);
 
   await page.goto(`${WEB}/#/apps`);
-  await page.waitForTimeout(800);
-  const firstApp = page.locator('a[href^="#/apps/"]').first();
+  await page.waitForTimeout(1000);
+  const firstApp = page.locator('button.proj-card').first();
   if (await firstApp.count()) {
     await firstApp.click();
-    await page.waitForTimeout(800);
+    await page.waitForTimeout(1000);
     const o = await overflow();
-    check(`talep formu taşmaz (${o.sw} ≤ ${o.iw})`, o.sw <= o.iw + 1);
+    check(`talep formu taşmaz (${o} px)`, o <= 1);
     await s.shot('mobil-talep-formu');
   } else check('uygulamalar listesinde en az bir uygulama var', false);
 
@@ -97,6 +104,7 @@ try {
     check('önbellekte /api yolu yok', cached.every((p) => !p.startsWith('/api')), cached);
     check('kabuk önbellekte', cached.includes('/index.html') || cached.includes('/'), cached);
     // Çevrimdışı: kabuk açılır
+    problemsBeforeOffline = s.problems.length;
     await s.context.setOffline(true);
     await page.reload();
     await page.waitForTimeout(800);
@@ -104,7 +112,9 @@ try {
     check('çevrimdışıyken uygulama kabuğu açılır (boş/kırık sayfa değil)', body.length > 0 && !/ERR_INTERNET_DISCONNECTED/.test(body));
     await s.context.setOffline(false);
   }
-  check('sayfa/konsol hatası yok', s.problems.length === 0, s.problems.slice(0, 5));
+  // Çevrimdışı yeniden yükleme ağ hatası üretir (beklenen); onu saymadan önceki hataları denetle.
+  const real = s.problems.slice(0, problemsBeforeOffline ?? s.problems.length);
+  check('sayfa/konsol hatası yok', real.length === 0, real.slice(0, 5));
 } catch (e) {
   check('beklenmeyen hata', false, String(e?.stack ?? e));
 } finally {
