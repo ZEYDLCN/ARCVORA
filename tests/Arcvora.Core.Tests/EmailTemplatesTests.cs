@@ -33,6 +33,38 @@ public class EmailTemplatesTests
     }
 
     [Fact]
+    public void A_task_for_a_deputy_says_on_whose_behalf_and_keeps_the_normal_wording_otherwise()
+    {
+        var m = EmailTemplates.TaskAssigned(Ctx(), "Yönetici onayı", "Müdür Mehmet");
+        Assert.Equal("[ARCVORA] Vekâleten onayınız bekleniyor: IZN-2026-0007 · İzin Talebi", m.Subject);
+        Assert.Contains("Müdür Mehmet adına", m.Text);
+        Assert.Contains("vekâleten", m.Text);
+        Assert.Contains("Can Yıldız", m.Text);
+        Assert.Contains("Müdür Mehmet adına", m.Html);
+        Assert.Equal(EmailTemplates.TaskAssigned(Ctx(), "Yönetici onayı").Subject, EmailTemplates.TaskAssigned(Ctx(), "Yönetici onayı", null).Subject);
+    }
+
+    [Fact]
+    public void A_deputy_reminder_names_the_person_and_escapes_html()
+    {
+        var m = EmailTemplates.TaskReminder(Ctx(), "Yönetici onayı", 2, "<b>Müdür</b> & Ortağı");
+        Assert.Equal("[ARCVORA] Vekâleten hatırlatma: IZN-2026-0007 · İzin Talebi onayınızı bekliyor", m.Subject);
+        Assert.Contains("2 gündür", m.Text);
+        Assert.Contains("<b>Müdür</b> & Ortağı adına", m.Text);
+        Assert.DoesNotContain("<b>Müdür</b>", m.Html);
+        Assert.Contains("&lt;b&gt;Müdür&lt;/b&gt; &amp; Ortağı adına", m.Html);
+    }
+
+    [Fact]
+    public void A_deputy_name_with_line_breaks_cannot_inject_headers()
+    {
+        var m = EmailTemplates.TaskAssigned(Ctx(), "x", "Müdür\r\nBcc: kotu@x.com");
+        Assert.DoesNotContain('\r', m.Subject);
+        Assert.DoesNotContain('\n', m.Subject);
+        Assert.Contains("Vekâleten", m.Subject);
+    }
+
+    [Fact]
     public void Results_tell_the_requester_what_happened_and_why()
     {
         var ok = EmailTemplates.RequestApproved(Ctx());

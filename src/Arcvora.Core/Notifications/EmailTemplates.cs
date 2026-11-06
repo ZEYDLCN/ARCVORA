@@ -20,11 +20,11 @@ public static class EmailTemplates
 
     // ------------------------------------------------------------ görev / talep
 
-    public static MailContent TaskAssigned(MailContext c, string step) =>
+    public static MailContent TaskAssigned(MailContext c, string step, string? onBehalfOf = null) =>
         Build(c.RecipientName, $"[ARCVORA] Onayınız bekleniyor: {c.Number} · {c.AppName}",
             [$"{c.RequesterName} tarafından açılan aşağıdaki talep onayınızı bekliyor."], Details(c, step), c.Link, "Talebi aç");
 
-    public static MailContent TaskReminder(MailContext c, string step, int daysWaiting) =>
+    public static MailContent TaskReminder(MailContext c, string step, int daysWaiting, string? onBehalfOf = null) =>
         Build(c.RecipientName, $"[ARCVORA] Hatırlatma: {c.Number} · {c.AppName} onayınızı bekliyor",
             [daysWaiting <= 0 ? "Bugün size atanan bir talep henüz karara bağlanmadı." : $"Aşağıdaki talep {daysWaiting} gündür onayınızı bekliyor."], Details(c, step), c.Link, "Talebi aç");
 
