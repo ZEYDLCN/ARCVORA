@@ -23,7 +23,7 @@ Durum sütunu depodaki gerçek koda göre tutulur; "tamam" yalnızca testle doğ
 | 7 | Ücretli pilot hazırlığı | §21–22, §23 Aşama 5 | maliyet/hata görünürlüğü | ⬜ |
 | 8 | Spring Boot profili | §11, §23 Aşama 6 | `ProfileCatalog` (planned) | ⬜ |
 | 9 | Entegrasyonlar | §23 Aşama 7 | — | ⬜ |
-| 10 | **ARCVORA Apps** (şirket içi akış uygulamaları: izin/avans/masraf, rol bazlı, muhasebe aktarımı) | Ürün dışı istek (WhatsApp, 4 Kasım 2026) | `docs/APPS_PLATFORM.md`, `Arcvora.Core/Flows`, `Apps*` servisleri, `web/src/pages/apps` | ✅ A–F tamam; ⬜ G (ekler, e-posta, bakiye, SSO) |
+| 10 | **ARCVORA Apps** (şirket içi akış uygulamaları: izin/avans/masraf, rol bazlı, muhasebe aktarımı) | Ürün dışı istek (WhatsApp, 4 Kasım 2026) | `docs/APPS_PLATFORM.md`, `Arcvora.Core/Flows`, `Apps*` servisleri, `web/src/pages/apps` | ✅ A–F ve G1–G8 tamam (ekler, PDF, vekâlet, e-posta, rapor/KVKK, listeler, izin bakiyesi, SSO, PWA); ⬜ gerçek kimlik sağlayıcı/SMTP/cihaz denemesi ve ARCVORA→app taslağı (G9) |
 
 > Numaralandırma doküman §23'ten farklıdır: §26'daki uygulama sırasına (model → erişim/sürüm → AI → etki) uymak için
 > "Çalışma alanı çekirdeği" AI hattından **önce** gelir. Doküman fazı 3 (Çalışma alanı) burada 2 + 5'e bölünmüştür.
