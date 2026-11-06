@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import { IconLayers } from '../../components/icons';
+import { CardTitle } from '../../components/ui';
 import { api } from '../../api';
 import type { DemoSeed, DemoStatus } from '../../types';
 import { errorText } from './common';
@@ -29,7 +31,7 @@ export function DemoData({ ws }: { ws: string }) {
 
   return (
     <div className="card" style={{ maxWidth: 860 }}>
-      <h3>Demo veri</h3>
+      <CardTitle icon={<IconLayers size={19} />}>Demo veri</CardTitle>
       <p className="muted">
         Sistemi denemek ve ekibe göstermek için örnek kullanıcılar, hazır şablonlardan uygulamalar, her durumda talepler ve fiş/fatura örnekleri yükler.
         Her şey uydurmadır ve “demo” olarak işaretlidir. Gerçek verilerinizi girmeye başlamadan önce silin; silmek gerçek verilere dokunmaz.

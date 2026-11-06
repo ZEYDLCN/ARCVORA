@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import { IconList, IconPlus } from '../../components/icons';
+import { CardTitle, EmptyState } from '../../components/ui';
 import { api } from '../../api';
 import type { ListDetail, ListSummary } from '../../types';
 import { errorText } from './common';
@@ -35,7 +37,7 @@ export function ListsAdmin({ ws }: { ws: string }) {
       {notice && <div className="notice" role="status">{notice}</div>}
 
       <form className="card" onSubmit={(e) => { e.preventDefault(); void run(async () => { show(await api.createList(ws, { name: fresh.name, items: lines(fresh.items) })); setFresh({ name: '', items: '' }); }, 'Liste oluşturuldu.'); }}>
-        <h3>Yeni liste</h3>
+        <CardTitle icon={<IconPlus size={19} />}>Yeni liste</CardTitle>
         <div className="mini-grid">
           <div><label htmlFor="ln-name">Ad</label><input id="ln-name" type="text" required maxLength={100} placeholder="Birimler" value={fresh.name} onChange={(e) => setFresh({ ...fresh, name: e.target.value })} /></div>
         </div>
@@ -45,9 +47,9 @@ export function ListsAdmin({ ws }: { ws: string }) {
       </form>
 
       <div className="card">
-        <h3>Listeler</h3>
+        <CardTitle icon={<IconList size={19} />}>Listeler</CardTitle>
         {lists === null && !error && <p className="muted">Yükleniyor…</p>}
-        {lists?.length === 0 && <p className="muted">Henüz liste yok.</p>}
+        {lists?.length === 0 && <EmptyState icon={<IconList size={32} />} title="Henüz liste yok.">Yukarıdan ilk listenizi oluşturun (ör. Birimler, Masraf kategorileri).</EmptyState>}
         <ul className="list">
           {lists?.map((l) => (
             <li key={l.id}>
@@ -63,7 +65,7 @@ export function ListsAdmin({ ws }: { ws: string }) {
       {open && (
         <div className="card" data-testid="list-editor">
           <div className="row" style={{ justifyContent: 'space-between' }}>
-            <h3 style={{ margin: 0 }}>{open.name}</h3>
+            <CardTitle icon={<IconList size={19} />}>{open.name}</CardTitle>
             <button className="btn small" onClick={() => setOpen(null)}>Kapat</button>
           </div>
           <div className="mini-grid" style={{ marginTop: 8 }}>
@@ -73,7 +75,7 @@ export function ListsAdmin({ ws }: { ws: string }) {
           <p><button className="btn small" disabled={busy || meta.name.trim() === ''} onClick={() => void run(async () => show(await api.updateList(ws, open.id, { name: meta.name, description: meta.description })), 'Ad ve açıklama kaydedildi.')}>Adı/açıklamayı kaydet</button></p>
 
           <h4>Öğeler</h4>
-          {rows.length === 0 && <p className="muted">Öğe yok.</p>}
+          {rows.length === 0 && <EmptyState icon={<IconList size={28} />} title="Öğe yok." />}
           {rows.map((r, i) => (
             <div key={r.id ?? `new-${i}`} className="row" style={{ gap: 6, marginBottom: 4 }}>
               <input aria-label={`Öğe ${i + 1}`} type="text" maxLength={100} style={{ flex: 1 }} value={r.value} onChange={(e) => setRows(rows.map((x, k) => (k === i ? { ...x, value: e.target.value } : x)))} />

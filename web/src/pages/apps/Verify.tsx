@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { IconCheckCircle, IconShield, IconXCircle } from '../../components/icons';
 import { api } from '../../api';
 import { requestStatusLabel } from '../../lib/requestText';
 import type { VerifyResult } from '../../types';
@@ -31,18 +32,18 @@ export function Verify({ workspace }: Ctx) {
             <input id="vf-number" type="text" autoComplete="off" placeholder="IZN-2026-0007" maxLength={40} value={number} onChange={(e) => setNumber(e.target.value)} /></div>
           <div className="field"><label htmlFor="vf-code">Doğrulama kodu</label>
             <input id="vf-code" type="text" autoComplete="off" placeholder="ABCD-1234-EF56" maxLength={20} value={code} onChange={(e) => setCode(e.target.value)} /></div>
-          <p><button className="btn primary" disabled={busy || number.trim() === '' || code.trim() === ''}>{busy ? 'Kontrol ediliyor…' : 'Doğrula'}</button></p>
+          <p><button className="btn primary" disabled={busy || number.trim() === '' || code.trim() === ''}>{!busy && <IconShield size={16} />}{busy ? 'Kontrol ediliyor…' : 'Doğrula'}</button></p>
         </form>
         {error && <div className="notice error" role="alert" style={{ marginTop: 12 }}>{error}</div>}
         {result?.valid && (
           <div className="notice ok" role="status" style={{ marginTop: 12 }}>
-            <b>Belge geçerli.</b> {result.number} · {result.appName} · şu anki durum: <b>{result.statusLabel ?? (result.status ? requestStatusLabel[result.status] : '')}</b>
+            <IconCheckCircle size={17} style={{ verticalAlign: '-3px', marginRight: 6 }} /><b>Belge geçerli.</b> {result.number} · {result.appName} · şu anki durum: <b>{result.statusLabel ?? (result.status ? requestStatusLabel[result.status] : '')}</b>
             {result.completedAt && <> · sonuç: {when(result.completedAt)}</>}
           </div>
         )}
         {result && !result.valid && (
           <div className="notice error" role="alert" style={{ marginTop: 12 }}>
-            <b>Doğrulanamadı.</b> Kod bu talep numarasıyla eşleşmiyor ya da talep çıktıdan sonra değişmiş (ör. onaylandı veya iptal edildi). Güncel bir çıktı alın.
+            <IconXCircle size={17} style={{ verticalAlign: '-3px', marginRight: 6 }} /><b>Doğrulanamadı.</b> Kod bu talep numarasıyla eşleşmiyor ya da talep çıktıdan sonra değişmiş (ör. onaylandı veya iptal edildi). Güncel bir çıktı alın.
           </div>
         )}
       </div>

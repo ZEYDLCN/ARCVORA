@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import { IconCheckCircle, IconClock, IconUser } from '../../components/icons';
+import { CardTitle, EmptyState } from '../../components/ui';
 import { api } from '../../api';
 import type { FormerUser, RetentionInfo, RetentionPreview } from '../../types';
 import { errorText } from './common';
@@ -31,7 +33,7 @@ export function Retention({ ws }: { ws: string }) {
   return (
     <div className="cards" style={{ maxWidth: 860 }}>
       <div className="card">
-        <h3>Saklama süresi</h3>
+        <CardTitle icon={<IconClock size={19} />}>Saklama süresi</CardTitle>
         <p className="muted">Sonuçlanmış (onaylı, reddedilmiş, iptal) talepler bu süreden sonra silinebilir. Açık talepler ve muhasebede işlenmemiş kayıtlar asla silinmez. Talebin görevleri, geçmişi ve ekleri (dosyalar dahil) birlikte silinir.</p>
         {error && <div className="notice error" role="alert">{error}</div>}
         {notice && <div className="notice" role="status">{notice}</div>}
@@ -62,9 +64,9 @@ export function Retention({ ws }: { ws: string }) {
       </div>
 
       <div className="card">
-        <h3>Ayrılan kullanıcılar (anonimleştirme)</h3>
+        <CardTitle icon={<IconUser size={19} />}>Ayrılan kullanıcılar (anonimleştirme)</CardTitle>
         <p className="muted">Çalışma alanından çıkarılmış hesapların ad ve e-postası geri döndürülemez biçimde silinir; geçmiş talepler “Silinmiş kullanıcı” adıyla korunur. Kişisel veri dışa aktarma için Kullanıcılar sekmesine bakın.</p>
-        {former.length === 0 && <p className="muted">Anonimleştirilecek hesap yok.</p>}
+        {former.length === 0 && <EmptyState icon={<IconCheckCircle size={30} />} title="Anonimleştirilecek hesap yok." />}
         <ul className="list">
           {former.map((u) => (
             <li key={u.id} className="row" style={{ gap: 10 }}>

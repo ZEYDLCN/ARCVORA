@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import { IconMail, IconSend } from '../../components/icons';
+import { CardTitle, EmptyState } from '../../components/ui';
 import { api } from '../../api';
 import type { EmailOutboxRow, EmailStatus } from '../../types';
 import { errorText, when } from './common';
@@ -32,7 +34,7 @@ export function EmailAdmin({ ws }: { ws: string }) {
   return (
     <div className="cards" style={{ maxWidth: 900 }}>
       <div className="card">
-        <h3>E-posta bildirimleri</h3>
+        <CardTitle icon={<IconMail size={19} />}>E-posta bildirimleri</CardTitle>
         {error && <div className="notice error" role="alert">{error}</div>}
         {info && <div className="notice" role="status">{info}</div>}
         {!status && !error && <p className="muted">Yükleniyor…</p>}
@@ -62,11 +64,11 @@ export function EmailAdmin({ ws }: { ws: string }) {
 
       <div className="card">
         <div className="row" style={{ justifyContent: 'space-between' }}>
-          <h3 style={{ margin: 0 }}>Gönderim kuyruğu</h3>
+          <CardTitle icon={<IconSend size={19} />}>Gönderim kuyruğu</CardTitle>
           <div className="seg" role="tablist">{filters.map((f) => <button key={f.id} role="tab" aria-selected={filter === f.id} onClick={() => setFilter(f.id)}>{f.label}</button>)}</div>
         </div>
         {rows === null && !error && <p className="muted">Yükleniyor…</p>}
-        {rows?.length === 0 && <p className="muted">Kayıt yok.</p>}
+        {rows?.length === 0 && <EmptyState icon={<IconMail size={30} />} title="Kayıt yok." />}
         <div className="table-wrap">
           <table>
             <thead><tr><th>Alıcı</th><th>Konu</th><th>Durum</th><th>Zaman</th><th /></tr></thead>

@@ -10,7 +10,7 @@ function Icon({ children, size = 20, ...rest }: { children: ReactNode; size?: nu
   );
 }
 
-type P = { size?: number };
+type P = { size?: number; style?: React.CSSProperties };
 
 export const IconHome = (p: P) => <Icon {...p}><path d="M4 11 12 4l8 7M6 10v9h12v-9M10 19v-5h4v5" /></Icon>;
 export const IconSearch = (p: P) => <Icon {...p}><circle cx="11" cy="11" r="6.5" /><path d="m20 20-4.2-4.2" /></Icon>;
@@ -66,6 +66,7 @@ export const IconCar = (p: P) => <Icon {...p}><path d="M5 16.5v-4.2L7 7.5a1.5 1.
 export const IconSettings = (p: P) => <Icon {...p}><circle cx="12" cy="12" r="3.2" /><path d="M12 3.5v2.3M12 18.2v2.3M3.5 12h2.3M18.2 12h2.3M6 6l1.6 1.6M16.4 16.4 18 18M18 6l-1.6 1.6M7.6 16.4 6 18" /></Icon>;
 export const IconSend = (p: P) => <Icon {...p}><path d="m4 11.5 16-7-6 15.5-3-6.5z" /><path d="m11 13.5 3.2-3.2" /></Icon>;
 export const IconSearchPlus = (p: P) => <Icon {...p}><circle cx="11" cy="11" r="6.5" /><path d="m20 20-4.2-4.2M11 8.5v5M8.5 11h5" /></Icon>;
+export const IconList = (p: P) => <Icon {...p}><path d="M8.5 6.5H20M8.5 12H20M8.5 17.5H20" /><circle cx="4.6" cy="6.5" r="1" fill="currentColor" /><circle cx="4.6" cy="12" r="1" fill="currentColor" /><circle cx="4.6" cy="17.5" r="1" fill="currentColor" /></Icon>;
 export const IconEye = (p: P) => <Icon {...p}><path d="M2.8 12S6 6.5 12 6.5 21.2 12 21.2 12 18 17.5 12 17.5 2.8 12 2.8 12z" /><circle cx="12" cy="12" r="2.8" /></Icon>;
 
 // Bileşen türü simgeleri (tuvalde marka logosu bulunamayınca kullanılır)

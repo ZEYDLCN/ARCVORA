@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { IconDiagram, IconSparkle } from '../../components/icons';
+import { CardTitle, EmptyState } from '../../components/ui';
 import { api } from '../../api';
 import { AppIcon } from '../../components/AppIcon';
 import { go } from '../../components/AppsShell';
@@ -36,7 +38,7 @@ export function DesignList({ workspace }: Ctx) {
         {error && <div className="notice error" role="alert" style={{ marginBottom: 12 }}>{error}</div>}
 
         <div className="card" style={{ maxWidth: 980, marginBottom: 18 }}>
-          <h3>Şablondan başla</h3>
+          <CardTitle icon={<IconSparkle size={19} />}>Şablondan başla</CardTitle>
           <div className="template-grid" style={{ marginTop: 8 }}>
             {flowTemplates.map((t) => (
               <button key={t.id} className="proj-card" disabled={busy} onClick={() => void create({ name: t.name, description: '', icon: t.icon, definition: t.definition })}>
@@ -53,7 +55,7 @@ export function DesignList({ workspace }: Ctx) {
         </div>
 
         {apps === null && !error && <p className="muted">Yükleniyor…</p>}
-        {apps?.length === 0 && <div className="empty-state"><b>Henüz uygulama yok</b><span>Yukarıdan bir şablon seçin veya boş bir uygulama oluşturun.</span></div>}
+        {apps?.length === 0 && <EmptyState icon={<IconDiagram size={30} />} title="Henüz uygulama yok">Yukarıdan bir şablon seçin veya boş bir uygulama oluşturun.</EmptyState>}
         <div className="proj-grid">
           {apps?.map((a) => (
             <button key={a.id} className="proj-card" onClick={() => go({ name: 'designer', id: a.id })}>

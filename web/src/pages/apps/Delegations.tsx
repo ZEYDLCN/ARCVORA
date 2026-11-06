@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import { IconChecklist, IconPlus, IconUsers } from '../../components/icons';
+import { CardTitle, EmptyState } from '../../components/ui';
 import { api } from '../../api';
 import { formatDate } from '../../lib/flow';
 import type { Delegation, DelegationStatus, DirectoryEntry } from '../../types';
@@ -56,7 +58,7 @@ export function Delegations({ user, workspace }: Ctx) {
         <p className="tagline">İzinde veya ulaşılamazken onay görevlerinizi belirli günler arasında bir iş arkadaşınızın görmesine ve karara bağlamasına izin verin.</p></div>
       <div className="page-body">
         <form className="card" style={{ maxWidth: 720 }} onSubmit={create}>
-          <h3>Yeni vekâlet</h3>
+          <CardTitle icon={<IconUsers size={19} />}>Yeni vekâlet</CardTitle>
           {isAdmin && (
             <div className="field"><label htmlFor="dg-from">Adına <span className="muted">(boş bırakırsanız kendi adınıza)</span></label>
               <select id="dg-from" value={form.from} onChange={(e) => setForm({ ...form, from: e.target.value, to: '' })}>
@@ -75,18 +77,18 @@ export function Delegations({ user, workspace }: Ctx) {
           </div>
           <div className="field"><label htmlFor="dg-reason">Açıklama <span className="muted">(isteğe bağlı)</span></label>
             <input id="dg-reason" type="text" maxLength={200} value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} /></div>
-          <p><button className="btn primary" disabled={busy || !form.to || !form.startsOn || !form.endsOn}>Vekâlet ver</button></p>
+          <p><button className="btn primary" disabled={busy || !form.to || !form.startsOn || !form.endsOn}><IconPlus size={16} />Vekâlet ver</button></p>
         </form>
 
         {error && <div className="notice error" role="alert" style={{ marginTop: 12 }}>{error}</div>}
 
         <div className="card" style={{ maxWidth: 860, marginTop: 14 }}>
           <div className="row" style={{ justifyContent: 'space-between' }}>
-            <h3 style={{ margin: 0 }}>{all ? 'Tüm vekâletler' : 'Verdiğim ve bana verilen vekâletler'}</h3>
+            <CardTitle icon={<IconChecklist size={19} />}>{all ? 'Tüm vekâletler' : 'Verdiğim ve bana verilen vekâletler'}</CardTitle>
             {isAdmin && <button className="btn small" onClick={() => setAll((v) => !v)}>{all ? 'Yalnızca benimkiler' : 'Tümünü göster'}</button>}
           </div>
           {rows === null && !error && <p className="muted">Yükleniyor…</p>}
-          {rows?.length === 0 && <p className="muted">Vekâlet yok.</p>}
+          {rows?.length === 0 && <EmptyState icon={<IconUsers size={32} />} title="Vekâlet yok.">İzine çıkarken yukarıdaki formla bir iş arkadaşınıza vekâlet verebilirsiniz.</EmptyState>}
           <ul className="list" style={{ marginTop: 8 }}>
             {rows?.map((d) => (
               <li key={d.id} className="row" style={{ gap: 10, alignItems: 'center' }}>

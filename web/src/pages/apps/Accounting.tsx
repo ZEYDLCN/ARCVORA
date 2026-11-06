@@ -1,4 +1,6 @@
 import { Fragment, useCallback, useEffect, useState } from 'react';
+import { IconPackage } from '../../components/icons';
+import { EmptyState } from '../../components/ui';
 import { api } from '../../api';
 import { go } from '../../components/AppsShell';
 import { AccountingBadge } from '../../components/StatusBadge';
@@ -48,7 +50,7 @@ export function Accounting({ workspace }: Ctx) {
         </div></div>
         {error && <div className="notice error" role="alert" style={{ marginBottom: 10 }}>{error}</div>}
         {entries === null && !error && <p className="muted">Yükleniyor…</p>}
-        {entries?.length === 0 && <div className="empty-state"><b>Kayıt yok</b><span>Muhasebeye aktarılacak onaylı talep bulunmuyor.</span></div>}
+        {entries?.length === 0 && <EmptyState icon={<IconPackage size={30} />} title="Kayıt yok">Muhasebeye aktarılacak onaylı talep bulunmuyor.</EmptyState>}
         {entries && entries.length > 0 && (
           <div className="card table-wrap">
             <table>
