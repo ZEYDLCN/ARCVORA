@@ -26,7 +26,7 @@ public class LeaveTests
     {
         var cal = Cal(("2026-10-28", true), ("2026-10-29", false));    // arife yarım gün + bayram
         Assert.Equal(0.5m, cal.WorkDays(D("2026-10-28"), D("2026-10-29")));
-        Assert.Equal(2.5m, cal.WorkDays(D("2026-10-27"), D("2026-10-29")));
+        Assert.Equal(1.5m, cal.WorkDays(D("2026-10-27"), D("2026-10-29")));       // Sal 1 + Çar 0,5 + Per 0
     }
 
     [Fact]
