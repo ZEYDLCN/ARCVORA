@@ -13,7 +13,28 @@ public sealed record SummaryPart(string Key, string Label, string Kind, string T
 public static class FlowValues
 {
     /// <summary>Özet alanlarının yapılandırılmış hâli (arayüzde etiketli kutular için).</summary>
-    public static IReadOnlyList<SummaryPart> SummaryParts(FlowDefinition def, IReadOnlyDictionary<string, object?> values) => [];
+    public static IReadOnlyList<SummaryPart> SummaryParts(FlowDefinition def, IReadOnlyDictionary<string, object?> values)
+    {
+        var parts = new List<SummaryPart>();
+        foreach (var key in def.SummaryFields)
+        {
+            var field = def.Fields.FirstOrDefault(f => f.Key == key);
+            if (field is null || field.Type is FieldType.User or FieldType.File || !values.TryGetValue(key, out var v) || v is null) continue;
+            var text = v switch
+            {
+                string s when field.Type == FieldType.Date && DateOnly.TryParseExact(s, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d) => d.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture),
+                string s => s,
+                decimal m => m.ToString(field.Type == FieldType.Money ? "0.00" : "0.##", CultureInfo.InvariantCulture) + (field.Type == FieldType.Money ? " " + (field.Currency ?? "TRY") : ""),
+                bool b => b ? "Evet" : "Hayır",
+                IEnumerable<string> list => string.Join(", ", list),
+                _ => v.ToString() ?? "",
+            };
+            if (text.Length == 0) continue;
+            var kind = field.Type switch { FieldType.Date => "date", FieldType.Money => "money", FieldType.Number => "number", _ => "text" };
+            parts.Add(new SummaryPart(field.Key, field.Label, kind, text));
+        }
+        return parts;
+    }
 
     public static string ToJson(IReadOnlyDictionary<string, object?> values) =>
         JsonSerializer.Serialize(values.Where(kv => kv.Value is not null).OrderBy(kv => kv.Key, StringComparer.Ordinal).ToDictionary(kv => kv.Key, kv => kv.Value), ArcvoraJson.Options);
@@ -42,23 +63,7 @@ public static class FlowValues
     /// <summary>Listelerde gösterilen kısa özet: seçilen alanların değerleri " · " ile birleşir. Kullanıcı ve ek alanları atlanır.</summary>
     public static string Summary(FlowDefinition def, IReadOnlyDictionary<string, object?> values, int maxLength = 300)
     {
-        var parts = new List<string>();
-        foreach (var key in def.SummaryFields)
-        {
-            var field = def.Fields.FirstOrDefault(f => f.Key == key);
-            if (field is null || field.Type is FieldType.User or FieldType.File || !values.TryGetValue(key, out var v) || v is null) continue;
-            var text = v switch
-            {
-                string s when field.Type == FieldType.Date && DateOnly.TryParseExact(s, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d) => d.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture),
-                string s => s,
-                decimal m => m.ToString(field.Type == FieldType.Money ? "0.00" : "0.##", CultureInfo.InvariantCulture) + (field.Type == FieldType.Money ? " " + (field.Currency ?? "TRY") : ""),
-                bool b => b ? "Evet" : "Hayır",
-                IEnumerable<string> list => string.Join(", ", list),
-                _ => v.ToString() ?? "",
-            };
-            if (text.Length > 0) parts.Add(text);
-        }
-        var summary = string.Join(" · ", parts);
+        var summary = string.Join(" · ", SummaryParts(def, values).Select(p => p.Text));
         return summary.Length <= maxLength ? summary : summary[..(maxLength - 1)] + "…";
     }
 
