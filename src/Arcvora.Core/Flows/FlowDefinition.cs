@@ -39,6 +39,8 @@ public sealed record FlowField
     public string? Currency { get; init; }
     /// <summary>Yalnızca <c>file</c> için: bir talebe eklenebilecek en fazla dosya (1–10, varsayılan 3).</summary>
     public int? MaxFiles { get; init; }
+    /// <summary>Yalnızca <c>select</c>/<c>multi_select</c> için: sabit <see cref="Options"/> yerine yönetilen bir listeye (ana veri) bağlanır.</summary>
+    public Guid? ListId { get; init; }
 }
 
 public sealed record ApproverSpec

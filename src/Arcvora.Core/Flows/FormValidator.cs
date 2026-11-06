@@ -18,7 +18,8 @@ public static class FormValidator
     private const int DefaultTextLength = 200;
     public const int DefaultMaxFiles = 3;
 
-    public static FormResult Validate(FlowDefinition def, IReadOnlyDictionary<string, JsonElement> data)
+    /// <param name="lists">Listeye bağlı seçim alanları için listenin AKTİF öğeleri (kimlik → değerler). Seçenekli alanlar için gerekmez.</param>
+    public static FormResult Validate(FlowDefinition def, IReadOnlyDictionary<string, JsonElement> data, IReadOnlyDictionary<Guid, IReadOnlyList<string>>? lists = null)
     {
         var values = new Dictionary<string, object?>();
         var issues = new List<FlowIssue>();
@@ -36,7 +37,7 @@ public static class FormValidator
                 if (f.Required) Add("required", f.Key, $"'{f.Label}' zorunlu.");
                 continue;
             }
-            Parse(f, el, values, Add);
+            Parse(f, el, values, Add, lists);
         }
 
         // 'önce olamaz' kuralları (iki tarih de geçerliyse)
@@ -63,6 +64,10 @@ public static class FormValidator
         return list;
     }
 
+    /// <summary>Tanımın bağlandığı liste kimlikleri (formu çözerken ve yayınlarken varlık/yetki denetimi için).</summary>
+    public static IReadOnlyList<Guid> ListIds(FlowDefinition def) =>
+        def.Fields.Where(f => f.Type is FieldType.Select or FieldType.MultiSelect && f.ListId is { } id && id != Guid.Empty).Select(f => f.ListId!.Value).Distinct().ToList();
+
     /// <summary><c>file</c> tipli alanlarda seçilen ek kimlikleri (sahiplik/varlık kontrolü için).</summary>
     public static IReadOnlyList<(string Key, Guid Id)> FileFieldIds(FlowDefinition def, IReadOnlyDictionary<string, object?> values)
     {
@@ -82,10 +87,16 @@ public static class FormValidator
         _ => false,
     };
 
-    private static void Parse(FlowField f, JsonElement? element, Dictionary<string, object?> values, Action<string, string, string> add)
+    private static void Parse(FlowField f, JsonElement? element, Dictionary<string, object?> values, Action<string, string, string> add, IReadOnlyDictionary<Guid, IReadOnlyList<string>>? lists)
     {
         var el = element!.Value;
         void Bad(string code, string msg) => add(code, f.Key, msg);
+        // Seçim alanının geçerli değerleri: sabit seçenekler ya da bağlı listenin aktif öğeleri.
+        IReadOnlyList<string>? choices = f.Options;
+        if (f.Type is FieldType.Select or FieldType.MultiSelect && f.ListId is { } listId && listId != Guid.Empty)
+        {
+            if (lists is null || !lists.TryGetValue(listId, out choices)) { Bad("list_missing", $"'{f.Label}' için bağlı liste bulunamadı."); return; }
+        }
 
         switch (f.Type)
         {
@@ -120,7 +131,7 @@ public static class FormValidator
             {
                 if (el.ValueKind != JsonValueKind.String) { Bad("invalid_type", $"'{f.Label}' bir seçenek olmalı."); return; }
                 var s = el.GetString()!.Trim();
-                var match = (f.Options ?? []).FirstOrDefault(o => string.Equals(o.Trim(), s, StringComparison.Ordinal));
+                var match = (choices ?? []).FirstOrDefault(o => string.Equals(o.Trim(), s, StringComparison.Ordinal));
                 if (match is null) { Bad("invalid_option", $"'{f.Label}' için geçersiz seçenek."); return; }
                 values[f.Key] = match.Trim();
                 break;
@@ -132,7 +143,7 @@ public static class FormValidator
                 foreach (var item in el.EnumerateArray())
                 {
                     var s = item.ValueKind == JsonValueKind.String ? item.GetString()!.Trim() : null;
-                    var match = s is null ? null : (f.Options ?? []).FirstOrDefault(o => string.Equals(o.Trim(), s, StringComparison.Ordinal));
+                    var match = s is null ? null : (choices ?? []).FirstOrDefault(o => string.Equals(o.Trim(), s, StringComparison.Ordinal));
                     if (match is null) { Bad("invalid_option", $"'{f.Label}' için geçersiz seçenek."); return; }
                     if (!picked.Contains(match.Trim())) picked.Add(match.Trim());
                 }

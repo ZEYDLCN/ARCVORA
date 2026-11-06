@@ -44,7 +44,14 @@ public static partial class FlowValidator
         {
             var f = def.Fields[i];
             var p = $"fields[{i}]";
-            if (f.Type is FieldType.Select or FieldType.MultiSelect)
+            var hasList = f.ListId is { } lid && lid != Guid.Empty;
+            if (f.ListId is not null && f.Type is not (FieldType.Select or FieldType.MultiSelect))
+                Add("invalid_list", $"{p}.listId", "Liste yalnızca tek/çoklu seçim alanlarına bağlanabilir.");
+            if (f.Type is FieldType.Select or FieldType.MultiSelect && hasList)
+            {
+                if ((f.Options ?? []).Count > 0) Add("options_conflict", $"{p}.options", "Seçenekler ve liste birlikte kullanılamaz; birini seçin.");
+            }
+            else if (f.Type is FieldType.Select or FieldType.MultiSelect)
             {
                 var opts = f.Options ?? [];
                 if (opts.Count == 0 || opts.Any(o => string.IsNullOrWhiteSpace(o))) Add("options_required", $"{p}.options", "Seçim alanı için boş olmayan seçenekler gerekli.");
