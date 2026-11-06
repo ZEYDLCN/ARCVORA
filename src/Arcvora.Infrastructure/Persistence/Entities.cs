@@ -55,6 +55,16 @@ public sealed class User
     public DateTimeOffset CreatedAt { get; set; }
 }
 
+/// <summary>Dış kimlik sağlayıcıdaki (OIDC) kalıcı kimlik: (veren, konu) çifti. E-posta değişse de aynı kişi tanınır; aynı e-postayı sonradan alan başka biri eski hesaba giremez.</summary>
+public sealed class UserIdentity
+{
+    public Guid Id { get; set; }
+    public Guid UserId { get; set; }
+    public string Issuer { get; set; } = "";
+    public string Subject { get; set; } = "";
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
 public sealed class Workspace
 {
     public Guid Id { get; set; }

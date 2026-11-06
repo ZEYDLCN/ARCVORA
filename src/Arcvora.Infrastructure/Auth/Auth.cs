@@ -140,6 +140,14 @@ public sealed class AuthService(ArcvoraDbContext db, PasswordHasher hasher, Toke
             user.MustChangePassword);
     }
 
+    /// <summary>Parolasız (SSO) girişte oturum sonucu: parola doğrulaması yapılmış sayılır; anonimleştirilmiş hesaplar giremez.</summary>
+    public async Task<AuthResult> SignInAsync(Guid userId, CancellationToken ct)
+    {
+        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId && u.AnonymizedAt == null, ct)
+                   ?? throw new AppException(401, "invalid_credentials", "Hesap bulunamadı.");
+        return new AuthResult(tokens.Create(user), new UserSummary(user.Id, user.Email, user.DisplayName), await WorkspacesAsync(user.Id, ct), false);
+    }
+
     /// <summary>Kullanıcı kendi parolasını değiştirir. Geçici parola bayrağı kalkar.</summary>
     public async Task ChangePasswordAsync(Guid userId, string? currentPassword, string? newPassword, CancellationToken ct)
     {

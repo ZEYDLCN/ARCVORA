@@ -137,3 +137,31 @@ public sealed class EmailOptions
     /// <summary>Gönderilmiş/atlanmış/başarısız e-posta kayıtları (içerikte ad ve özet bulunur) bu kadar gün sonra silinir. Bekleyenlere dokunulmaz.</summary>
     public int RetentionDays { get; set; } = 90;
 }
+
+/// <summary>
+/// Tek oturum açma (OpenID Connect, yetkilendirme kodu + PKCE): Microsoft Entra ID, ADFS, Keycloak, Okta, Google Workspace gibi herhangi bir OIDC sağlayıcı.
+/// Varsayılan KAPALI. Yerel (şirket içi) Active Directory'ye doğrudan LDAP bağlantısı yoktur; AD, ADFS veya Entra ID üzerinden OIDC ile kullanılır.
+/// </summary>
+public sealed class OidcOptions
+{
+    public bool Enabled { get; set; }
+    /// <summary>Sağlayıcının veren adresi; keşif belgesi <c>{Authority}/.well-known/openid-configuration</c> adresindedir. Üretimde https zorunludur.</summary>
+    public string Authority { get; set; } = "";
+    public string ClientId { get; set; } = "";
+    public string ClientSecret { get; set; } = "";
+    public string Scopes { get; set; } = "openid profile email";
+    /// <summary>Bu uygulamanın dışarıdan görünen kök adresi (ör. https://apps.firma.com). Dönüş adresi <c>{PublicUrl}/api/auth/oidc/callback</c> olarak sağlayıcıya kaydedilir.</summary>
+    public string PublicUrl { get; set; } = "";
+    public string ButtonText { get; set; } = "Şirket hesabıyla giriş";
+    /// <summary>true: kimlik belirtecinde <c>email_verified=true</c> yoksa giriş reddedilir. Yalnızca kiracıya bağlı güvenilir bir sağlayıcıda (ör. Entra ID, bu talebi göndermez) kapatın.</summary>
+    public bool RequireEmailVerified { get; set; } = true;
+    /// <summary>true: e-postası bilinmeyen kişiler için <see cref="DefaultWorkspaceId"/> çalışma alanında "uygulama kullanıcısı" hesabı açılır. Kapalıyken yalnızca yöneticinin açtığı hesaplar girebilir.</summary>
+    public bool AutoProvision { get; set; }
+    public string DefaultWorkspaceId { get; set; } = "";
+    /// <summary>Doluysa yalnızca bu alan adlarındaki e-postalar kabul edilir (ör. firma.com).</summary>
+    public string[] AllowedEmailDomains { get; set; } = [];
+    /// <summary>YALNIZCA geliştirme/test: http adresli sağlayıcıya izin verir.</summary>
+    public bool AllowInsecureHttp { get; set; }
+    public int TicketSeconds { get; set; } = 60;
+    public int StateMinutes { get; set; } = 10;
+}
