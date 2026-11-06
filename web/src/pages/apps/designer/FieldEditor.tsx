@@ -6,6 +6,7 @@ interface Props {
   index: number;
   total: number;
   dates: FlowField[];          // başka tarih alanları (notBefore / hesaplama için)
+  lists?: { id: string; name: string }[];      // yönetilen listeler (seçim alanının seçenek kaynağı)
   errors: string[];
   onChange: (patch: Partial<FlowField>) => void;
   onMove: (delta: -1 | 1) => void;
@@ -14,7 +15,7 @@ interface Props {
 
 const optionsText = (f: FlowField) => (f.options ?? []).join('\n');
 
-export function FieldEditor({ field: f, index, total, dates, errors, onChange, onMove, onRemove }: Props) {
+export function FieldEditor({ field: f, index, total, dates, lists = [], errors, onChange, onMove, onRemove }: Props) {
   const id = `f${index}`;
   const isDate = f.type === 'date';
   const canCompute = f.type === 'number' && dates.length >= 2;
@@ -33,7 +34,7 @@ export function FieldEditor({ field: f, index, total, dates, errors, onChange, o
         <div><label htmlFor={`${id}-l`}>Etiket</label><input id={`${id}-l`} type="text" maxLength={100} value={f.label} onChange={(e) => onChange({ label: e.target.value })} /></div>
         <div>
           <label htmlFor={`${id}-t`}>Tür</label>
-          <select id={`${id}-t`} value={f.type} onChange={(e) => onChange({ type: e.target.value as FieldType, options: undefined, computed: undefined, notBefore: undefined, min: undefined, max: undefined, maxLength: undefined, maxFiles: undefined })}>
+          <select id={`${id}-t`} value={f.type} onChange={(e) => onChange({ type: e.target.value as FieldType, options: undefined, computed: undefined, notBefore: undefined, min: undefined, max: undefined, maxLength: undefined, maxFiles: undefined, listId: undefined })}>
             {(Object.keys(fieldTypeLabels) as FieldType[]).map((t) => <option key={t} value={t}>{fieldTypeLabels[t]}</option>)}
           </select>
         </div>
@@ -44,8 +45,19 @@ export function FieldEditor({ field: f, index, total, dates, errors, onChange, o
       </div>
 
       {(f.type === 'select' || f.type === 'multi_select') && (
-        <div><label htmlFor={`${id}-o`}>Seçenekler <span className="muted">(her satıra bir tane)</span></label>
-          <textarea id={`${id}-o`} rows={4} value={optionsText(f)} onChange={(e) => onChange({ options: e.target.value.split('\n') })} /></div>
+        <>
+          <div><label htmlFor={`${id}-src`}>Seçenek kaynağı</label>
+            <select id={`${id}-src`} value={f.listId ?? ''} onChange={(e) => onChange(e.target.value ? { listId: e.target.value, options: undefined } : { listId: undefined })}>
+              <option value="">Elle gireceğim</option>
+              {lists.map((l) => <option key={l.id} value={l.id}>Liste: {l.name}</option>)}
+              {f.listId && !lists.some((l) => l.id === f.listId) && <option value={f.listId}>(bilinmeyen liste)</option>}
+            </select></div>
+          {!f.listId && (
+            <div><label htmlFor={`${id}-o`}>Seçenekler <span className="muted">(her satıra bir tane)</span></label>
+              <textarea id={`${id}-o`} rows={4} value={optionsText(f)} onChange={(e) => onChange({ options: e.target.value.split('\n') })} /></div>
+          )}
+          {f.listId && <p className="muted">Seçenekler “Yönetim → Listeler” sayfasından yönetilir; talep gönderilirken listenin o anki aktif öğeleri geçerlidir.</p>}
+        </>
       )}
       {(f.type === 'number' || f.type === 'money') && !f.computed && (
         <div className="mini-grid">

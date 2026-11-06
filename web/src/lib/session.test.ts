@@ -22,7 +22,7 @@ describe('parseRoute', () => {
     expect(parseRoute('#/admin/ACCOUNTING')).toEqual({ name: 'admin', sub: 'accounting' });
     expect(parseRoute('#/admin/demo')).toEqual({ name: 'admin', sub: 'demo' });
     expect(parseRoute('#/admin/email')).toEqual({ name: 'admin', sub: 'email' });
-    for (const sub of ['reports', 'retention', 'audit']) expect(parseRoute(`#/admin/${sub}`)).toEqual({ name: 'admin', sub });
+    for (const sub of ['reports', 'retention', 'audit', 'lists']) expect(parseRoute(`#/admin/${sub}`)).toEqual({ name: 'admin', sub });
     expect(parseRoute('#/admin/requests')).toEqual({ name: 'admin', sub: 'requests' });
     expect(parseRoute('#/admin/baska')).toEqual({ name: 'home' });
   });

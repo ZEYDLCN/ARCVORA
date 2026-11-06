@@ -109,3 +109,20 @@ describe('issuesByPath', () => {
     expect(m.get('fields[0].key')).toEqual(['x', 'y']);
   });
 });
+
+describe('listeye bağlı seçim alanı', () => {
+  const base = { schema: 1, prefix: 'LST', summaryFields: [], steps: [{ id: 's1', name: 'Y', approvers: { type: 'manager' as const } }] };
+  const L = '33333333-3333-3333-3333-333333333333';
+
+  it('seçeneksiz liste bağlantısı geçerlidir', () => {
+    expect(validateFlow({ ...base, fields: [{ key: 'd', label: 'Birim', type: 'select', listId: L }] })).toEqual([]);
+    expect(validateFlow({ ...base, fields: [{ key: 'd', label: 'Birim', type: 'multi_select', listId: L }] })).toEqual([]);
+  });
+  it('seçenek ve liste birlikte kullanılamaz; ikisi de yoksa seçenek zorunludur', () => {
+    expect(validateFlow({ ...base, fields: [{ key: 'd', label: 'Birim', type: 'select', listId: L, options: ['A'] }] }).map((i) => i.code)).toContain('options_conflict');
+    expect(validateFlow({ ...base, fields: [{ key: 'd', label: 'Birim', type: 'select' }] }).map((i) => i.code)).toContain('options_required');
+  });
+  it('yalnızca seçim alanları listeye bağlanabilir', () => {
+    expect(validateFlow({ ...base, fields: [{ key: 'd', label: 'Not', type: 'text', listId: L }] }).map((i) => i.code)).toContain('invalid_list');
+  });
+});

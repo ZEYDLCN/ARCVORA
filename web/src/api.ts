@@ -1,5 +1,5 @@
 import type {
-  AccountingEntry, AccountingSettings, AppDetail, AttachmentInfo, AuditPage, FormerUser, Report, RetentionInfo, RetentionPreview, SearchPage, Delegation, DemoSeed, DemoStatus, EmailOutboxRow, EmailStatus, AppForm, AppGrants, AppSummary, Artifact, AuthResult, DirectoryEntry, FlowDefinition,
+  AccountingEntry, AccountingSettings, AppDetail, AttachmentInfo, ListDetail, ListSummary, AuditPage, FormerUser, Report, RetentionInfo, RetentionPreview, SearchPage, Delegation, DemoSeed, DemoStatus, EmailOutboxRow, EmailStatus, AppForm, AppGrants, AppSummary, Artifact, AuthResult, DirectoryEntry, FlowDefinition,
   GroupInfo, Job, Member, MyApp, MyTask, ProfileInfo, ProjectDetail, ProjectSummary, ProposalDetail, ProposalSummary, RequestDetail,
   RequestSummary, VerifyResult, View, Finding, Model, VersionInfo, WorkspaceInfo,
 } from './types';
@@ -170,6 +170,12 @@ export const api = {
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10_000);
   },
+  lists: (ws: string) => request<ListSummary[]>('GET', `/workspaces/${ws}/lists`),
+  list: (ws: string, id: string) => request<ListDetail>('GET', `/workspaces/${ws}/lists/${id}`),
+  createList: (ws: string, body: { name: string; description?: string; items?: string[] }) => request<ListDetail>('POST', `/workspaces/${ws}/lists`, body),
+  updateList: (ws: string, id: string, body: { name?: string; description?: string }) => request<ListDetail>('PATCH', `/workspaces/${ws}/lists/${id}`, body),
+  setListItems: (ws: string, id: string, items: { id?: string; value: string; active: boolean }[]) => request<ListDetail>('PUT', `/workspaces/${ws}/lists/${id}/items`, { items }),
+  deleteList: (ws: string, id: string) => request<void>('DELETE', `/workspaces/${ws}/lists/${id}`),
   emailStatus: (ws: string) => request<EmailStatus>('GET', `/workspaces/${ws}/email`),
   updateEmail: (ws: string, body: { emailEnabled?: boolean; remindersEnabled?: boolean }) => request<EmailStatus>('PUT', `/workspaces/${ws}/email`, body),
   sendTestEmail: (ws: string) => request<{ sent: boolean; to: string }>('POST', `/workspaces/${ws}/email/test`, {}),

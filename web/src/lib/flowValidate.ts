@@ -34,7 +34,11 @@ export function validateFlow(def: FlowDefinition): FlowIssue[] {
 
   def.fields.forEach((f, i) => {
     const p = `fields[${i}]`;
-    if (f.type === 'select' || f.type === 'multi_select') {
+    const hasList = !!f.listId && f.listId !== '00000000-0000-0000-0000-000000000000';
+    if (f.listId !== undefined && f.type !== 'select' && f.type !== 'multi_select') add('invalid_list', `${p}.listId`, 'Liste yalnızca tek/çoklu seçim alanlarına bağlanabilir.');
+    if ((f.type === 'select' || f.type === 'multi_select') && hasList) {
+      if ((f.options ?? []).length > 0) add('options_conflict', `${p}.options`, 'Seçenekler ve liste birlikte kullanılamaz; birini seçin.');
+    } else if (f.type === 'select' || f.type === 'multi_select') {
       const opts = f.options ?? [];
       if (opts.length === 0 || opts.some((o) => o.trim() === '')) add('options_required', `${p}.options`, 'Seçim alanı için boş olmayan seçenekler gerekli.');
       else {

@@ -38,6 +38,7 @@ export function Designer({ id, workspace }: Ctx & { id: string }) {
   const [tab, setTab] = useState<'design' | 'access'>('design');
   const [people, setPeople] = useState<DirectoryEntry[]>([]);
   const [groups, setGroups] = useState<GroupInfo[]>([]);
+  const [lists, setLists] = useState<{ id: string; name: string }[]>([]);
   const [serverIssues, setServerIssues] = useState<FlowIssue[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -58,6 +59,7 @@ export function Designer({ id, workspace }: Ctx & { id: string }) {
   useEffect(() => {
     api.directory(ws).then(setPeople).catch(() => setPeople([]));
     api.groups(ws).then(setGroups).catch(() => setGroups([]));
+    api.lists(ws).then(setLists).catch(() => setLists([]));
   }, [ws]);
 
   // Kaydedilmemiş değişiklik varken sekmeyi kapatmaya karşı uyarı.
@@ -68,6 +70,8 @@ export function Designer({ id, workspace }: Ctx & { id: string }) {
     return () => window.removeEventListener('beforeunload', h);
   }, [dirty]);
 
+  // Önizlemede listeye bağlı alanlar için yer tutucu öğeler (gerçek öğeler talep formunda gelir).
+  const previewLists = useMemo(() => Object.fromEntries((draft?.fields ?? []).filter((f) => f.listId).map((f) => [f.listId!, ['Liste öğesi 1', 'Liste öğesi 2']])), [draft]);
   const local = useMemo(() => (draft ? validateFlow(draft) : []), [draft]);
   const byPath = useMemo(() => issuesByPath(local), [local]);
   // Anlık doğrulamanın bilemeyeceği, yalnızca sunucunun bulabildiği sorunlar (ör. silinmiş grup); kaydedilmemiş taslakta eskimiş sayılır.
@@ -179,7 +183,7 @@ export function Designer({ id, workspace }: Ctx & { id: string }) {
                 <h3>Alanlar</h3>
                 {draft.fields.length === 0 && <p className="muted">Talep formunda sorulacak alanları ekleyin.</p>}
                 {draft.fields.map((f, i) => (
-                  <FieldEditor key={f.key} field={f} index={i} total={draft.fields.length} dates={dateFields(i)} errors={fieldErrors(i)}
+                  <FieldEditor key={f.key} field={f} index={i} total={draft.fields.length} dates={dateFields(i)} lists={lists} errors={fieldErrors(i)}
                     onChange={(patch) => update((d) => ({ ...d, fields: d.fields.map((x, k) => (k === i ? { ...x, ...patch } : x)) }))}
                     onMove={(delta) => update((d) => ({ ...d, fields: move(d.fields, i, delta) }))}
                     onRemove={() => update((d) => ({
@@ -232,7 +236,7 @@ export function Designer({ id, workspace }: Ctx & { id: string }) {
                 <h3>Önizleme</h3>
                 <p className="muted" style={{ marginTop: 0 }}>Talep eden formu böyle görür. (Önizleme gönderilmez.)</p>
                 {draft.fields.length === 0 ? <p className="muted">Henüz alan yok.</p> : (
-                  <DynamicForm def={draft} values={preview} people={people} onChange={(k, v) => setPreview((p) => ({ ...p, [k]: v }))} />
+                  <DynamicForm def={draft} values={preview} people={people} lists={previewLists} onChange={(k, v) => setPreview((p) => ({ ...p, [k]: v }))} />
                 )}
                 <h3 style={{ marginTop: 18 }}>Onay akışı</h3>
                 <div className="step-strip">

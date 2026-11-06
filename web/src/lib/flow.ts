@@ -7,7 +7,7 @@ export type ConditionOp = 'eq' | 'ne' | 'gt' | 'gte' | 'lt' | 'lte' | 'in';
 
 export interface FlowField {
   key: string; label: string; type: FieldType; required?: boolean; helpText?: string; options?: string[];
-  min?: number; max?: number; maxLength?: number; notBefore?: string; currency?: string; maxFiles?: number;
+  min?: number; max?: number; maxLength?: number; notBefore?: string; currency?: string; maxFiles?: number; listId?: string;
   computed?: { op: ComputedOp; from: string; to: string };
 }
 export interface ApproverSpec { type: ApproverType; id?: string }

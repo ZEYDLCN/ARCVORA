@@ -13,13 +13,17 @@ interface Props {
   disabled?: boolean;
   /** Ek alanları için yükleme/silme; verilmezse ek alanları devre dışı çizilir. */
   uploads?: UploadApi;
+  /** Listeye bağlı seçim alanlarının aktif öğeleri (liste kimliği → değerler). */
+  lists?: Record<string, string[]>;
 }
 
 /** Akış tanımından form çizer. Hesaplanan alanlar yalnızca gösterilir; kesin doğrulama sunucudadır. */
-export function DynamicForm({ def, values, onChange, errors = {}, people = [], disabled, uploads }: Props) {
+export function DynamicForm({ def, values, onChange, errors = {}, people = [], disabled, uploads, lists = {} }: Props) {
   const uid = useId();
   const shown = withComputed(def, values);
   const names = Object.fromEntries(people.map((p) => [p.id, p.displayName]));
+  /** Seçim değerleri: bağlı listenin aktif öğeleri ya da elle girilen seçenekler. */
+  const choices = (f: FlowField): string[] => (f.listId ? (lists[f.listId] ?? []) : (f.options ?? []));
 
   return (
     <div className="form-grid">
@@ -54,7 +58,7 @@ export function DynamicForm({ def, values, onChange, errors = {}, people = [], d
             control = (
               <select {...common} value={str} onChange={(e) => onChange(f.key, e.target.value)}>
                 <option value="">Seçin…</option>
-                {(f.options ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
+                {choices(f).map((o) => <option key={o} value={o}>{o}</option>)}
               </select>
             );
             break;
@@ -62,7 +66,7 @@ export function DynamicForm({ def, values, onChange, errors = {}, people = [], d
             const picked = Array.isArray(values[f.key]) ? (values[f.key] as string[]) : [];
             control = (
               <div className="multi" role="group" aria-label={f.label} id={id}>
-                {(f.options ?? []).map((o) => (
+                {choices(f).map((o) => (
                   <label key={o}>
                     <input type="checkbox" disabled={disabled} checked={picked.includes(o)}
                       onChange={(e) => onChange(f.key, e.target.checked ? [...picked, o] : picked.filter((x) => x !== o))} />

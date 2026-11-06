@@ -105,7 +105,7 @@ export interface AppSummary {
 }
 export interface AppDetail { summary: AppSummary; draft: FlowDefinition; published?: FlowDefinition; issues: FlowIssue[] }
 export interface MyApp { id: string; workspaceId: string; name: string; description: string; icon: string; versionNumber: number }
-export interface AppForm { app: MyApp; definition: FlowDefinition }
+export interface AppForm { app: MyApp; definition: FlowDefinition; lists?: Record<string, string[]> }
 export interface AppGrants { userIds: string[]; groupIds: string[] }
 
 export type RequestStatus = 'in_review' | 'approved' | 'rejected' | 'cancelled';
@@ -167,3 +167,6 @@ export interface RetentionPreview { eligible: number; skippedAccounting: number;
 export interface AuditRow { id: number; at: string; actorId?: string; actorName?: string; action: string; objectType?: string; objectId?: string; detail?: Record<string, unknown> }
 export interface AuditPage { items: AuditRow[]; total: number; page: number; pageSize: number }
 export interface FormerUser { id: string; displayName: string; email: string; createdAt: string }
+export interface ListSummary { id: string; name: string; description?: string; itemCount: number; activeCount: number; updatedAt: string }
+export interface ListItem { id: string; value: string; active: boolean }
+export interface ListDetail { id: string; name: string; description?: string; items: ListItem[] }

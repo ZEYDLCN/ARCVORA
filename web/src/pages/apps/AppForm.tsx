@@ -65,7 +65,7 @@ export function AppForm({ id, workspace }: Ctx & { id: string }) {
           <form className="card" style={{ maxWidth: 820 }} onSubmit={submit} noValidate>
             {error && <div className="notice error" role="alert" style={{ marginBottom: 8 }}>{error}</div>}
             {errors._ && <div className="notice error" role="alert" style={{ marginBottom: 8 }}>{errors._.join(' ')}</div>}
-            <DynamicForm def={form.definition} values={values} errors={errors} people={people} disabled={busy} uploads={uploads}
+            <DynamicForm def={form.definition} values={values} errors={errors} people={people} disabled={busy} uploads={uploads} lists={form.lists}
               onChange={(k, v) => { setValues((s) => ({ ...s, [k]: v })); setErrors((s) => (s[k] ? { ...s, [k]: [] } : s)); }} />
             <h3 style={{ marginTop: 22 }}>Onay akışı</h3>
             <div className="step-strip" aria-label="Onay adımları">

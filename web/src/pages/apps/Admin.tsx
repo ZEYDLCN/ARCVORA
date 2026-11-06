@@ -8,11 +8,12 @@ import { DemoData } from './DemoData';
 import { AdminRequests } from './AdminRequests';
 import { AuditLog } from './AuditLog';
 import { EmailAdmin } from './EmailAdmin';
+import { ListsAdmin } from './ListsAdmin';
 import { Reports } from './Reports';
 import { Retention } from './Retention';
 
-type Tab = 'users' | 'groups' | 'accounting' | 'requests' | 'reports' | 'retention' | 'audit' | 'email' | 'demo';
-const tabs: { id: Tab; label: string }[] = [{ id: 'users', label: 'Kullanıcılar' }, { id: 'groups', label: 'Gruplar' }, { id: 'requests', label: 'Tüm talepler' }, { id: 'reports', label: 'Raporlar' }, { id: 'accounting', label: 'Muhasebe ayarları' }, { id: 'email', label: 'E-posta' }, { id: 'retention', label: 'Saklama ve KVKK' }, { id: 'audit', label: 'Denetim' }, { id: 'demo', label: 'Demo veri' }];
+type Tab = 'users' | 'groups' | 'accounting' | 'requests' | 'reports' | 'retention' | 'audit' | 'email' | 'lists' | 'demo';
+const tabs: { id: Tab; label: string }[] = [{ id: 'users', label: 'Kullanıcılar' }, { id: 'groups', label: 'Gruplar' }, { id: 'requests', label: 'Tüm talepler' }, { id: 'lists', label: 'Listeler' }, { id: 'reports', label: 'Raporlar' }, { id: 'accounting', label: 'Muhasebe ayarları' }, { id: 'email', label: 'E-posta' }, { id: 'retention', label: 'Saklama ve KVKK' }, { id: 'audit', label: 'Denetim' }, { id: 'demo', label: 'Demo veri' }];
 
 export function Admin({ sub, workspace, user }: Ctx & { sub: string }) {
   const tab = (tabs.some((t) => t.id === sub) ? sub : 'users') as Tab;
@@ -29,6 +30,7 @@ export function Admin({ sub, workspace, user }: Ctx & { sub: string }) {
         {tab === 'users' && <Users ws={workspace.id} me={user.id} />}
         {tab === 'groups' && <Groups ws={workspace.id} />}
         {tab === 'requests' && <AdminRequests ws={workspace.id} />}
+        {tab === 'lists' && <ListsAdmin ws={workspace.id} />}
         {tab === 'reports' && <Reports ws={workspace.id} />}
         {tab === 'retention' && <Retention ws={workspace.id} />}
         {tab === 'audit' && <AuditLog ws={workspace.id} />}
