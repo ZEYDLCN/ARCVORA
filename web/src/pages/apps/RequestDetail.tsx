@@ -41,7 +41,7 @@ export function RequestDetail({ id, isAdmin = false }: { id: string; isAdmin?: b
       <div className="page-head">
         <p><button className="btn small" onClick={() => history.length > 1 ? history.back() : go({ name: 'requests' })}>← Geri</button></p>
         <h1>{s.number}</h1>
-        <div className="status-row"><span className="muted">{s.appName}</span><RequestBadge status={s.status} /><span className="muted">· {s.requesterName} · {when(s.createdAt)}</span></div>
+        <div className="status-row"><span className="muted">{s.appName}</span><RequestBadge status={s.status} /><span className="muted">{s.requesterName} · {when(s.createdAt)}</span></div>
       </div>
       <div className="page-body">
         {error && <div className="notice error" role="alert" style={{ marginBottom: 12 }}>{error}</div>}
