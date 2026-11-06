@@ -272,3 +272,25 @@ public sealed class RetentionSettings
     public bool AutoPurge { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 }
+
+/// <summary>Yönetilen liste (ana veri): birim, şehir, masraf kalemi gibi değerler tek yerden yönetilir; seçim alanları listeye bağlanır.</summary>
+public sealed class DataList
+{
+    public Guid Id { get; set; }
+    public Guid WorkspaceId { get; set; }
+    public string Name { get; set; } = "";
+    /// <summary>Türkçe duyarsız karşılaştırma anahtarı (ad benzersizliği için).</summary>
+    public string NameKey { get; set; } = "";
+    public string? Description { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+}
+
+public sealed class DataListItem
+{
+    public Guid Id { get; set; }
+    public Guid ListId { get; set; }
+    public string Value { get; set; } = "";
+    public bool Active { get; set; } = true;
+    public int Sort { get; set; }
+}

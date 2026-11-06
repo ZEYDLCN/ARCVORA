@@ -18,7 +18,8 @@ public sealed record SetGrantsRequest(IReadOnlyList<Guid>? UserIds, IReadOnlyLis
 
 public sealed record MyAppDto(Guid Id, Guid WorkspaceId, string Name, string Description, string Icon, int VersionNumber);
 
-public sealed record AppFormDto(MyAppDto App, FlowDefinition Definition);
+/// <param name="Lists">Listeye bağlı seçim alanlarının aktif öğeleri (liste kimliği → değerler).</param>
+public sealed record AppFormDto(MyAppDto App, FlowDefinition Definition, IReadOnlyDictionary<Guid, IReadOnlyList<string>> Lists);
 
 public sealed record SubmitRequest(Dictionary<string, JsonElement>? Data);
 

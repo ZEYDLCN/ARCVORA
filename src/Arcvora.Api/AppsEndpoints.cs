@@ -120,6 +120,26 @@ public static class AppsEndpoints
             return Results.File(data, "text/csv; charset=utf-8", name);
         });
 
+        // --------------------------------------------------------- yönetilen listeler (ana veri)
+        secured.MapGet("/workspaces/{id:guid}/lists", async (Guid id, ClaimsPrincipal u, DataListService s, CancellationToken ct) =>
+            Results.Ok(await s.ListAsync(Endpoints.UserId(u), id, ct)));
+        secured.MapPost("/workspaces/{id:guid}/lists", async (Guid id, CreateListRequest r, ClaimsPrincipal u, DataListService s, CancellationToken ct) =>
+        {
+            var d = await s.CreateAsync(Endpoints.UserId(u), id, r, ct);
+            return Results.Created($"/api/workspaces/{id}/lists/{d.Id}", d);
+        });
+        secured.MapGet("/workspaces/{id:guid}/lists/{listId:guid}", async (Guid id, Guid listId, ClaimsPrincipal u, DataListService s, CancellationToken ct) =>
+            Results.Ok(await s.GetAsync(Endpoints.UserId(u), id, listId, ct)));
+        secured.MapPatch("/workspaces/{id:guid}/lists/{listId:guid}", async (Guid id, Guid listId, UpdateListRequest r, ClaimsPrincipal u, DataListService s, CancellationToken ct) =>
+            Results.Ok(await s.UpdateAsync(Endpoints.UserId(u), id, listId, r, ct)));
+        secured.MapPut("/workspaces/{id:guid}/lists/{listId:guid}/items", async (Guid id, Guid listId, SetItemsRequest r, ClaimsPrincipal u, DataListService s, CancellationToken ct) =>
+            Results.Ok(await s.SetItemsAsync(Endpoints.UserId(u), id, listId, r, ct)));
+        secured.MapDelete("/workspaces/{id:guid}/lists/{listId:guid}", async (Guid id, Guid listId, ClaimsPrincipal u, DataListService s, CancellationToken ct) =>
+        {
+            await s.DeleteAsync(Endpoints.UserId(u), id, listId, ct);
+            return Results.NoContent();
+        });
+
         // ------------------------------------------------- denetim, saklama süresi, KVKK
         secured.MapGet("/workspaces/{id:guid}/audit", async (Guid id, string? action, Guid? actorId, string? from, string? to, string? page, string? pageSize,
             ClaimsPrincipal u, AuditViewService s, CancellationToken ct) =>

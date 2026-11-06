@@ -73,6 +73,7 @@ public static class DependencyInjection
         services.AddScoped<RetentionService>();
         services.AddScoped<PersonalDataService>();
         services.AddScoped<AuditViewService>();
+        services.AddScoped<DataListService>();
         services.AddScoped<RequestVisibility>();
         services.AddScoped<RequestService>();
         services.AddScoped<IRequestHooks, AccountingHooks>();

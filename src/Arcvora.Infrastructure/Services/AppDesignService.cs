@@ -174,6 +174,16 @@ public sealed class AppDesignService(ArcvoraDbContext db, AppAccessService acces
             if (a is { Type: ApproverType.User, Id: { } u } && !knownUsers.Contains(u))
                 issues.Add(new FlowIssue("approver_not_found", $"steps[{i}].approvers.id", "Seçilen kişi bu çalışma alanında yok."));
         }
+
+        // Listeye bağlı seçim alanları: liste bu çalışma alanında olmalı.
+        var listIds = FormValidator.ListIds(def);
+        if (listIds.Count > 0)
+        {
+            var known = await db.DataLists.AsNoTracking().Where(l => l.WorkspaceId == workspaceId && listIds.Contains(l.Id)).Select(l => l.Id).ToListAsync(ct);
+            for (var i = 0; i < def.Fields.Count; i++)
+                if (def.Fields[i].Type is FieldType.Select or FieldType.MultiSelect && def.Fields[i].ListId is { } lid && lid != Guid.Empty && !known.Contains(lid))
+                    issues.Add(new FlowIssue("unknown_list", $"fields[{i}].listId", "Seçilen liste bu çalışma alanında yok."));
+        }
         return issues;
     }
 

@@ -28,6 +28,8 @@ public sealed class ArcvoraDbContext(DbContextOptions<ArcvoraDbContext> options)
     public DbSet<EmailMessage> EmailMessages => Set<EmailMessage>();
     public DbSet<NotificationSettings> NotificationSettings => Set<NotificationSettings>();
     public DbSet<RetentionSettings> RetentionSettings => Set<RetentionSettings>();
+    public DbSet<DataList> DataLists => Set<DataList>();
+    public DbSet<DataListItem> DataListItems => Set<DataListItem>();
     public DbSet<Attachment> Attachments => Set<Attachment>();
     public DbSet<AttachmentBlob> AttachmentBlobs => Set<AttachmentBlob>();
 
@@ -174,6 +176,22 @@ public sealed class ArcvoraDbContext(DbContextOptions<ArcvoraDbContext> options)
             e.HasIndex(x => new { x.Status, x.NextAttemptAt });
             e.HasIndex(x => new { x.WorkspaceId, x.CreatedAt });
             e.HasOne<Workspace>().WithMany().HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<DataList>(e =>
+        {
+            e.Property(x => x.Name).HasMaxLength(100);
+            e.Property(x => x.NameKey).HasMaxLength(100);
+            e.Property(x => x.Description).HasMaxLength(500);
+            e.HasIndex(x => new { x.WorkspaceId, x.NameKey }).IsUnique();         // eşzamanlı iki oluşturma aynı adı alamaz
+            e.HasOne<Workspace>().WithMany().HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<DataListItem>(e =>
+        {
+            e.Property(x => x.Value).HasMaxLength(100);
+            e.HasIndex(x => new { x.ListId, x.Sort });
+            e.HasOne<DataList>().WithMany().HasForeignKey(x => x.ListId).OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<RetentionSettings>(e =>

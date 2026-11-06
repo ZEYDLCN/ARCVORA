@@ -11,7 +11,7 @@ using Npgsql;
 namespace Arcvora.Infrastructure.Services;
 
 /// <summary>Akış uygulamalarının çalışma zamanı: talep açma, onay/ret, iptal, listeleme. Kurallar çekirdekte (<see cref="FlowEngine"/>).</summary>
-public sealed class RequestService(ArcvoraDbContext db, AppAccessService access, IRequestHooks hooks, RequestVisibility visibility, DelegationService delegations, EmailNotifier notifier, TimeProvider clock)
+public sealed class RequestService(ArcvoraDbContext db, AppAccessService access, IRequestHooks hooks, RequestVisibility visibility, DelegationService delegations, EmailNotifier notifier, DataListService lists, TimeProvider clock)
 {
     public const int MaxCommentLength = 1000;
     private const int ListLimit = 200;
@@ -45,7 +45,8 @@ public sealed class RequestService(ArcvoraDbContext db, AppAccessService access,
         var (app, member) = await access.LoadAppAsync(userId, appId, false, ct);
         await RequireUsableAsync(userId, member, app, ct);
         var version = await db.AppVersions.AsNoTracking().FirstAsync(v => v.Id == app.PublishedVersionId, ct);
-        return new AppFormDto(ToMy(app, version.Number), AppDesignService.Deserialize(version.DefinitionJson));
+        var def = AppDesignService.Deserialize(version.DefinitionJson);
+        return new AppFormDto(ToMy(app, version.Number), def, await lists.ActiveItemsAsync(app.WorkspaceId, FormValidator.ListIds(def), ct));
     }
 
     public async Task<IReadOnlyList<DirectoryEntry>> DirectoryAsync(Guid userId, Guid workspaceId, CancellationToken ct)
@@ -74,7 +75,7 @@ public sealed class RequestService(ArcvoraDbContext db, AppAccessService access,
         var version = await db.AppVersions.AsNoTracking().FirstAsync(v => v.Id == app.PublishedVersionId, ct);
         var def = AppDesignService.Deserialize(version.DefinitionJson);
 
-        var form = FormValidator.Validate(def, data ?? new Dictionary<string, JsonElement>());
+        var form = FormValidator.Validate(def, data ?? new Dictionary<string, JsonElement>(), await lists.ActiveItemsAsync(app.WorkspaceId, FormValidator.ListIds(def), ct));
         var issues = form.Issues.ToList();
         var userFields = FormValidator.UserFieldIds(def, form.Values);
         if (userFields.Count > 0)
