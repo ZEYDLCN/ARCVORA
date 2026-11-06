@@ -51,7 +51,7 @@ public static class FormValidator
 
         // hesaplanan alanlar
         foreach (var f in def.Fields.Where(f => f.Computed is not null))
-            if (Compute(f.Computed!, values) is { } n) values[f.Key] = n;
+            if (Compute(f.Computed!, values, holidays ?? HolidayCalendar.Empty) is { } n) values[f.Key] = n;
 
         return new FormResult(values, issues);
     }
@@ -192,12 +192,13 @@ public static class FormValidator
                && DateOnly.TryParseExact(s, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out d);
     }
 
-    private static decimal? Compute(FlowComputed c, IReadOnlyDictionary<string, object?> values)
+    private static decimal? Compute(FlowComputed c, IReadOnlyDictionary<string, object?> values, HolidayCalendar holidays)
     {
         if (!TryDate(values, c.From, out var from) || !TryDate(values, c.To, out var to) || to < from) return null;
         var span = to.DayNumber - from.DayNumber + 1;
         if (c.Op == ComputedOp.CalendarDays) return span;
         if (span > 3660) return null;       // makul olmayan aralıklarda döngüyü sınırla
+        if (c.Op == ComputedOp.WorkDays) return holidays.WorkDays(from, to);
         var count = 0;
         for (var d = from; d <= to; d = d.AddDays(1))
             if (d.DayOfWeek is not (DayOfWeek.Saturday or DayOfWeek.Sunday)) count++;

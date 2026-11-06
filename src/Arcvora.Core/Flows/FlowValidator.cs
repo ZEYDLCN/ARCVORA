@@ -114,7 +114,29 @@ public static partial class FlowValidator
         if (def.Completion?.Accounting is { Enabled: true } acc && (string.IsNullOrWhiteSpace(acc.Category) || acc.Category.Length > 40))
             Add("category_required", "completion.accounting.category", "Muhasebe kategorisi (en fazla 40 karakter) gerekli.");
 
+        ValidateLeave(def.Completion?.Leave, byKey, Add);
         return issues;
+    }
+
+    private static void ValidateLeave(LeaveSpec? leave, Dictionary<string, FlowField> byKey, Action<string, string, string> add)
+    {
+        if (leave is not { Enabled: true }) return;
+        const string p = "completion.leave";
+        if (leave.DaysField is null || !byKey.TryGetValue(leave.DaysField, out var days) || days.Type != FieldType.Number)
+            add("invalid_leave", $"{p}.daysField", "Gün sayısı alanı bir sayı alanı olmalı.");
+        if (leave.StartField is null || !byKey.TryGetValue(leave.StartField, out var start) || start.Type != FieldType.Date)
+            add("invalid_leave", $"{p}.startField", "Başlangıç alanı bir tarih alanı olmalı.");
+
+        var counts = leave.CountsFor ?? [];
+        if (leave.TypeField is null)
+        {
+            if (counts.Count > 0) add("invalid_leave", $"{p}.countsFor", "Hangi türlerin bakiyeden düşeceğini söylemek için önce tür alanını seçin.");
+            return;
+        }
+        if (!byKey.TryGetValue(leave.TypeField, out var type) || type.Type != FieldType.Select) { add("invalid_leave", $"{p}.typeField", "Tür alanı bir tek seçim alanı olmalı."); return; }
+        if (counts.Count == 0 || counts.Any(c => string.IsNullOrWhiteSpace(c))) add("invalid_leave", $"{p}.countsFor", "Bakiyeden düşecek en az bir tür seçin.");
+        else if (type.ListId is null && counts.Any(c => !(type.Options ?? []).Any(o => string.Equals(o.Trim(), c.Trim(), StringComparison.Ordinal))))
+            add("invalid_leave", $"{p}.countsFor", "Seçilen türlerden biri tür alanının seçenekleri arasında yok.");
     }
 
     private static void ValidateCondition(FlowCondition c, string path, Dictionary<string, FlowField> byKey, Action<string, string, string> add)
