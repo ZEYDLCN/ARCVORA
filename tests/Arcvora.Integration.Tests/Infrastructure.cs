@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using Arcvora.Core.Ai;
 using Arcvora.Infrastructure.Jobs;
+using Arcvora.Infrastructure.Mail;
 using Arcvora.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -97,6 +98,27 @@ public sealed class FakeWebhook : HttpMessageHandler
     }
 }
 
+/// <summary>Gönderilen e-postaları toplar; hata enjekte edilebilir. Gerçek SMTP yolu için <see cref="SmtpSink"/> kullanılır.</summary>
+public sealed class FakeEmailSender : IEmailSender
+{
+    private readonly List<OutgoingMail> _sent = [];
+    private readonly Queue<Exception> _failures = new();
+    public IReadOnlyList<OutgoingMail> Sent { get { lock (_sent) return [.. _sent]; } }
+    public IReadOnlyList<OutgoingMail> To(string address) => [.. Sent.Where(m => string.Equals(m.ToAddress, address, StringComparison.OrdinalIgnoreCase))];
+    public void FailNext(params Exception[] errors) { lock (_failures) foreach (var e in errors) _failures.Enqueue(e); }
+    public void Reset() { lock (_sent) _sent.Clear(); lock (_failures) _failures.Clear(); }
+    public int DelayMs { get; set; }
+
+    public async Task SendAsync(OutgoingMail mail, CancellationToken ct)
+    {
+        if (DelayMs > 0) await Task.Delay(DelayMs, ct);
+        Exception? failure = null;
+        lock (_failures) if (_failures.Count > 0) failure = _failures.Dequeue();
+        if (failure is not null) throw failure;
+        lock (_sent) _sent.Add(mail);
+    }
+}
+
 /// <summary>Her test sınıfı kendi geçici PostgreSQL veritabanını alır.</summary>
 public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
@@ -105,6 +127,9 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     private readonly string _db = "arcvora_test_" + Guid.NewGuid().ToString("N");
     public SwitchableGenerator Generator { get; } = new();
     public FakeWebhook Webhook { get; } = new();
+    public FakeEmailSender Mail { get; } = new();
+    /// <summary>Alt sınıf true yaparsa gerçek <see cref="SmtpEmailSender"/> kullanılır (yerel SMTP alıcısına karşı).</summary>
+    protected virtual bool UseRealSmtp => false;
     public string ConnectionString => $"{Admin};Database={_db}";
     /// <summary>Alt sınıflar belirli bir testte yapılandırmayı değiştirir (ör. disk deposu).</summary>
     protected virtual IReadOnlyDictionary<string, string> ExtraSettings => new Dictionary<string, string>();
@@ -143,6 +168,8 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             ["Ai:Provider"] = "heuristic",
             ["Accounting:RetryBaseSeconds"] = "0",      // yeniden denemeler beklemeden, deterministik
             ["Accounting:MaxAttempts"] = "3",
+            ["Email:Enabled"] = "true", ["Email:Host"] = "smtp.test", ["Email:From"] = "noreply@firma.test", ["Email:PublicUrl"] = "https://apps.test",
+            ["Email:RetryBaseSeconds"] = "0", ["Email:MaxAttempts"] = "3",
             ["Attachments:StagedTtlHours"] = "0",       // temizlik testi beklemeden çalışsın; bağlama süre dolumuna bakmaz
         };
         foreach (var (k, v) in ExtraSettings) settings[k] = v;
@@ -152,6 +179,7 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             s.RemoveAll<IArchitectureGenerator>();
             s.AddSingleton<IArchitectureGenerator>(Generator);
             s.AddHttpClient(AccountingDispatcher.ClientName).ConfigurePrimaryHttpMessageHandler(() => Webhook);
+            if (!UseRealSmtp) { s.RemoveAll<IEmailSender>(); s.AddSingleton<IEmailSender>(Mail); }
         });
     }
 
@@ -159,6 +187,15 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     public async Task<int> RunAccountingAsync(int max = 20)
     {
         var d = Services.GetRequiredService<AccountingDispatcher>();
+        var n = 0;
+        while (n < max && await d.RunOnceAsync(CancellationToken.None)) n++;
+        return n;
+    }
+
+    /// <summary>E-posta kuyruğunda gönderilecek kayıt kalmayana kadar çalıştırır; işlenen kayıt sayısını döndürür.</summary>
+    public async Task<int> RunEmailAsync(int max = 200)
+    {
+        var d = Services.GetRequiredService<EmailDispatcher>();
         var n = 0;
         while (n < max && await d.RunOnceAsync(CancellationToken.None)) n++;
         return n;
