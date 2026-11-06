@@ -192,3 +192,13 @@ input[type='checkbox'] { accent-color: var(--accent); }
 .with-ico { position: relative; }
 .with-ico .wi { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--ico); display: grid; place-items: center; pointer-events: none; }
 .with-ico select, .with-ico input { padding-left: 44px; }
+
+/* Talep bilgileri: etiket sütunu soluk, satırlar ince çizgiyle ayrılır (basılı "Talep belgesi" ile aynı düzen) */
+.kv-table { gap: 0 16px; margin: 4px 0 8px; }
+.kv-table dt, .kv-table dd { padding: 9px 0; border-bottom: 1px solid var(--line); }
+.kv-table dt { color: var(--text-2); font-size: 14px; }
+.kv-table dd { font-weight: 550; }
+.step-strip .step { display: inline-flex; align-items: center; gap: 6px; }
+.step-strip .step svg { flex: none; }
+.timeline li { padding-left: 2px; }
+@media (max-width: 560px) { .kv-table { grid-template-columns: minmax(96px, 40%) 1fr; } }

@@ -5,6 +5,8 @@ import { RequestBadge, TaskBadge } from '../../components/StatusBadge';
 import { eventText, fallbackLabel, stepStates } from '../../lib/requestText';
 import { formatValue } from '../../lib/flow';
 import { AttachmentList } from '../../components/AttachmentList';
+import { IconBack, IconChecklist, IconCheckCircle, IconClock, IconDownload, IconFile, IconMinusCircle, IconPaperclip, IconUsers, IconXCircle } from '../../components/icons';
+import { CardTitle, DemoChip, plainName } from '../../components/ui';
 import type { DirectoryEntry, RequestDetail as Detail } from '../../types';
 import { errorText, when } from './common';
 
@@ -39,27 +41,27 @@ export function RequestDetail({ id, isAdmin = false }: { id: string; isAdmin?: b
   return (
     <>
       <div className="page-head">
-        <p><button className="btn small" onClick={() => history.length > 1 ? history.back() : go({ name: 'requests' })}>← Geri</button></p>
+        <p><button className="btn small" onClick={() => history.length > 1 ? history.back() : go({ name: 'requests' })}><IconBack size={15} />Geri</button></p>
         <h1>{s.number}</h1>
-        <div className="status-row"><span className="muted">{s.appName}</span><RequestBadge status={s.status} /><span className="muted">{s.requesterName} · {when(s.createdAt)}</span></div>
+        <div className="status-row"><span className="muted">{s.appName}</span><RequestBadge status={s.status} /><span className="muted">{plainName(s.requesterName, s.isDemo)}</span>{s.isDemo && <DemoChip />}<span className="muted">· {when(s.createdAt)}</span></div>
       </div>
       <div className="page-body">
         {error && <div className="notice error" role="alert" style={{ marginBottom: 12 }}>{error}</div>}
 
         <div className="card" style={{ maxWidth: 860 }}>
-          <h3>Onay akışı</h3>
+          <CardTitle icon={<IconChecklist size={19} />}>Onay akışı</CardTitle>
           <div className="step-strip">
             {d.definition.steps.map((st, i) => (
               <span key={st.id} style={{ display: 'contents' }}>
                 {i > 0 && <span className="arrow" aria-hidden="true">→</span>}
                 <span className={`step ${states[i] === 'upcoming' || states[i] === 'skipped' ? '' : states[i]}`}>
-                  {states[i] === 'done' ? '✓ ' : states[i] === 'rejected' ? '✕ ' : states[i] === 'skipped' ? '⤼ ' : ''}{st.name}{states[i] === 'skipped' ? ' (atlandı)' : ''}
+                  {states[i] === 'done' ? <IconCheckCircle size={14} /> : states[i] === 'rejected' ? <IconXCircle size={14} /> : states[i] === 'skipped' ? <IconMinusCircle size={14} /> : null}{st.name}{states[i] === 'skipped' ? ' (atlandı)' : ''}
                 </span>
               </span>
             ))}
           </div>
 
-          <h3>Talep bilgileri</h3>
+          <CardTitle icon={<IconFile size={19} />}><span style={{ display: 'block', marginTop: 4 }}>Talep bilgileri</span></CardTitle>
           <dl className="kv-table">
             {d.definition.fields.map((f) => (
               <div key={f.key} style={{ display: 'contents' }}>
@@ -70,7 +72,7 @@ export function RequestDetail({ id, isAdmin = false }: { id: string; isAdmin?: b
 
           {(d.attachments ?? []).length > 0 && (
             <>
-              <h3>Ekler</h3>
+              <CardTitle icon={<IconPaperclip size={19} />}>Ekler</CardTitle>
               <AttachmentList attachments={d.attachments} labels={Object.fromEntries(d.definition.fields.map((f) => [f.key, f.label]))} />
             </>
           )}
@@ -84,28 +86,28 @@ export function RequestDetail({ id, isAdmin = false }: { id: string; isAdmin?: b
               <label htmlFor="decision-comment" style={{ margin: 0 }}>Yorum <span className="muted">(reddetmek için zorunlu)</span></label>
               <textarea id="decision-comment" value={comment} maxLength={1000} onChange={(e) => setComment(e.target.value)} />
               <div className="row">
-                <button className="btn primary" disabled={busy} onClick={() => void act(() => api.approveTask(taskId, comment))}>Onayla</button>
+                <button className="btn primary" disabled={busy} onClick={() => void act(() => api.approveTask(taskId, comment))}><IconCheckCircle size={16} />Onayla</button>
                 <button className="btn danger" disabled={busy || comment.trim() === ''} onClick={() => void act(() => api.rejectTask(taskId, comment))}
-                  title={comment.trim() === '' ? 'Reddetmek için gerekçe yazın' : undefined}>Reddet</button>
+                  title={comment.trim() === '' ? 'Reddetmek için gerekçe yazın' : undefined}><IconXCircle size={16} />Reddet</button>
               </div>
             </div>
           )}
 
           <p style={{ marginTop: 14 }}>
             <button className="btn" disabled={busy} onClick={() => { setBusy(true); void api.downloadRequestPdf(id, `${s.number}.pdf`).catch((e) => setError(errorText(e, 'PDF oluşturulamadı.'))).finally(() => setBusy(false)); }}>
-              PDF indir / yazdır
+              <IconDownload size={16} />PDF indir / yazdır
             </button>
           </p>
 
           {d.canCancel && (
             <p style={{ marginTop: 14 }}>
-              <button className="btn danger" disabled={busy} onClick={() => { if (window.confirm('Bu talebi iptal etmek istediğinize emin misiniz?')) void act(() => api.cancelRequest(id)); }}>Talebi iptal et</button>
+              <button className="btn danger" disabled={busy} onClick={() => { if (window.confirm('Bu talebi iptal etmek istediğinize emin misiniz?')) void act(() => api.cancelRequest(id)); }}><IconXCircle size={16} />Talebi iptal et</button>
             </p>
           )}
         </div>
 
         <div className="card" style={{ maxWidth: 860, marginTop: 14 }}>
-          <h3>Görevler</h3>
+          <CardTitle icon={<IconUsers size={19} />}>Görevler</CardTitle>
           {d.tasks.length === 0 && <p className="muted">Onay gerektirmedi.</p>}
           <ul className="list" style={{ marginTop: 6 }}>
             {d.tasks.map((t) => (
@@ -126,7 +128,7 @@ export function RequestDetail({ id, isAdmin = false }: { id: string; isAdmin?: b
               </li>
             ))}
           </ul>
-          <h3 style={{ marginTop: 18 }}>Zaman çizelgesi</h3>
+          <CardTitle icon={<IconClock size={19} />}><span style={{ display: 'block', marginTop: 14 }}>Zaman çizelgesi</span></CardTitle>
           <ol className="timeline">
             {d.events.map((e) => (
               <li key={e.id} className={e.kind === 'rejected' || e.kind === 'accounting_failed' ? 'bad' : e.kind === 'approved' || e.kind === 'completed' ? 'ok' : e.kind === 'step_skipped' ? 'skip' : ''}>
