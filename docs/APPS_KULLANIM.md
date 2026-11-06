@@ -97,7 +97,7 @@ Gövde örneği: `entryId`, `requestId`, `number`, `app {id,name}`, `category`, 
 
 Formda **Dosya** türünde bir alan (ör. masraf şablonunda “Fiş/fatura”) açılır. **Uygulama tasarla → alan → Dosya**: “en çok kaç dosya” ve zorunluluk verilir.
 
-- Çalışan dosyayı seçerek yükler (PDF, JPEG, PNG, WebP); telefonda dosya seçici çoğu tarayıcıda **kamera ile fotoğraf çekme** seçeneğini de sunar. Dosya türü **içeriğinden** anlaşılır; uzantısı/bildirilen türü yanlışsa (ör. `.exe` adı verilmiş bir fotoğraf) adı düzeltilir, gerçekten desteklenmeyen içerik (SVG, HTML, arşiv, yürütülebilir) **reddedilir**.
+- Çalışan **Dosya seç** ile yükler (PDF, JPEG, PNG, WebP) veya telefonda **Kamera ile çek** düğmesiyle fişin fotoğrafını doğrudan çekip ekler. Dosya türü **içeriğinden** anlaşılır; uzantısı/bildirilen türü yanlışsa (ör. `.exe` adı verilmiş bir fotoğraf) adı düzeltilir, gerçekten desteklenmeyen içerik (SVG, HTML, arşiv, yürütülebilir) **reddedilir**.
 - Tek dosya en çok **10 MB** (yönetici 25 MB’a kadar yükseltebilir: `Attachments__MaxSizeMb`). Boş dosya kabul edilmez.
 - Yüklenen dosya talep gönderilene kadar yalnızca yükleyene görünür; gönderilmezse 24 saat sonra temizlenir. Aynı dosya iki talebe eklenemez.
 - Dosyayı yalnızca **talebi görebilenler** açar/indirir: talep eden, onaylayıcılar (görev atandıysa), vekil, ilgili muhasebe üyesi, master admin. Başkası `404` alır (dosyanın varlığı bile ifşa edilmez). Dosyalar tarayıcıda **yürütülmez**: her zaman indirme olarak (`attachment`, `nosniff`, önbelleksiz) sunulur.
