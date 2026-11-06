@@ -16,7 +16,7 @@ public class EmailTemplatesTests
         foreach (var part in new[] { "Merhaba Mehmet Demir", "IZN-2026-0007", "İzin Talebi", "Can Yıldız", "Yönetici onayı", "10.11.2026 · 12.11.2026 · Yıllık", "https://apps.firma.com/#/requests/abc" })
         {
             Assert.Contains(part, m.Text);
-            Assert.Contains(System.Net.WebUtility.HtmlEncode(part), m.Html);
+            Assert.Contains(part.Replace("&", "&amp;"), m.Html);        // yalnızca HTML'e özel karakterler kaçışlanır; Türkçe harfler aynen kalır
         }
         Assert.Contains("href=\"https://apps.firma.com/#/requests/abc\"", m.Html);
     }
@@ -66,7 +66,8 @@ public class EmailTemplatesTests
     {
         var invite = EmailTemplates.UserInvited("Can", "can@firma.com", "https://apps.firma.com/");
         Assert.Contains("can@firma.com", invite.Text);
-        Assert.Contains("geçici parola", invite.Text);          // parolanın yönetici tarafından ayrıca iletileceği söylenir
+        Assert.Contains("Geçici parolanız size yöneticiniz tarafından ayrıca iletilecek", invite.Text);
+        Assert.DoesNotContain("Parola:", invite.Text);
         Assert.Contains("ARCVORA", EmailTemplates.Test("Ayşe").Subject);
     }
 
