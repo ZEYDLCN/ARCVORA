@@ -82,7 +82,7 @@ Caddy sertifikayı kendisi alır; istek gövdesi sınırı varsayılan olarak ye
 | Değişken | Varsayılan | Açıklama |
 |---|---|---|
 | `DATABASE_URL` | — | `postgres://…` (zorunlu; `ConnectionStrings__Arcvora` yerine geçer) |
-| `Jwt__Key` | — | **Zorunlu**, ≥ 32 karakter; değişirse tüm oturumlar düşer |
+| `Jwt__Key` | — | **Zorunlu**, ≥ 32 karakter; değişirse tüm oturumlar düşer **ve basılı PDF çıktılarının doğrulama kodları geçersiz olur** |
 | `Auth__RegistrationOpen` | `true` | Şirket kurulumunda ilk hesaptan sonra `false` |
 | `Worker__InProcess` | `true` (Dockerfile) | İşçiler (iş kuyruğu + muhasebe webhook) API süreci içinde çalışır |
 | `Accounting__MaxAttempts` | `8` | Webhook en fazla deneme |
