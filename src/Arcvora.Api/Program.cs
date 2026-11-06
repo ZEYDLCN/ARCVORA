@@ -172,9 +172,9 @@ app.MapArcvoraApi();
 if (Directory.Exists(Path.Combine(app.Environment.ContentRootPath, "wwwroot")))
 {
     app.UseDefaultFiles();
-    app.UseStaticFiles();
+    app.UseStaticFiles(StaticSite.Options());
     // "nonfile": dosya uzantılı yollar (eksik/eski /assets/*.js) SPA'ya düşmeden 404 alır; regex: /api altı da düşmez.
-    app.MapFallbackToFile("{**path:nonfile:regex(^(?!api(/|$)).*$)}", "index.html");
+    app.MapFallbackToFile("{**path:nonfile:regex(^(?!api(/|$)).*$)}", "index.html", StaticSite.Options());
 }
 
 app.Run();
