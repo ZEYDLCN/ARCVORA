@@ -53,7 +53,7 @@ try {
     check(`${name} oluşturuldu, geçici parola gösterildi`, ok);
     return temp;
   };
-  check('kullanıcı yönetimi sayfası açıldı', await adminS.visible(A.getByRole('heading', { name: 'Yönetim' })));
+  check('kullanıcı yönetimi sayfası açıldı', await adminS.visible(A.getByRole('heading', { name: 'Kullanıcılar', exact: true })));
   const bossMail = `yonetici-${uniq}@example.com`, workerMail = `calisan-${uniq}@example.com`;
   const bossTemp = await addUser('Yonetici Kisi', bossMail);
   const workerTemp = await addUser('Calisan Kisi', workerMail, 'Yonetici Kisi');
