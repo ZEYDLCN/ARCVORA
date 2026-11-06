@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using Arcvora.Core.Flows;
+using Arcvora.Core.Text;
 using Arcvora.Infrastructure.Common;
 using Arcvora.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -89,10 +90,14 @@ public sealed class ReportService(ArcvoraDbContext db, AppAccessService access, 
         if (!f.IncludeDemo) q = q.Where(r => !r.IsDemo);
         if (f.Q is { } text)
         {
-            // % _ \ düz karakterdir (joker değil): kaçışlanır.
-            var like = "%" + text.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_") + "%";
-            q = q.Where(r => EF.Functions.ILike(r.Number, like, "\\") || EF.Functions.ILike(r.Summary, like, "\\")
-                || db.Users.Any(x => x.Id == r.RequesterId && EF.Functions.ILike(x.DisplayName, like, "\\")));
+            // Türkçe harfler ASCII'ye katlanır (aranan metin C#'ta, sütunlar aşağıdaki Replace zinciriyle; Core/Text/SearchFold ile aynı eşleme),
+            // sonra ILIKE büyük/küçük harfi halleder. % _ \ düz karakterdir (joker değil): kaçışlanır.
+            var like = "%" + SearchFold.Ascii(text).Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_") + "%";
+            q = q.Where(r => EF.Functions.ILike(r.Number, like, "\\")
+                || EF.Functions.ILike(r.Summary.Replace("ı", "i").Replace("İ", "I").Replace("ş", "s").Replace("Ş", "S").Replace("ğ", "g").Replace("Ğ", "G")
+                    .Replace("ü", "u").Replace("Ü", "U").Replace("ö", "o").Replace("Ö", "O").Replace("ç", "c").Replace("Ç", "C"), like, "\\")
+                || db.Users.Any(x => x.Id == r.RequesterId && EF.Functions.ILike(x.DisplayName.Replace("ı", "i").Replace("İ", "I").Replace("ş", "s").Replace("Ş", "S")
+                    .Replace("ğ", "g").Replace("Ğ", "G").Replace("ü", "u").Replace("Ü", "U").Replace("ö", "o").Replace("Ö", "O").Replace("ç", "c").Replace("Ç", "C"), like, "\\")));
         }
         return q;
     }
