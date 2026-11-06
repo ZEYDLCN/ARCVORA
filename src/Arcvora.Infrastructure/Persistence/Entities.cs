@@ -50,6 +50,8 @@ public sealed class User
     public bool IsDemo { get; set; }
     /// <summary>true: kullanıcı e-posta bildirimlerini kapattı (hesap sayfasından).</summary>
     public bool EmailOptOut { get; set; }
+    /// <summary>KVKK silme/anonimleştirme zamanı. Ad ve e-posta anlamsızlaştırılmıştır; talep geçmişi "Silinmiş kullanıcı" adıyla korunur.</summary>
+    public DateTimeOffset? AnonymizedAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
 }
 

@@ -120,6 +120,36 @@ public static class AppsEndpoints
             return Results.File(data, "text/csv; charset=utf-8", name);
         });
 
+        // ------------------------------------------------- denetim, saklama süresi, KVKK
+        secured.MapGet("/workspaces/{id:guid}/audit", async (Guid id, string? action, Guid? actorId, string? from, string? to, string? page, string? pageSize,
+            ClaimsPrincipal u, AuditViewService s, CancellationToken ct) =>
+            Results.Ok(await s.ListAsync(Endpoints.UserId(u), id, action, actorId, from, to, page, pageSize, ct)));
+        secured.MapGet("/workspaces/{id:guid}/retention", async (Guid id, ClaimsPrincipal u, RetentionService s, CancellationToken ct) =>
+            Results.Ok(await s.GetAsync(Endpoints.UserId(u), id, ct)));
+        secured.MapPut("/workspaces/{id:guid}/retention", async (Guid id, UpdateRetentionRequest r, ClaimsPrincipal u, RetentionService s, CancellationToken ct) =>
+            Results.Ok(await s.UpdateAsync(Endpoints.UserId(u), id, r, ct)));
+        secured.MapPost("/workspaces/{id:guid}/retention/preview", async (Guid id, ClaimsPrincipal u, RetentionService s, CancellationToken ct) =>
+            Results.Ok(await s.PreviewAsync(Endpoints.UserId(u), id, ct)));
+        secured.MapPost("/workspaces/{id:guid}/retention/purge", async (Guid id, PurgeRequest? r, ClaimsPrincipal u, RetentionService s, CancellationToken ct) =>
+            Results.Ok(await s.PurgeAsync(Endpoints.UserId(u), id, r?.Confirm, ct)));
+        secured.MapDelete("/requests/{id:guid}", async (Guid id, ClaimsPrincipal u, RetentionService s, CancellationToken ct) =>
+        {
+            await s.DeleteRequestAsync(Endpoints.UserId(u), id, ct);
+            return Results.NoContent();
+        });
+        secured.MapGet("/workspaces/{id:guid}/members/{userId:guid}/data-export", async (Guid id, Guid userId, HttpContext http, ClaimsPrincipal u, PersonalDataService s, CancellationToken ct) =>
+        {
+            var data = await s.ExportAsync(Endpoints.UserId(u), id, userId, ct);
+            http.Response.Headers.CacheControl = "private, no-store";
+            http.Response.Headers.ContentDisposition = "attachment; filename=\"kisisel-veri.json\"";
+            return Results.Ok(data);
+        });
+        secured.MapPost("/workspaces/{id:guid}/members/{userId:guid}/anonymize", async (Guid id, Guid userId, ClaimsPrincipal u, PersonalDataService s, CancellationToken ct) =>
+        {
+            await s.AnonymizeAsync(Endpoints.UserId(u), id, userId, ct);
+            return Results.Ok(new { anonymized = true });
+        });
+
         // ----------------------------------------------------------------------- e-posta
         secured.MapGet("/workspaces/{id:guid}/email", async (Guid id, ClaimsPrincipal u, EmailAdminService s, CancellationToken ct) =>
             Results.Ok(await s.StatusAsync(Endpoints.UserId(u), id, ct)));

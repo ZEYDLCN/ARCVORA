@@ -1,4 +1,6 @@
+using Arcvora.Infrastructure.Persistence;
 using Arcvora.Infrastructure.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -17,9 +19,19 @@ public sealed class MaintenanceService(IServiceScopeFactory scopes, ILogger<Main
         await using var scope = scopes.CreateAsyncScope();
         var purged = 0;
         var reminders = 0;
+        var requestsPurged = 0;
+        var emailsPurged = 0;
         await Safe("hazırlanmış ek temizliği", async () => purged = await scope.ServiceProvider.GetRequiredService<AttachmentService>().PurgeStagedAsync(ct));
         await Safe("onay hatırlatmaları", async () => reminders = await scope.ServiceProvider.GetRequiredService<ReminderService>().RunAsync(ct));
-        return new MaintenanceResult(purged, reminders);
+        await Safe("saklama süresi (otomatik silme)", async () => requestsPurged = await scope.ServiceProvider.GetRequiredService<RetentionService>().PurgeAutomaticAsync(ct));
+        await Safe("eski e-posta kayıtları", async () =>
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ArcvoraDbContext>();
+            var days = Math.Max(1, scope.ServiceProvider.GetRequiredService<IOptions<EmailOptions>>().Value.RetentionDays);
+            var cutoff = scope.ServiceProvider.GetRequiredService<TimeProvider>().GetUtcNow().AddDays(-days);
+            emailsPurged = await db.EmailMessages.Where(m => m.Status != EmailStatus.Pending && m.CreatedAt < cutoff).ExecuteDeleteAsync(ct);
+        });
+        return new MaintenanceResult(purged, reminders, requestsPurged, emailsPurged);
 
         async Task Safe(string what, Func<Task> work)
         {

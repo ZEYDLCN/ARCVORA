@@ -27,6 +27,7 @@ public sealed class ArcvoraDbContext(DbContextOptions<ArcvoraDbContext> options)
     public DbSet<Delegation> Delegations => Set<Delegation>();
     public DbSet<EmailMessage> EmailMessages => Set<EmailMessage>();
     public DbSet<NotificationSettings> NotificationSettings => Set<NotificationSettings>();
+    public DbSet<RetentionSettings> RetentionSettings => Set<RetentionSettings>();
     public DbSet<Attachment> Attachments => Set<Attachment>();
     public DbSet<AttachmentBlob> AttachmentBlobs => Set<AttachmentBlob>();
 
@@ -172,6 +173,12 @@ public sealed class ArcvoraDbContext(DbContextOptions<ArcvoraDbContext> options)
             e.HasIndex(x => x.DedupeKey).IsUnique().HasFilter("\"DedupeKey\" IS NOT NULL");      // aynı olay için ikinci mail yok
             e.HasIndex(x => new { x.Status, x.NextAttemptAt });
             e.HasIndex(x => new { x.WorkspaceId, x.CreatedAt });
+            e.HasOne<Workspace>().WithMany().HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<RetentionSettings>(e =>
+        {
+            e.HasKey(x => x.WorkspaceId);
             e.HasOne<Workspace>().WithMany().HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
         });
 

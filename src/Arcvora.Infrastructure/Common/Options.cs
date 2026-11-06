@@ -134,4 +134,6 @@ public sealed class EmailOptions
     public int ReminderAfterHours { get; set; } = 24;
     public int ReminderRepeatHours { get; set; } = 24;
     public int MaxReminders { get; set; } = 3;
+    /// <summary>Gönderilmiş/atlanmış/başarısız e-posta kayıtları (içerikte ad ve özet bulunur) bu kadar gün sonra silinir. Bekleyenlere dokunulmaz.</summary>
+    public int RetentionDays { get; set; } = 90;
 }

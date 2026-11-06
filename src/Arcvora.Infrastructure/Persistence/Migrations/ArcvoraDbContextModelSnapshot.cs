@@ -1136,11 +1136,33 @@ namespace Arcvora.Infrastructure.Persistence.Migrations
                     b.ToTable("RequestEvents");
                 });
 
+            modelBuilder.Entity("Arcvora.Infrastructure.Persistence.RetentionSettings", b =>
+                {
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("AutoPurge")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("ClosedRequestMonths")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("WorkspaceId");
+
+                    b.ToTable("RetentionSettings");
+                });
+
             modelBuilder.Entity("Arcvora.Infrastructure.Persistence.User", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("AnonymizedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1402,6 +1424,15 @@ namespace Arcvora.Infrastructure.Persistence.Migrations
                     b.HasOne("Arcvora.Infrastructure.Persistence.FlowRequest", null)
                         .WithMany()
                         .HasForeignKey("RequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Arcvora.Infrastructure.Persistence.RetentionSettings", b =>
+                {
+                    b.HasOne("Arcvora.Infrastructure.Persistence.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

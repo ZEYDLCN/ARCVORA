@@ -260,3 +260,15 @@ public sealed class NotificationSettings
     public bool RemindersEnabled { get; set; } = true;
     public DateTimeOffset UpdatedAt { get; set; }
 }
+
+/// <summary>
+/// Saklama süresi (KVKK): sonuçlanmış talepler bu kadar ay sonra silinebilir. Boşsa süresiz saklanır. <see cref="AutoPurge"/> açıksa bakım turu
+/// kendiliğinden siler; kapalıysa yalnızca master admin onayıyla (önizleme + onay) silinir.
+/// </summary>
+public sealed class RetentionSettings
+{
+    public Guid WorkspaceId { get; set; }
+    public int? ClosedRequestMonths { get; set; }
+    public bool AutoPurge { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+}
