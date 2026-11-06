@@ -1,5 +1,5 @@
 import type {
-  AccountingEntry, AccountingSettings, AppDetail, AttachmentInfo, ListDetail, ListSummary, AuditPage, FormerUser, Report, RetentionInfo, RetentionPreview, SearchPage, Delegation, DemoSeed, DemoStatus, EmailOutboxRow, EmailStatus, AppForm, AppGrants, AppSummary, Artifact, AuthResult, DirectoryEntry, FlowDefinition,
+  AccountingEntry, AccountingSettings, AppDetail, AttachmentInfo, Holiday, LeaveBalance, LeaveRow, ListDetail, ListSummary, AuditPage, FormerUser, Report, RetentionInfo, RetentionPreview, SearchPage, Delegation, DemoSeed, DemoStatus, EmailOutboxRow, EmailStatus, AppForm, AppGrants, AppSummary, Artifact, AuthResult, DirectoryEntry, FlowDefinition,
   GroupInfo, Job, Member, MyApp, MyTask, ProfileInfo, ProjectDetail, ProjectSummary, ProposalDetail, ProposalSummary, RequestDetail,
   RequestSummary, VerifyResult, View, Finding, Model, VersionInfo, WorkspaceInfo,
 } from './types';
@@ -170,6 +170,15 @@ export const api = {
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10_000);
   },
+  holidays: (ws: string, year?: number) => request<Holiday[]>('GET', `/workspaces/${ws}/holidays${year ? `?year=${year}` : ''}`),
+  addHoliday: (ws: string, b: { date: string; name: string; halfDay?: boolean }) => request<Holiday>('POST', `/workspaces/${ws}/holidays`, b),
+  deleteHoliday: (ws: string, id: string) => request<void>('DELETE', `/workspaces/${ws}/holidays/${id}`),
+  seedHolidays: (ws: string, year: number) => request<{ added: number; skipped: number }>('POST', `/workspaces/${ws}/holidays/seed-fixed`, { year }),
+  leaveMe: (ws: string, year?: number) => request<LeaveBalance>('GET', `/workspaces/${ws}/leave/me${year ? `?year=${year}` : ''}`),
+  leaveBalances: (ws: string, year: number) => request<LeaveRow[]>('GET', `/workspaces/${ws}/leave/balances?year=${year}`),
+  addLeaveEntry: (ws: string, b: { userId: string; year: number; kind: string; days: number; note?: string }) => request<unknown>('POST', `/workspaces/${ws}/leave/entries`, b),
+  distributeLeave: (ws: string, year: number) => request<{ created: number; skippedExisting: number; skippedNoHireDate: number; skippedNoEntitlement: number }>('POST', `/workspaces/${ws}/leave/distribute`, { year }),
+  carryoverLeave: (ws: string, fromYear: number, maxDays?: number) => request<{ created: number; totalDays: number; skippedExisting: number }>('POST', `/workspaces/${ws}/leave/carryover`, { fromYear, ...(maxDays !== undefined ? { maxDays } : {}) }),
   lists: (ws: string) => request<ListSummary[]>('GET', `/workspaces/${ws}/lists`),
   list: (ws: string, id: string) => request<ListDetail>('GET', `/workspaces/${ws}/lists/${id}`),
   createList: (ws: string, body: { name: string; description?: string; items?: string[] }) => request<ListDetail>('POST', `/workspaces/${ws}/lists`, body),

@@ -105,7 +105,7 @@ export interface AppSummary {
 }
 export interface AppDetail { summary: AppSummary; draft: FlowDefinition; published?: FlowDefinition; issues: FlowIssue[] }
 export interface MyApp { id: string; workspaceId: string; name: string; description: string; icon: string; versionNumber: number }
-export interface AppForm { app: MyApp; definition: FlowDefinition; lists?: Record<string, string[]> }
+export interface AppForm { app: MyApp; definition: FlowDefinition; lists?: Record<string, string[]>; holidays?: { date: string; halfDay: boolean }[] }
 export interface AppGrants { userIds: string[]; groupIds: string[] }
 
 export type RequestStatus = 'in_review' | 'approved' | 'rejected' | 'cancelled';
@@ -133,7 +133,7 @@ export interface MyTask {
   /** Görev başkasına atanmış ve ben vekil olarak görüyorsam: asıl onaylayıcı. */
   onBehalfOfId?: string; onBehalfOfName?: string;
 }
-export interface Member { userId: string; email: string; displayName: string; role: string; canAccept: boolean; managerId?: string; mustChangePassword: boolean; passwordResettable: boolean }
+export interface Member { userId: string; email: string; displayName: string; role: string; canAccept: boolean; managerId?: string; mustChangePassword: boolean; passwordResettable: boolean; hireDate?: string }
 export interface GroupInfo { id: string; name: string; memberIds: string[] }
 export interface DirectoryEntry { id: string; displayName: string }
 export interface AccountingEntry {
@@ -170,3 +170,7 @@ export interface FormerUser { id: string; displayName: string; email: string; cr
 export interface ListSummary { id: string; name: string; description?: string; itemCount: number; activeCount: number; updatedAt: string }
 export interface ListItem { id: string; value: string; active: boolean }
 export interface ListDetail { id: string; name: string; description?: string; items: ListItem[] }
+export interface Holiday { id: string; date: string; name: string; halfDay: boolean }
+export interface LeaveEntryInfo { id: string; at: string; kind: 'entitlement' | 'adjustment' | 'carryover' | 'usage' | 'refund'; days: number; note?: string; requestNumber?: string }
+export interface LeaveBalance { year: number; entitled: number; adjusted: number; carried: number; used: number; available: number; entries: LeaveEntryInfo[] }
+export interface LeaveRow { userId: string; name: string; hireDate?: string; entitled: number; adjusted: number; carried: number; used: number; available: number }

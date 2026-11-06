@@ -84,6 +84,22 @@ export function validateFlow(def: FlowDefinition): FlowIssue[] {
     (s.conditions ?? []).forEach((c, j) => validateCondition(c, `${p}.conditions[${j}]`, byKey, add));
   });
 
+  const leave = def.completion?.leave;
+  if (leave?.enabled) {
+    const p = 'completion.leave';
+    if (!leave.daysField || byKey.get(leave.daysField)?.type !== 'number') add('invalid_leave', `${p}.daysField`, 'Gün sayısı alanı bir sayı alanı olmalı.');
+    if (!leave.startField || byKey.get(leave.startField)?.type !== 'date') add('invalid_leave', `${p}.startField`, 'Başlangıç alanı bir tarih alanı olmalı.');
+    const counts = leave.countsFor ?? [];
+    if (!leave.typeField) {
+      if (counts.length > 0) add('invalid_leave', `${p}.countsFor`, 'Hangi türlerin bakiyeden düşeceğini söylemek için önce tür alanını seçin.');
+    } else if (byKey.get(leave.typeField)?.type !== 'select') add('invalid_leave', `${p}.typeField`, 'Tür alanı bir tek seçim alanı olmalı.');
+    else if (counts.length === 0 || counts.some((c) => c.trim() === '')) add('invalid_leave', `${p}.countsFor`, 'Bakiyeden düşecek en az bir tür seçin.');
+    else {
+      const t = byKey.get(leave.typeField)!;
+      if (!t.listId && counts.some((c) => !(t.options ?? []).some((o) => o.trim() === c.trim()))) add('invalid_leave', `${p}.countsFor`, 'Seçilen türlerden biri tür alanının seçenekleri arasında yok.');
+    }
+  }
+
   const acc = def.completion?.accounting;
   if (acc?.enabled && (!acc.category || acc.category.trim() === '' || acc.category.length > 40))
     add('category_required', 'completion.accounting.category', 'Muhasebe kategorisi (en fazla 40 karakter) gerekli.');

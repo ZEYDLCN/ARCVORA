@@ -1,7 +1,9 @@
 // Akış uygulamaları: sunucudaki çekirdek kurallarla aynı biçim ve önizleme hesapları (kesin doğrulama her zaman sunucudadır).
 
 export type FieldType = 'text' | 'long_text' | 'number' | 'money' | 'date' | 'select' | 'multi_select' | 'checkbox' | 'user' | 'file';
-export type ComputedOp = 'calendar_days' | 'weekdays';
+export type ComputedOp = 'calendar_days' | 'weekdays' | 'work_days';
+/** Resmî tatil (halfDay: yarım gün, ör. arife → iş günü sayımında 0,5). */
+export interface HolidayInfo { date: string; halfDay: boolean }
 export type ApproverType = 'manager' | 'user' | 'group' | 'admin';
 export type ConditionOp = 'eq' | 'ne' | 'gt' | 'gte' | 'lt' | 'lte' | 'in';
 
@@ -13,9 +15,10 @@ export interface FlowField {
 export interface ApproverSpec { type: ApproverType; id?: string }
 export interface FlowCondition { field: string; op: ConditionOp; value?: unknown }
 export interface FlowStep { id: string; name: string; approvers: ApproverSpec; mode?: 'any' | 'all'; conditions?: FlowCondition[] }
+export interface LeaveSpec { enabled: boolean; daysField?: string; startField?: string; typeField?: string; countsFor?: string[] }
 export interface FlowDefinition {
   schema: number; prefix: string; summaryFields: string[]; fields: FlowField[]; steps: FlowStep[];
-  completion?: { accounting?: { enabled: boolean; category?: string } };
+  completion?: { accounting?: { enabled: boolean; category?: string }; leave?: LeaveSpec };
 }
 
 export const fieldTypeLabels: Record<FieldType, string> = {
@@ -62,16 +65,20 @@ function parseDate(s: unknown): Date | null {
 }
 
 /** Sunucudaki hesapla aynı: takvim günü (uçlar dahil) veya hafta içi gün sayısı; aralık geçersizse null. */
-export function computeDays(op: ComputedOp, from: unknown, to: unknown): number | null {
+export function computeDays(op: ComputedOp, from: unknown, to: unknown, holidays: readonly HolidayInfo[] = []): number | null {
   const a = parseDate(from), b = parseDate(to);
   if (!a || !b || b < a) return null;
   const span = Math.round((b.getTime() - a.getTime()) / 86_400_000) + 1;
   if (op === 'calendar_days') return span;
   if (span > 3660) return null;
+  const special = new Map(holidays.map((h) => [h.date, h.halfDay]));
   let n = 0;
   for (let i = 0; i < span; i++) {
-    const day = new Date(a.getTime() + i * 86_400_000).getUTCDay();
-    if (day !== 0 && day !== 6) n++;
+    const d = new Date(a.getTime() + i * 86_400_000);
+    const dow = d.getUTCDay();
+    if (dow === 0 || dow === 6) continue;
+    if (op === 'work_days' && special.has(d.toISOString().slice(0, 10))) n += special.get(d.toISOString().slice(0, 10)) ? 0.5 : 0;
+    else n += 1;
   }
   return n;
 }
@@ -79,10 +86,10 @@ export function computeDays(op: ComputedOp, from: unknown, to: unknown): number 
 export type FormValues = Record<string, unknown>;
 
 /** Hesaplanan alanlar dahil ekranda gösterilecek değerler (yalnızca önizleme). */
-export function withComputed(def: FlowDefinition, values: FormValues): FormValues {
+export function withComputed(def: FlowDefinition, values: FormValues, holidays: readonly HolidayInfo[] = []): FormValues {
   const out: FormValues = { ...values };
   for (const f of def.fields) if (f.computed) {
-    const v = computeDays(f.computed.op, values[f.computed.from], values[f.computed.to]);
+    const v = computeDays(f.computed.op, values[f.computed.from], values[f.computed.to], holidays);
     if (v === null) delete out[f.key]; else out[f.key] = v;
   }
   return out;

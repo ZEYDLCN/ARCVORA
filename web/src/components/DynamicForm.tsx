@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import { formatValue, withComputed, type FlowDefinition, type FlowField, type FormValues } from '../lib/flow';
+import { formatValue, withComputed, type FlowDefinition, type FlowField, type FormValues, type HolidayInfo } from '../lib/flow';
 import type { DirectoryEntry } from '../types';
 import type { PickedFile } from '../lib/files';
 import { FileField, type UploadApi } from './FileField';
@@ -15,12 +15,14 @@ interface Props {
   uploads?: UploadApi;
   /** Listeye bağlı seçim alanlarının aktif öğeleri (liste kimliği → değerler). */
   lists?: Record<string, string[]>;
+  /** İş günü hesabı (work_days) için resmî tatiller (önizleme sunucuyla aynı sayıyı göstersin). */
+  holidays?: HolidayInfo[];
 }
 
 /** Akış tanımından form çizer. Hesaplanan alanlar yalnızca gösterilir; kesin doğrulama sunucudadır. */
-export function DynamicForm({ def, values, onChange, errors = {}, people = [], disabled, uploads, lists = {} }: Props) {
+export function DynamicForm({ def, values, onChange, errors = {}, people = [], disabled, uploads, lists = {}, holidays = [] }: Props) {
   const uid = useId();
-  const shown = withComputed(def, values);
+  const shown = withComputed(def, values, holidays);
   const names = Object.fromEntries(people.map((p) => [p.id, p.displayName]));
   /** Seçim değerleri: bağlı listenin aktif öğeleri ya da elle girilen seçenekler. */
   const choices = (f: FlowField): string[] => (f.listId ? (lists[f.listId] ?? []) : (f.options ?? []));

@@ -8,6 +8,7 @@ import { issuesByPath, validateFlow } from '../../lib/flowValidate';
 import type { AppDetail, AppGrants, DirectoryEntry, FlowIssue, GroupInfo } from '../../types';
 import { errorText, type Ctx } from './common';
 import { FieldEditor } from './designer/FieldEditor';
+import { LeaveSettings } from './designer/LeaveSettings';
 import { StepEditor } from './designer/StepEditor';
 
 const statusLabel = { draft: 'Taslak', published: 'Yayında', archived: 'Arşivde' } as const;
@@ -217,17 +218,18 @@ export function Designer({ id, workspace }: Ctx & { id: string }) {
                 <h3>Tamamlanma</h3>
                 <div className="check-row">
                   <input id="acc-on" type="checkbox" checked={!!draft.completion?.accounting?.enabled}
-                    onChange={(e) => update((d) => ({ ...d, completion: { accounting: { enabled: e.target.checked, category: d.completion?.accounting?.category ?? slugKey(meta.name) } } }))} />
+                    onChange={(e) => update((d) => ({ ...d, completion: { ...d.completion, accounting: { enabled: e.target.checked, category: d.completion?.accounting?.category ?? slugKey(meta.name) } } }))} />
                   <label htmlFor="acc-on" style={{ margin: 0 }}>Onaylanınca muhasebe kuyruğuna ekle</label>
                 </div>
                 {draft.completion?.accounting?.enabled && (
                   <div style={{ maxWidth: 320 }}>
                     <label htmlFor="acc-cat">Muhasebe kategorisi</label>
                     <input id="acc-cat" type="text" maxLength={40} value={draft.completion.accounting.category ?? ''}
-                      onChange={(e) => update((d) => ({ ...d, completion: { accounting: { enabled: true, category: e.target.value } } }))} />
+                      onChange={(e) => update((d) => ({ ...d, completion: { ...d.completion, accounting: { enabled: true, category: e.target.value } } }))} />
                     {byPath.get('completion.accounting.category')?.map((m) => <div className="err" key={m} role="alert">{m}</div>)}
                   </div>
                 )}
+                <LeaveSettings def={draft} issues={byPath} onChange={(leave) => update((d) => ({ ...d, completion: { ...d.completion, leave } }))} />
               </div>
             </div>
 

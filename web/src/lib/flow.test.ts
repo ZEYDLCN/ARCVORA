@@ -127,3 +127,24 @@ describe('allowedOps', () => {
     expect(allowedOps('long_text')).toEqual([]);
   });
 });
+
+describe('iş günü (work_days)', () => {
+  const hol = [{ date: '2026-10-28', halfDay: true }, { date: '2026-10-29', halfDay: false }];
+  it('resmî tatilleri düşer, yarım günü 0,5 sayar (sunucuyla aynı)', () => {
+    expect(computeDays('work_days', '2026-10-27', '2026-11-02')).toBe(5);              // takvimsiz
+    expect(computeDays('work_days', '2026-10-27', '2026-11-02', hol)).toBe(3.5);       // Sal 1 + Çar 0,5 + Per 0 + Cum 1 + Pzt 1
+    expect(computeDays('work_days', '2026-10-28', '2026-10-29', hol)).toBe(0.5);
+  });
+  it('hafta sonuna denk gelen tatil ayrıca bir şey düşmez; diğer işlemler tatilden etkilenmez', () => {
+    expect(computeDays('work_days', '2026-11-02', '2026-11-08', [{ date: '2026-11-07', halfDay: false }])).toBe(5);
+    expect(computeDays('weekdays', '2026-10-27', '2026-11-02', hol)).toBe(5);
+    expect(computeDays('calendar_days', '2026-10-27', '2026-11-02', hol)).toBe(7);
+  });
+  it('withComputed tatilleri kullanır', () => {
+    const d = { ...emptyDefinition('X'), fields: [
+      { key: 's', label: 's', type: 'date' as const }, { key: 'e', label: 'e', type: 'date' as const },
+      { key: 'n', label: 'n', type: 'number' as const, computed: { op: 'work_days' as const, from: 's', to: 'e' } },
+    ] };
+    expect(withComputed(d, { s: '2026-10-27', e: '2026-11-02' }, hol).n).toBe(3.5);
+  });
+});

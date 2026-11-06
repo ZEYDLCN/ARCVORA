@@ -95,8 +95,8 @@ export function FieldEditor({ field: f, index, total, dates, lists = [], errors,
       {f.computed && (
         <div className="mini-grid">
           <div><label htmlFor={`${id}-op`}>Hesap</label>
-            <select id={`${id}-op`} value={f.computed.op} onChange={(e) => onChange({ computed: { ...f.computed!, op: e.target.value as 'calendar_days' | 'weekdays' } })}>
-              <option value="calendar_days">Takvim günü (uçlar dahil)</option><option value="weekdays">Hafta içi günü</option>
+            <select id={`${id}-op`} value={f.computed.op} onChange={(e) => onChange({ computed: { ...f.computed!, op: e.target.value as 'calendar_days' | 'weekdays' | 'work_days' } })}>
+              <option value="calendar_days">Takvim günü (uçlar dahil)</option><option value="weekdays">Hafta içi günü</option><option value="work_days">İş günü (resmî tatiller hariç)</option>
             </select></div>
           <div><label htmlFor={`${id}-fr`}>Başlangıç</label>
             <select id={`${id}-fr`} value={f.computed.from} onChange={(e) => onChange({ computed: { ...f.computed!, from: e.target.value } })}>

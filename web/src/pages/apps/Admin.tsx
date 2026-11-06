@@ -8,12 +8,13 @@ import { DemoData } from './DemoData';
 import { AdminRequests } from './AdminRequests';
 import { AuditLog } from './AuditLog';
 import { EmailAdmin } from './EmailAdmin';
+import { LeaveAdmin } from './LeaveAdmin';
 import { ListsAdmin } from './ListsAdmin';
 import { Reports } from './Reports';
 import { Retention } from './Retention';
 
-type Tab = 'users' | 'groups' | 'accounting' | 'requests' | 'reports' | 'retention' | 'audit' | 'email' | 'lists' | 'demo';
-const tabs: { id: Tab; label: string }[] = [{ id: 'users', label: 'Kullanıcılar' }, { id: 'groups', label: 'Gruplar' }, { id: 'requests', label: 'Tüm talepler' }, { id: 'lists', label: 'Listeler' }, { id: 'reports', label: 'Raporlar' }, { id: 'accounting', label: 'Muhasebe ayarları' }, { id: 'email', label: 'E-posta' }, { id: 'retention', label: 'Saklama ve KVKK' }, { id: 'audit', label: 'Denetim' }, { id: 'demo', label: 'Demo veri' }];
+type Tab = 'users' | 'groups' | 'accounting' | 'requests' | 'reports' | 'retention' | 'audit' | 'email' | 'lists' | 'leave' | 'demo';
+const tabs: { id: Tab; label: string }[] = [{ id: 'users', label: 'Kullanıcılar' }, { id: 'groups', label: 'Gruplar' }, { id: 'requests', label: 'Tüm talepler' }, { id: 'lists', label: 'Listeler' }, { id: 'leave', label: 'İzin ve tatiller' }, { id: 'reports', label: 'Raporlar' }, { id: 'accounting', label: 'Muhasebe ayarları' }, { id: 'email', label: 'E-posta' }, { id: 'retention', label: 'Saklama ve KVKK' }, { id: 'audit', label: 'Denetim' }, { id: 'demo', label: 'Demo veri' }];
 
 export function Admin({ sub, workspace, user }: Ctx & { sub: string }) {
   const tab = (tabs.some((t) => t.id === sub) ? sub : 'users') as Tab;
@@ -31,6 +32,7 @@ export function Admin({ sub, workspace, user }: Ctx & { sub: string }) {
         {tab === 'groups' && <Groups ws={workspace.id} />}
         {tab === 'requests' && <AdminRequests ws={workspace.id} />}
         {tab === 'lists' && <ListsAdmin ws={workspace.id} />}
+        {tab === 'leave' && <LeaveAdmin ws={workspace.id} />}
         {tab === 'reports' && <Reports ws={workspace.id} />}
         {tab === 'retention' && <Retention ws={workspace.id} />}
         {tab === 'audit' && <AuditLog ws={workspace.id} />}
@@ -115,7 +117,7 @@ function Users({ ws, me }: { ws: string; me: string }) {
       {members && (
         <div className="card table-wrap">
           <table>
-            <thead><tr><th>Ad</th><th>E-posta</th><th>Rol</th><th>Doğrudan yönetici</th><th></th></tr></thead>
+            <thead><tr><th>Ad</th><th>E-posta</th><th>Rol</th><th>Doğrudan yönetici</th><th>İşe giriş</th><th></th></tr></thead>
             <tbody>
               {members.map((m) => (
                 <tr key={m.userId}>
@@ -132,6 +134,10 @@ function Users({ ws, me }: { ws: string; me: string }) {
                       <option value="">Yok</option>
                       {members.filter((x) => x.userId !== m.userId).map((x) => <option key={x.userId} value={x.userId}>{x.displayName}</option>)}
                     </select>
+                  </td>
+                  <td>
+                    <input type="date" aria-label={`${m.displayName} işe giriş tarihi`} value={m.hireDate ?? ''} disabled={busy}
+                      onChange={(e) => void guard(() => api.updateMember(ws, m.userId, e.target.value ? { hireDate: e.target.value } : { clearHireDate: true }))} />
                   </td>
                   <td>
                     <div className="actions">

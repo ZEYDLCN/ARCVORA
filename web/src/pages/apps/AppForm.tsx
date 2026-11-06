@@ -30,6 +30,11 @@ export function AppForm({ id, workspace }: Ctx & { id: string }) {
     remove: (fileId: string) => api.deleteAttachment(fileId),
   }), [id]);
 
+  // İzin bakiyesi tanımlı uygulamalarda kişinin güncel bakiyesi formun üstünde gösterilir.
+  const [balance, setBalance] = useState<number | null>(null);
+  const trackBalance = form?.definition.completion?.leave?.enabled === true;
+  useEffect(() => { if (trackBalance) api.leaveMe(workspace.id).then((b) => setBalance(b.available)).catch(() => setBalance(null)); }, [trackBalance, workspace.id]);
+
   const steps = useMemo(() => form?.definition.steps ?? [], [form]);
 
   const submit = async (e: React.FormEvent) => {
@@ -65,7 +70,8 @@ export function AppForm({ id, workspace }: Ctx & { id: string }) {
           <form className="card" style={{ maxWidth: 820 }} onSubmit={submit} noValidate>
             {error && <div className="notice error" role="alert" style={{ marginBottom: 8 }}>{error}</div>}
             {errors._ && <div className="notice error" role="alert" style={{ marginBottom: 8 }}>{errors._.join(' ')}</div>}
-            <DynamicForm def={form.definition} values={values} errors={errors} people={people} disabled={busy} uploads={uploads} lists={form.lists}
+            {trackBalance && balance !== null && <div className="notice" role="status" style={{ marginBottom: 8 }}>İçinde bulunduğumuz yıl izin bakiyeniz: <b>{String(balance).replace('.', ',')} gün</b></div>}
+            <DynamicForm def={form.definition} values={values} errors={errors} people={people} disabled={busy} uploads={uploads} lists={form.lists} holidays={form.holidays}
               onChange={(k, v) => { setValues((s) => ({ ...s, [k]: v })); setErrors((s) => (s[k] ? { ...s, [k]: [] } : s)); }} />
             <h3 style={{ marginTop: 22 }}>Onay akışı</h3>
             <div className="step-strip" aria-label="Onay adımları">

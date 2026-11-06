@@ -26,7 +26,7 @@ export function parseRoute(hash: string): Route {
   if (h === '#/delegations') return { name: 'delegations' };
   if (h === '#/design') return { name: 'design' };
   if ((m = rx(`design/${UUID}`).exec(h))) return { name: 'designer', id: id(m) };
-  if ((m = /^#\/admin(?:\/(users|groups|accounting|requests|lists|reports|retention|audit|email|demo))?$/i.exec(h))) return { name: 'admin', sub: (m[1] ?? 'users').toLowerCase() };
+  if ((m = /^#\/admin(?:\/(users|groups|accounting|requests|lists|leave|reports|retention|audit|email|demo))?$/i.exec(h))) return { name: 'admin', sub: (m[1] ?? 'users').toLowerCase() };
   return { name: 'home' };
 }
 

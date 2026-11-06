@@ -126,3 +126,28 @@ describe('listeye bağlı seçim alanı', () => {
     expect(validateFlow({ ...base, fields: [{ key: 'd', label: 'Not', type: 'text', listId: L }] }).map((i) => i.code)).toContain('invalid_list');
   });
 });
+
+describe('izin bakiyesi tanımı', () => {
+  const base = {
+    schema: 1, prefix: 'IZN', summaryFields: [], steps: [{ id: 's1', name: 'Y', approvers: { type: 'manager' as const } }],
+    fields: [
+      { key: 'start', label: 'Başlangıç', type: 'date' as const }, { key: 'end', label: 'Bitiş', type: 'date' as const },
+      { key: 'days', label: 'Gün', type: 'number' as const, computed: { op: 'work_days' as const, from: 'start', to: 'end' } },
+      { key: 'kind', label: 'Tür', type: 'select' as const, options: ['Yıllık', 'Mazeret'] },
+    ],
+  };
+  const codes = (leave: object) => validateFlow({ ...base, completion: { leave } } as never).map((i) => `${i.code}:${i.path}`);
+
+  it('geçerli tanım sorunsuzdur; kapalıyken yok sayılır', () => {
+    expect(codes({ enabled: true, daysField: 'days', startField: 'start', typeField: 'kind', countsFor: ['Yıllık'] })).toEqual([]);
+    expect(codes({ enabled: false, daysField: 'yok' })).toEqual([]);
+  });
+  it('alan türleri ve tür/değer uyumu denetlenir', () => {
+    expect(codes({ enabled: true, daysField: 'start', startField: 'start' })).toContain('invalid_leave:completion.leave.daysField');
+    expect(codes({ enabled: true, daysField: 'days', startField: 'days' })).toContain('invalid_leave:completion.leave.startField');
+    expect(codes({ enabled: true, daysField: 'days', startField: 'start', typeField: 'start', countsFor: ['x'] })).toContain('invalid_leave:completion.leave.typeField');
+    expect(codes({ enabled: true, daysField: 'days', startField: 'start', typeField: 'kind', countsFor: [] })).toContain('invalid_leave:completion.leave.countsFor');
+    expect(codes({ enabled: true, daysField: 'days', startField: 'start', typeField: 'kind', countsFor: ['Rapor'] })).toContain('invalid_leave:completion.leave.countsFor');
+    expect(codes({ enabled: true, daysField: 'days', startField: 'start', countsFor: ['Yıllık'] })).toContain('invalid_leave:completion.leave.countsFor');
+  });
+});
