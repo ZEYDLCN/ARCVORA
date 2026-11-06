@@ -4,7 +4,7 @@ using System.Text.Json;
 using Arcvora.Infrastructure.Common;
 using Arcvora.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
@@ -22,6 +22,19 @@ public sealed class OidcFailure(string code, string detail) : Exception(detail)
 }
 
 public sealed record OidcStart(string Url, string StateCookie);
+
+/// <summary>Kullanılmış bilet kimlikleri (atomik <c>TryAdd</c>; süresi dolan kayıtlar temizlenir). Tek örnek.</summary>
+public sealed class OidcTicketLedger
+{
+    private readonly ConcurrentDictionary<string, long> _used = new();
+
+    /// <summary>Bilet ilk kez kullanılıyorsa true; daha önce kullanılmışsa false. <paramref name="keepUntilUnix"/> sonrasında kayıt silinebilir.</summary>
+    public bool TryUse(string ticketId, long keepUntilUnix, long nowUnix)
+    {
+        foreach (var kv in _used.Where(kv => kv.Value < nowUnix)) _used.TryRemove(kv.Key, out _);
+        return _used.TryAdd(ticketId, keepUntilUnix);
+    }
+}
 
 /// <summary>Sağlayıcının keşif belgesi ve imza anahtarları (önbellekli, kendiliğinden yenilenir). Tek örnek.</summary>
 public sealed class OidcMetadata(IOptions<OidcOptions> options)
@@ -46,7 +59,7 @@ public sealed class OidcMetadata(IOptions<OidcOptions> options)
 /// Kimlik belirteci imza (JWKS), veren, hedef kitle, süre ve nonce açısından doğrulanır. Durum (state/nonce/PKCE) HMAC imzalı kısa ömürlü çerezdedir (sunucuda
 /// oturum gerekmez). Sonuçta tarayıcıya JWT değil, imzalı, tek kullanımlık, kısa ömürlü bir "bilet" verilir; arayüz bileti POST ile oturuma çevirir (belirteç adres çubuğunda dolaşmaz).
 /// </summary>
-public sealed class OidcService(ArcvoraDbContext db, AuthService auth, OidcMetadata metadata, IHttpClientFactory http, IMemoryCache used,
+public sealed class OidcService(ArcvoraDbContext db, AuthService auth, OidcMetadata metadata, IHttpClientFactory http, OidcTicketLedger used,
     IOptions<OidcOptions> options, IOptions<JwtOptions> jwt, TimeProvider clock, AuditLog audit, ILogger<OidcService> log)
 {
     public const string ClientName = "oidc";
@@ -209,9 +222,8 @@ public sealed class OidcService(ArcvoraDbContext db, AuthService auth, OidcMetad
     {
         var p = Verify<TicketPayload>(ticket, "oidc-ticket-v1");
         if (p is null || p.E < clock.GetUtcNow().ToUnixTimeSeconds()) throw new AppException(401, "invalid_ticket", "Giriş bileti geçersiz veya süresi dolmuş. Yeniden deneyin.");
-        // Tek kullanımlık: aynı bilet ikinci kez kullanılamaz (bu sürecin belleğinde; ömrü bilet süresi kadar).
-        if (used.TryGetValue("oidc-ticket:" + p.J, out _)) throw new AppException(401, "invalid_ticket", "Bu giriş bileti zaten kullanılmış.");
-        used.Set("oidc-ticket:" + p.J, true, TimeSpan.FromSeconds(Opt.TicketSeconds + 30));
+        // Tek kullanımlık: aynı bilet ikinci kez (paralel dahil) kullanılamaz. Defter bu sürecin belleğindedir; kayıt, bilet süresi kadar tutulur.
+        if (!used.TryUse(p.J, p.E + 30, clock.GetUtcNow().ToUnixTimeSeconds())) throw new AppException(401, "invalid_ticket", "Bu giriş bileti zaten kullanılmış.");
         var result = await auth.SignInAsync(p.U, ct);
         log.LogInformation("SSO ile oturum açıldı: {User}", p.U);
         return result;

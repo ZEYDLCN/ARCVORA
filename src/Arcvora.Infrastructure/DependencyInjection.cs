@@ -46,7 +46,7 @@ public static class DependencyInjection
             if (oidc.AutoProvision && !Guid.TryParse(oidc.DefaultWorkspaceId, out _))
                 throw new InvalidOperationException("Oidc:AutoProvision=true için Oidc:DefaultWorkspaceId (çalışma alanı kimliği) gerekli.");
         }
-        services.AddMemoryCache();
+        services.AddSingleton<OidcTicketLedger>();
         services.AddSingleton<OidcMetadata>();
         services.AddHttpClient(OidcService.ClientName, c => c.Timeout = TimeSpan.FromSeconds(15));
         services.AddScoped<OidcService>();
