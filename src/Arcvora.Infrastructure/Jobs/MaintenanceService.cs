@@ -7,7 +7,7 @@ using Arcvora.Infrastructure.Common;
 
 namespace Arcvora.Infrastructure.Jobs;
 
-public sealed record MaintenanceResult(int StagedFilesPurged, int RemindersQueued = 0);
+public sealed record MaintenanceResult(int StagedFilesPurged, int RemindersQueued = 0, int RequestsPurged = 0, int EmailsPurged = 0);
 
 /// <summary>Düzenli bakım turu. Her iş kendi içinde idempotenttir; çökerse sonraki turda devam eder.</summary>
 public sealed class MaintenanceService(IServiceScopeFactory scopes, ILogger<MaintenanceService> log)
