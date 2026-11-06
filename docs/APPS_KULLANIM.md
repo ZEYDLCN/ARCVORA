@@ -131,6 +131,7 @@ SMTP kuruluysa (`DEPLOY_COMPANY.md` §5a) sistem şu durumlarda **Türkçe e-pos
 - Her kullanıcı **Hesap → E-posta bildirimleri** ile kendi bildirimlerini kapatabilir.
 - **Yönetim → E-posta**: durum (açık/kapalı), **test e-postası**, gönderim kuyruğu (bekleyen/gönderildi/atlandı/başarısız) ve “Yeniden dene”. SMTP kapalıyken hiçbir mail kuyruğa alınmaz; sistem normal çalışır.
 - Gönderim **kuyruk (outbox)** üzerindendir: mail sunucusu geçici kapalıysa talep/onay etkilenmez, mail artan aralıkla en çok 6 kez denenir.
+- Onaylayıcı **vekâlet vermişse** (vekâlet aralığı sürerken), görev ve hatırlatma e-postası **vekile de** “vekâleten” başlığıyla gider; talep edenin kendisi vekilse kendi talebi için mail almaz.
 - E-posta güvenilir bir **bildirim**dir, onay yolu değildir: onay yalnızca uygulamada yapılır.
 
 ## 6e) Arama, raporlar, dışa aktarma

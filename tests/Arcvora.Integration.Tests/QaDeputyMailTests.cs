@@ -25,6 +25,8 @@ public class QaDeputyMailTests(ApiFactory factory) : IClassFixture<ApiFactory>
         return new Kit(admin, boss, emp, deputy, app);
     }
 
+    private static bool IsReminder(OutgoingMail m) => m.Subject.Contains("atırlatma");        // "Hatırlatma" ve "Vekâleten hatırlatma"
+
     private static DateOnly Today => DateOnly.FromDateTime(DateTime.UtcNow.AddMinutes(180));
     private static string Day(DateOnly d) => d.ToString("yyyy-MM-dd");
 
@@ -56,7 +58,7 @@ public class QaDeputyMailTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.True((await DelegateAsync(k)).Is(HttpStatusCode.Created));
         await SubmitAsync(k);
 
-        var boss = (await Mails(k.Boss)).Where(m => m.Subject.Contains("onayınız bekleniyor")).ToList();
+        var boss = (await Mails(k.Boss)).Where(m => m.Subject.Contains("Onayınız bekleniyor")).ToList();
         Assert.Single(boss);
         var deputy = (await Mails(k.Deputy)).Where(m => m.Subject.Contains("bekleniyor")).ToList();
         var mail = Assert.Single(deputy);
@@ -111,14 +113,14 @@ public class QaDeputyMailTests(ApiFactory factory) : IClassFixture<ApiFactory>
         await BackdateAsync(req, 25);
         Assert.True(await RemindersAsync() >= 1);
 
-        Assert.Single(await Mails(k.Boss), m => m.Subject.Contains("Hatırlatma"));
-        var deputy = Assert.Single(await Mails(k.Deputy), m => m.Subject.Contains("Hatırlatma"));
+        Assert.Single(await Mails(k.Boss), m => IsReminder(m));
+        var deputy = Assert.Single(await Mails(k.Deputy), m => IsReminder(m));
         Assert.Contains("Vekâleten", deputy.Subject);
 
         for (var round = 2; round <= 4; round++) { await BackdateAsync(req, 25); await RemindersAsync(); }
         await factory.RunEmailAsync();
-        Assert.Equal(3, factory.Mail.To(k.Deputy.Email).Count(m => m.Subject.Contains("Hatırlatma")));       // en çok 3
-        Assert.Equal(3, factory.Mail.To(k.Boss.Email).Count(m => m.Subject.Contains("Hatırlatma")));
+        Assert.Equal(3, factory.Mail.To(k.Deputy.Email).Count(m => IsReminder(m)));       // en çok 3
+        Assert.Equal(3, factory.Mail.To(k.Boss.Email).Count(m => IsReminder(m)));
     }
 
     [Fact]
@@ -131,7 +133,7 @@ public class QaDeputyMailTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.True((await k.Deputy.PostAsync($"/api/tasks/{task}/approve")).Is(HttpStatusCode.OK));
         await BackdateAsync(req, 25);
         await RemindersAsync();
-        Assert.DoesNotContain(await Mails(k.Deputy), m => m.Subject.Contains("Hatırlatma"));
-        Assert.DoesNotContain(await Mails(k.Boss), m => m.Subject.Contains("Hatırlatma"));
+        Assert.DoesNotContain(await Mails(k.Deputy), m => IsReminder(m));
+        Assert.DoesNotContain(await Mails(k.Boss), m => IsReminder(m));
     }
 }

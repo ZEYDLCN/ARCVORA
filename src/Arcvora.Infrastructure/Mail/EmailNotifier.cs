@@ -1,3 +1,4 @@
+using Arcvora.Core.Flows;
 using Arcvora.Core.Notifications;
 using Arcvora.Infrastructure.Common;
 using Arcvora.Infrastructure.Persistence;
@@ -11,7 +12,7 @@ namespace Arcvora.Infrastructure.Mail;
 /// ("olay oldu ama mail kayboldu" ya da "mail gitti ama olay geri alındı" olmaz). Kurallar: e-posta kapalıysa, çalışma alanı kapattıysa,
 /// kullanıcı kapattıysa, demo veriyse veya aynı olay için zaten mail varsa yazılmaz.
 /// </summary>
-public sealed class EmailNotifier(ArcvoraDbContext db, IOptions<EmailOptions> options, TimeProvider clock)
+public sealed class EmailNotifier(ArcvoraDbContext db, IOptions<EmailOptions> options, IOptions<LocaleOptions> locale, TimeProvider clock)
 {
     private EmailOptions Opt => options.Value;
     public bool Enabled => Opt.Enabled;
@@ -22,17 +23,48 @@ public sealed class EmailNotifier(ArcvoraDbContext db, IOptions<EmailOptions> op
     {
         if (!await RequestMailsAllowedAsync(r, app, ct)) return;
         var requester = await NameAsync(r.RequesterId, ct);
-        foreach (var (taskId, userId) in tasks)
+        var list = tasks.ToList();
+        foreach (var (taskId, userId) in list)
+        {
             await QueueAsync(r.WorkspaceId, userId, "task_assigned", reassigned ? $"task-assigned:{taskId}:{userId}" : $"task-assigned:{taskId}", r.Id,
                 u => EmailTemplates.TaskAssigned(Ctx(u, r, app, requester), step), ct);
+
+            // Görev sahibi şu an vekâlet vermişse, kararı verebilecek vekil de haberdar edilir (aksi halde vekâletin amacı kaybolur).
+            // Talep edenin kendisi vekil olsa bile kendi talebini onaylayamaz → mail yok; görevi zaten ayrı alan vekile de iki mail gitmez.
+            foreach (var deputy in await DeputiesOfAsync(r.WorkspaceId, userId, ct))
+            {
+                if (deputy == r.RequesterId || list.Any(t => t.UserId == deputy)) continue;
+                var onBehalf = await NameAsync(userId, ct);
+                await QueueAsync(r.WorkspaceId, deputy, "task_assigned", $"task-assigned:{taskId}:deputy:{deputy}", r.Id,
+                    u => EmailTemplates.TaskAssigned(Ctx(u, r, app, requester), step, onBehalf), ct);
+            }
+        }
     }
 
     public async Task<bool> ReminderAsync(ApprovalTask task, FlowRequest r, AppDefinition app, int count, int daysWaiting, CancellationToken ct = default)
     {
         if (!await RequestMailsAllowedAsync(r, app, ct)) return false;
         var requester = await NameAsync(r.RequesterId, ct);
-        return await QueueAsync(r.WorkspaceId, task.AssigneeId, "task_reminder", $"reminder:{task.Id}:{count}", r.Id,
+        var queued = await QueueAsync(r.WorkspaceId, task.AssigneeId, "task_reminder", $"reminder:{task.Id}:{count}", r.Id,
             u => EmailTemplates.TaskReminder(Ctx(u, r, app, requester), task.StepName, daysWaiting), ct);
+
+        foreach (var deputy in await DeputiesOfAsync(r.WorkspaceId, task.AssigneeId, ct))
+        {
+            if (deputy == r.RequesterId) continue;
+            var onBehalf = await NameAsync(task.AssigneeId, ct);
+            queued |= await QueueAsync(r.WorkspaceId, deputy, "task_reminder", $"reminder:{task.Id}:{count}:deputy:{deputy}", r.Id,
+                u => EmailTemplates.TaskReminder(Ctx(u, r, app, requester), task.StepName, daysWaiting, onBehalf), ct);
+        }
+        return queued;
+    }
+
+    /// <summary><paramref name="fromUserId"/> kişisinin şu an (çalışma alanının yerel gününe göre) geçerli vekâlet verdiği kişiler.</summary>
+    private async Task<IReadOnlyList<Guid>> DeputiesOfAsync(Guid workspaceId, Guid fromUserId, CancellationToken ct)
+    {
+        var today = DelegationRules.Today(clock.GetUtcNow(), locale.Value.UtcOffsetMinutes);
+        return await db.Delegations.AsNoTracking()
+            .Where(d => d.WorkspaceId == workspaceId && d.FromUserId == fromUserId && d.RevokedAt == null && d.StartsOn <= today && d.EndsOn >= today)
+            .Select(d => d.ToUserId).Distinct().ToListAsync(ct);
     }
 
     /// <param name="status"><c>approved</c>, <c>rejected</c> veya <c>cancelled</c>.</param>
