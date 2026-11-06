@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, getToken, setSessionToken, setToken } from './api';
 import { AppsShell, go } from './components/AppsShell';
 import { Intro } from './components/Intro';
 import { safeSessionStorage, shouldShowIntro } from './lib/intro';
 import { canAccess, defaultRoute, parseRoute } from './lib/session';
+import { clearSsoHash, parseSsoHash, ssoErrorText } from './lib/sso';
 import { Accounting } from './pages/apps/Accounting';
 import { Admin } from './pages/apps/Admin';
 import { AppForm } from './pages/apps/AppForm';
@@ -38,6 +39,8 @@ export function App() {
   const [booting, setBooting] = useState(Boolean(getToken()));
   const [theme, setTheme] = useState<Theme>(readTheme);
   const [hash, setHash] = useState(window.location.hash);
+  const [ssoError, setSsoError] = useState<string | null>(null);
+  const ssoHandled = useRef<string | null>(null);
   // Açılış animasyonu: oturum başına bir kez (SPA içi gezinmede veya yenilemede tekrarlanmaz); ?intro ile zorlanır
   const [intro, setIntro] = useState(() => shouldShowIntro(window.location.search, safeSessionStorage()));
   // Animasyon gösterilmeyecekse index.html'in koyu önyükleme zemini kalmasın
@@ -63,6 +66,22 @@ export function App() {
     return () => window.removeEventListener('arcvora:unauthorized', logout);
   }, [logout]);
 
+  // SSO dönüşü (#/sso?ticket=… veya ?error=…): bilet POST ile oturuma çevrilir; adres çubuğundan hemen temizlenir.
+  useEffect(() => {
+    const sso = parseSsoHash(hash);
+    if (!sso) return;
+    // Bilet tek kullanımlıktır: StrictMode'un çift çalıştırması veya yeniden çizim ikinci kez değiştirmemeli.
+    if (ssoHandled.current === hash) return;
+    ssoHandled.current = hash;
+    clearSsoHash();
+    setHash('#/');
+    if (sso.ticket) {
+      setBooting(true);
+      api.ssoTicket(sso.ticket).then((r) => { setSsoError(null); setToken(r.token); setSessionToken(r.token); setSession({ user: r.user, workspaces: r.workspaces, mustChangePassword: false }); })
+        .catch((e) => setSsoError(e instanceof Error ? e.message : ssoErrorText(undefined))).finally(() => setBooting(false));
+    } else setSsoError(ssoErrorText(sso.error));
+  }, [hash]);
+
   useEffect(() => {
     const t = getToken();
     if (!t) return;
@@ -85,7 +104,7 @@ export function App() {
   );
 
   if (booting) return wrap(<><div className="bg" aria-hidden="true" /><div className="auth"><div className="auth-form"><p className="muted">Yükleniyor…</p></div></div></>);
-  if (!session) return wrap(<Auth onAuth={onAuth} />);
+  if (!session) return wrap(<Auth onAuth={onAuth} initialError={ssoError ?? undefined} />);
   if (session.mustChangePassword)
     return wrap(<ChangePassword forced onLogout={logout} onDone={() => setSession({ ...session, mustChangePassword: false })} />);
 
