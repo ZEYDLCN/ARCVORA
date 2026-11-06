@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { api } from '../../api';
 import { go } from '../../components/AppsShell';
 import { AppIcon } from '../../components/AppIcon';
+import { IconChecklist } from '../../components/icons';
+import { EmptyState } from '../../components/ui';
 import type { MyApp } from '../../types';
 import { errorText } from './common';
 
@@ -21,7 +23,7 @@ export function MyApps() {
         {error && <div className="notice error" role="alert">{error}</div>}
         {apps === null && !error && <p className="muted">Yükleniyor…</p>}
         {apps?.length === 0 && (
-          <div className="empty-state"><b>Henüz size atanmış bir uygulama yok</b><span>Bir uygulamayı kullanmak için master admin’den yetki isteyin.</span></div>
+          <EmptyState icon={<IconChecklist size={32} />} title="Henüz size atanmış bir uygulama yok">Bir uygulamayı kullanmak için master admin’den yetki isteyin.</EmptyState>
         )}
         <div className="proj-grid">
           {apps?.map((a) => (

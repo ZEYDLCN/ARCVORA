@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from '../../api';
 import { go } from '../../components/AppsShell';
 import { AppIcon } from '../../components/AppIcon';
+import { IconBack, IconChecklist, IconSend } from '../../components/icons';
+import { CardTitle } from '../../components/ui';
 import { DynamicForm } from '../../components/DynamicForm';
 import { buildPayload, issuesByField, type FormValues } from '../../lib/flow';
 import type { AppForm as AppFormData, DirectoryEntry, FlowIssue } from '../../types';
@@ -59,7 +61,7 @@ export function AppForm({ id, workspace }: Ctx & { id: string }) {
   return (
     <>
       <div className="page-head">
-        <p><button className="btn small" onClick={() => go({ name: 'apps' })}>← Uygulamalar</button></p>
+        <p><button className="btn small" onClick={() => go({ name: 'apps' })}><IconBack size={15} />Uygulamalar</button></p>
         <div className="row"><AppIcon name={form?.app.icon ?? 'file'} /><h1>{form?.app.name ?? 'Yeni talep'}</h1></div>
         {form?.app.description && <p className="tagline">{form.app.description}</p>}
       </div>
@@ -73,7 +75,7 @@ export function AppForm({ id, workspace }: Ctx & { id: string }) {
             {trackBalance && balance !== null && <div className="notice" role="status" style={{ marginBottom: 8 }}>İçinde bulunduğumuz yıl izin bakiyeniz: <b>{String(balance).replace('.', ',')} gün</b></div>}
             <DynamicForm def={form.definition} values={values} errors={errors} people={people} disabled={busy} uploads={uploads} lists={form.lists} holidays={form.holidays}
               onChange={(k, v) => { setValues((s) => ({ ...s, [k]: v })); setErrors((s) => (s[k] ? { ...s, [k]: [] } : s)); }} />
-            <h3 style={{ marginTop: 22 }}>Onay akışı</h3>
+            <CardTitle icon={<IconChecklist size={19} />}><span style={{ display: 'block', marginTop: 22 }}>Onay akışı</span></CardTitle>
             <div className="step-strip" aria-label="Onay adımları">
               {steps.map((s, i) => (
                 <span key={s.id} style={{ display: 'contents' }}>
@@ -82,7 +84,7 @@ export function AppForm({ id, workspace }: Ctx & { id: string }) {
                 </span>
               ))}
             </div>
-            <p style={{ marginTop: 14 }}><button className="btn primary" disabled={busy}>{busy ? 'Gönderiliyor…' : 'Talebi gönder'}</button></p>
+            <p style={{ marginTop: 14 }}><button className="btn primary" disabled={busy}>{!busy && <IconSend size={16} />}{busy ? 'Gönderiliyor…' : 'Talebi gönder'}</button></p>
           </form>
         )}
       </div>
