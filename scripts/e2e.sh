@@ -183,6 +183,7 @@ limit_phase forwarded 13 "Proxy arkasında istemci başına hız sınırı (X-Fo
 [ "$UI" = 1 ] && step "Tarayıcı yolculuğu" env E2E_SHOTS_DIR="$LOGS/ekran-goruntuleri" node scripts/e2e/ui-journey.mjs
 [ "$UI" = 1 ] && step "Tarayıcı uç durumları (hata yolları, oturum, XSS, klavye, ekran boyutları)" env E2E_SHOTS_DIR="$LOGS/ekran-goruntuleri" node scripts/e2e/ui-edge.mjs
 [ "$UI" = 1 ] && step "Tarayıcı: akış uygulamaları (rol bazlı menü, tasarlayıcı, talep, onay, mobil)" env E2E_SHOTS_DIR="$LOGS/ekran-goruntuleri" node scripts/e2e/apps-ui.mjs
+[ "$UI" = 1 ] && step "Tarayıcı: G fazı (fiş yükleme, PDF indirme, vekâlet, belge doğrulama, listeler, izin/tatil, rapor, arama)" env E2E_SHOTS_DIR="$LOGS/ekran-goruntuleri" node scripts/e2e/apps-g-ui.mjs
 [ "$UI" = 1 ] && step "Tarayıcı: mobil (telefon ekranı, taşma) ve PWA (manifest, service worker)" env E2E_SHOTS_DIR="$LOGS/ekran-goruntuleri" E2E_PROD="$([ "$MODE" = prod ] && echo 1 || echo 0)" node scripts/e2e/apps-mobile.mjs
 
 echo
