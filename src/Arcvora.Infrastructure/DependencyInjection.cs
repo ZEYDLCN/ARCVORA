@@ -4,6 +4,7 @@ using Arcvora.Infrastructure.Auth;
 using Arcvora.Infrastructure.Common;
 using Arcvora.Infrastructure.Files;
 using Arcvora.Infrastructure.Jobs;
+using Arcvora.Infrastructure.Mail;
 using Arcvora.Infrastructure.Persistence;
 using Arcvora.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
@@ -25,6 +26,17 @@ public static class DependencyInjection
         services.Configure<MaintenanceOptions>(config.GetSection("Maintenance"));
         services.Configure<DocumentOptions>(config.GetSection("Documents"));
         services.Configure<LocaleOptions>(config.GetSection("Locale"));
+        services.Configure<EmailOptions>(config.GetSection("Email"));
+        var email = config.GetSection("Email").Get<EmailOptions>() ?? new EmailOptions();
+        if (email.Enabled)
+        {
+            if (string.IsNullOrWhiteSpace(email.Host) || string.IsNullOrWhiteSpace(email.From))
+                throw new InvalidOperationException("Email:Enabled=true için Email:Host ve Email:From gerekli.");
+            if (email.Security.ToLowerInvariant() is not ("starttls" or "ssl" or "none"))
+                throw new InvalidOperationException("Email:Security 'starttls', 'ssl' veya 'none' olmalı.");
+        }
+        services.AddScoped<IEmailSender, SmtpEmailSender>();
+        services.AddSingleton<EmailDispatcher>();
         services.AddSingleton<MaintenanceService>();
 
         // DATABASE_URL, barındırıcıların (Render, Koyeb, Fly…) yerleşik kuralıdır ve verilmişse önceliklidir; postgres:// adresi de kabul edilir.

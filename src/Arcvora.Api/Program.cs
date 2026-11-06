@@ -82,6 +82,7 @@ if (builder.Configuration.GetValue("Worker:InProcess", false))
 {
     builder.Services.AddHostedService<JobWorkerService>();
     builder.Services.AddHostedService<AccountingWorkerService>();
+    builder.Services.AddHostedService<EmailWorkerService>();
     builder.Services.AddHostedService<MaintenanceWorkerService>();
 }
 
