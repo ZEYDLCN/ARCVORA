@@ -61,9 +61,10 @@ public class SummaryPartsApiTests(ApiFactory factory) : IClassFixture<ApiFactory
     {
         var k = await SetupAsync();
         // Uygulama yeniden adlandırılan etiketle yeni sürüm yayınlar; eski talep eski sürümün etiketlerini göstermeye devam eder.
-        var def = (JsonElement)JsonSerializer.SerializeToElement(AppsKit.LeaveDef());
-        var json = def.GetRawText().Replace("\"Başlangıç\"", "\"İzin başlangıcı\"");
-        var draft = await k.Admin.PutAsync($"/api/apps/{k.Leave}", new { name = "İzin Talebi", description = "x", icon = "calendar", definition = JsonDocument.Parse(json).RootElement, baseRevision = (await k.Admin.GetAsync($"/api/apps/{k.Leave}"))["revision"].GetInt32() });
+        var json = JsonSerializer.Serialize(AppsKit.LeaveDef(), new JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }).Replace("\"Başlangıç\"", "\"İzin başlangıcı\"");
+        Assert.Contains("İzin başlangıcı", json);
+        var current = await k.Admin.GetAsync($"/api/apps/{k.Leave}");
+        var draft = await k.Admin.PutAsync($"/api/apps/{k.Leave}", new { baseRevision = current["summary"].GetProperty("revision").GetInt32(), definition = JsonDocument.Parse(json).RootElement });
         Assert.True(draft.Is(HttpStatusCode.OK), draft.ToString());
         Assert.True((await k.Admin.PostAsync($"/api/apps/{k.Leave}/publish")).Is(HttpStatusCode.OK));
 

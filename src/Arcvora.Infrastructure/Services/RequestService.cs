@@ -255,9 +255,11 @@ public sealed class RequestService(ArcvoraDbContext db, AppAccessService access,
         var rows = await q.Take(ListLimit).ToListAsync(ct);
         var behalfIds = rows.Where(x => x.Task.AssigneeId != userId).Select(x => x.Task.AssigneeId).Distinct().ToList();
         var names = behalfIds.Count == 0 ? [] : await db.Users.AsNoTracking().Where(u => behalfIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.DisplayName, ct);
+        var parts = await SummaryPartsAsync(rows.Select(x => x.Request).ToList(), ct);
         return rows.Select(x => new MyTaskDto(x.Task.Id, x.Request.Id, x.Request.Number, x.App.Name, x.App.Icon, x.Request.Summary, x.Requester,
             x.Task.StepName, Status(x.Task.Status), x.Task.Fallback, x.Task.Comment, x.Task.CreatedAt, x.Task.DecidedAt,
-            x.Task.AssigneeId != userId ? x.Task.AssigneeId : null, x.Task.AssigneeId != userId ? names.GetValueOrDefault(x.Task.AssigneeId, "(eski kullanıcı)") : null)).ToList();
+            x.Task.AssigneeId != userId ? x.Task.AssigneeId : null, x.Task.AssigneeId != userId ? names.GetValueOrDefault(x.Task.AssigneeId, "(eski kullanıcı)") : null,
+            parts.GetValueOrDefault(x.Request.Id), x.Request.IsDemo)).ToList();
     }
 
     public async Task<RequestDetailDto> DecideAsync(Guid userId, Guid taskId, ApprovalDecision decision, string? comment, CancellationToken ct)
@@ -471,13 +473,38 @@ public sealed class RequestService(ArcvoraDbContext db, AppAccessService access,
         var steps = (await db.ApprovalTasks.AsNoTracking().Where(t => reqIds.Contains(t.RequestId) && t.Status == ApprovalStatus.Pending)
                 .Select(t => new { t.RequestId, t.StepName }).ToListAsync(ct))
             .GroupBy(t => t.RequestId).ToDictionary(g => g.Key, g => g.First().StepName);
+        var parts = await SummaryPartsAsync(requests, ct);
         return requests.Select(r => ToSummary(r, apps[r.AppId], names.GetValueOrDefault(r.RequesterId, "(eski kullanıcı)"),
-            r.Status == RequestStatus.InReview ? steps.GetValueOrDefault(r.Id) : null)).ToList();
+            r.Status == RequestStatus.InReview ? steps.GetValueOrDefault(r.Id) : null, parts.GetValueOrDefault(r.Id))).ToList();
     }
 
-    private static RequestSummaryDto ToSummary(FlowRequest r, AppDefinition app, string requesterName, string? currentStep) =>
+    /// <summary>
+    /// Liste kartları için özetin etiketli hâli. Etiketler talebin AÇILDIĞI sürümün tanımından gelir (sonradan yeniden adlandırma eski talebi bozmaz);
+    /// değerler talebin kendi verisindendir. Bozuk/eksik tanım listeyi düşürmez: o talep için parça verilmez, düz özet yine vardır.
+    /// </summary>
+    private async Task<Dictionary<Guid, IReadOnlyList<SummaryPart>>> SummaryPartsAsync(IReadOnlyList<FlowRequest> requests, CancellationToken ct)
+    {
+        var result = new Dictionary<Guid, IReadOnlyList<SummaryPart>>();
+        if (requests.Count == 0) return result;
+        var versionIds = requests.Select(r => r.AppVersionId).Distinct().ToList();
+        var defs = new Dictionary<Guid, FlowDefinition>();
+        foreach (var v in await db.AppVersions.AsNoTracking().Where(v => versionIds.Contains(v.Id)).Select(v => new { v.Id, v.DefinitionJson }).ToListAsync(ct))
+        {
+            try { defs[v.Id] = AppDesignService.Deserialize(v.DefinitionJson); }
+            catch (JsonException) { /* bozuk tanım: parça yok */ }
+        }
+        foreach (var r in requests)
+        {
+            if (!defs.TryGetValue(r.AppVersionId, out var def)) continue;
+            try { result[r.Id] = FlowValues.SummaryParts(def, FlowValues.FromJson(r.DataJson)); }
+            catch (JsonException) { /* bozuk veri: parça yok */ }
+        }
+        return result;
+    }
+
+    private static RequestSummaryDto ToSummary(FlowRequest r, AppDefinition app, string requesterName, string? currentStep, IReadOnlyList<SummaryPart>? parts = null) =>
         new(r.Id, r.WorkspaceId, r.Number, r.AppId, app.Name, app.Icon, Status(r.Status), r.Summary, r.RequesterId, requesterName,
-            r.CreatedAt, r.CompletedAt, currentStep);
+            r.CreatedAt, r.CompletedAt, currentStep, parts, r.IsDemo);
 
     private static MyAppDto ToMy(AppDefinition a, int version) => new(a.Id, a.WorkspaceId, a.Name, a.Description, a.Icon, version);
 

@@ -27,7 +27,8 @@ public sealed record AppFormDto(MyAppDto App, FlowDefinition Definition, IReadOn
 public sealed record SubmitRequest(Dictionary<string, JsonElement>? Data);
 
 public sealed record RequestSummaryDto(Guid Id, Guid WorkspaceId, string Number, Guid AppId, string AppName, string Icon, string Status,
-    string Summary, Guid RequesterId, string RequesterName, DateTimeOffset CreatedAt, DateTimeOffset? CompletedAt, string? CurrentStepName);
+    string Summary, Guid RequesterId, string RequesterName, DateTimeOffset CreatedAt, DateTimeOffset? CompletedAt, string? CurrentStepName,
+    IReadOnlyList<SummaryPart>? SummaryParts = null, bool IsDemo = false);
 
 public sealed record TaskDto(Guid Id, Guid AssigneeId, int StepIndex, string StepId, string StepName, string Status, string? Comment,
     string? Fallback, DateTimeOffset CreatedAt, DateTimeOffset? DecidedAt, Guid? DecidedBy);
@@ -41,7 +42,7 @@ public sealed record RequestDetailDto(RequestSummaryDto Summary, FlowDefinition 
 
 public sealed record MyTaskDto(Guid Id, Guid RequestId, string RequestNumber, string AppName, string Icon, string Summary, string RequesterName,
     string StepName, string Status, string? Fallback, string? Comment, DateTimeOffset CreatedAt, DateTimeOffset? DecidedAt,
-    Guid? OnBehalfOfId = null, string? OnBehalfOfName = null);
+    Guid? OnBehalfOfId = null, string? OnBehalfOfName = null, IReadOnlyList<SummaryPart>? SummaryParts = null, bool IsDemo = false);
 
 public sealed record DecideRequest(string? Comment);
 
