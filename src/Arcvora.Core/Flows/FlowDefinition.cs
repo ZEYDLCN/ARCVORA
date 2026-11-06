@@ -11,7 +11,7 @@ public enum ApprovalMode { Any, All }
 
 public enum ConditionOp { Eq, Ne, Gt, Gte, Lt, Lte, In }
 
-public enum ComputedOp { CalendarDays, Weekdays }
+public enum ComputedOp { CalendarDays, Weekdays, WorkDays }
 
 /// <summary>Başka iki tarih alanından hesaplanan sayı (ör. izin gün sayısı). Kullanıcı girmez; sunucu hesaplar.</summary>
 public sealed record FlowComputed
@@ -73,9 +73,25 @@ public sealed record AccountingSpec
     public string? Category { get; init; }
 }
 
+/// <summary>
+/// İzin bakiyesi: talep gönderilince gün sayısı kişinin bakiyesinden REZERVE edilir (yetersizse reddedilir), reddedilir/iptal edilirse iade edilir.
+/// <see cref="TypeField"/> verilirse yalnızca seçilen değer <see cref="CountsFor"/> içindeyse bakiyeden düşer (ör. mazeret izni düşmez).
+/// </summary>
+public sealed record LeaveSpec
+{
+    public bool Enabled { get; init; }
+    /// <summary>Gün sayısını tutan sayı alanı (genellikle iki tarihten hesaplanan alan).</summary>
+    public string? DaysField { get; init; }
+    /// <summary>Başlangıç tarihi alanı: izin hangi yılın bakiyesinden düşer.</summary>
+    public string? StartField { get; init; }
+    public string? TypeField { get; init; }
+    public IReadOnlyList<string>? CountsFor { get; init; }
+}
+
 public sealed record FlowCompletion
 {
     public AccountingSpec? Accounting { get; init; }
+    public LeaveSpec? Leave { get; init; }
 }
 
 /// <summary>Bir akış uygulamasının tanımı (schema 1). Yayınlanınca değişmez sürüm olur.</summary>
