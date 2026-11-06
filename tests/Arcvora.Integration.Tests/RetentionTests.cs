@@ -350,4 +350,22 @@ public class RetentionTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.True((await k.Emp.PostAsync(Ws(k.Admin, $"/members/{k.Boss.UserId}/anonymize"))).Is(HttpStatusCode.Forbidden));
         Assert.True((await k.Admin.GetAsync($"/api/requests/{Guid.NewGuid()}")).Is(HttpStatusCode.NotFound));
     }
+
+    [Fact]
+    public async Task Former_users_lists_removed_accounts_until_they_are_anonymised()
+    {
+        var k = await SetupAsync();
+        var list0 = await k.Admin.GetAsync(Ws(k.Admin, "/former-users"));
+        Assert.True(list0.Is(HttpStatusCode.OK), list0.ToString());
+        Assert.Equal(0, list0.Body.GetArrayLength());                                  // üyeler listelenmez
+        await k.Admin.DeleteAsync(Ws(k.Admin, $"/members/{k.Emp.UserId}"));
+        var list1 = await k.Admin.GetAsync(Ws(k.Admin, "/former-users"));
+        Assert.Equal(1, list1.Body.GetArrayLength());
+        Assert.Equal(k.Emp.Email, list1.Body[0].GetProperty("email").GetString());
+        await k.Admin.PostAsync(Ws(k.Admin, $"/members/{k.Emp.UserId}/anonymize"));
+        Assert.Equal(0, (await k.Admin.GetAsync(Ws(k.Admin, "/former-users"))).Body.GetArrayLength());
+        Assert.True((await k.Boss.GetAsync(Ws(k.Admin, "/former-users"))).Is(HttpStatusCode.Forbidden));
+        var outsider = await Api.RegisterAsync(factory);
+        Assert.True((await outsider.GetAsync(Ws(k.Admin, "/former-users"))).Is(HttpStatusCode.NotFound));
+    }
 }

@@ -144,6 +144,8 @@ public static class AppsEndpoints
             http.Response.Headers.ContentDisposition = "attachment; filename=\"kisisel-veri.json\"";
             return Results.Ok(data);
         });
+        secured.MapGet("/workspaces/{id:guid}/former-users", async (Guid id, ClaimsPrincipal u, PersonalDataService s, CancellationToken ct) =>
+            Results.Ok(await s.FormerUsersAsync(Endpoints.UserId(u), id, ct)));
         secured.MapPost("/workspaces/{id:guid}/members/{userId:guid}/anonymize", async (Guid id, Guid userId, ClaimsPrincipal u, PersonalDataService s, CancellationToken ct) =>
         {
             await s.AnonymizeAsync(Endpoints.UserId(u), id, userId, ct);

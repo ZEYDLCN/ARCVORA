@@ -8,6 +8,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Arcvora.Infrastructure.Services;
 
+public sealed record FormerUserDto(Guid Id, string DisplayName, string Email, DateTimeOffset CreatedAt);
+
 public sealed record PersonalDataDto(DateTimeOffset ExportedAt, JsonElement User, JsonElement Requests, JsonElement Decisions, JsonElement Delegations, JsonElement Files, JsonElement Notifications);
 
 /// <summary>
@@ -58,6 +60,14 @@ public sealed class PersonalDataService(ArcvoraDbContext db, AppAccessService ac
         return new PersonalDataDto(clock.GetUtcNow(),
             J(new { id = u.Id, email = u.Email, displayName = u.DisplayName, role = RoleNames.ToApi(m.Role), manager = managerName, createdAt = u.CreatedAt }),
             J(requestRows), J(decisions), J(delegations), J(files), J(new { emailEnabled = !u.EmailOptOut }));
+    }
+
+    /// <summary>Bu çalışma alanının açtığı, artık hiçbir çalışma alanında üye olmayan ve henüz anonimleştirilmemiş hesaplar.</summary>
+    public async Task<IReadOnlyList<FormerUserDto>> FormerUsersAsync(Guid actorId, Guid workspaceId, CancellationToken ct)
+    {
+        await access.RequireAdminAsync(actorId, workspaceId, ct);
+        return await db.Users.AsNoTracking().Where(u => u.ManagedByWorkspaceId == workspaceId && u.AnonymizedAt == null && !db.Memberships.Any(m => m.UserId == u.Id))
+            .OrderBy(u => u.DisplayName).Take(200).Select(u => new FormerUserDto(u.Id, u.DisplayName, u.Email, u.CreatedAt)).ToListAsync(ct);
     }
 
     public async Task AnonymizeAsync(Guid actorId, Guid workspaceId, Guid userId, CancellationToken ct)
