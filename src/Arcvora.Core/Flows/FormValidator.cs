@@ -19,7 +19,8 @@ public static class FormValidator
     public const int DefaultMaxFiles = 3;
 
     /// <param name="lists">Listeye bağlı seçim alanları için listenin AKTİF öğeleri (kimlik → değerler). Seçenekli alanlar için gerekmez.</param>
-    public static FormResult Validate(FlowDefinition def, IReadOnlyDictionary<string, JsonElement> data, IReadOnlyDictionary<Guid, IReadOnlyList<string>>? lists = null)
+    public static FormResult Validate(FlowDefinition def, IReadOnlyDictionary<string, JsonElement> data, IReadOnlyDictionary<Guid, IReadOnlyList<string>>? lists = null,
+        HolidayCalendar? holidays = null)
     {
         var values = new Dictionary<string, object?>();
         var issues = new List<FlowIssue>();
