@@ -68,7 +68,7 @@ public sealed record ResetPasswordRequest(string? Password);
 public sealed record AddMemberRequest(string? Email, string? Role, bool? CanAccept);
 
 /// <summary>Yönetici tarafından yeni hesap açma. Parola geçicidir; kullanıcı ilk girişte değiştirmeye çağrılır.</summary>
-public sealed record CreateUserRequest(string? Email, string? DisplayName, string? Password, string? Role, Guid? ManagerId);
+public sealed record CreateUserRequest(string? Email, string? DisplayName, string? Password, string? Role, Guid? ManagerId, bool? SendInvite = null);
 
 /// <summary>Üye güncelleme. <c>ClearManager</c> true ise doğrudan yönetici kaldırılır.</summary>
 public sealed record UpdateMemberRequest(string? Role, bool? CanAccept, Guid? ManagerId, bool? ClearManager, string? DisplayName);

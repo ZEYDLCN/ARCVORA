@@ -1,13 +1,14 @@
 using Arcvora.Core.Flows;
 using Arcvora.Infrastructure.Auth;
 using Arcvora.Infrastructure.Common;
+using Arcvora.Infrastructure.Mail;
 using Arcvora.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
 namespace Arcvora.Infrastructure.Services;
 
-public sealed class MemberService(ArcvoraDbContext db, ProjectAccessService access, AuditLog audit, PasswordHasher hasher, DelegationService delegations, TimeProvider clock)
+public sealed class MemberService(ArcvoraDbContext db, ProjectAccessService access, AuditLog audit, PasswordHasher hasher, DelegationService delegations, EmailNotifier notifier, TimeProvider clock)
 {
     private const string RoleMessage = "Rol 'admin', 'editor', 'reader' veya 'app_user' olmalı.";
 
@@ -82,6 +83,11 @@ public sealed class MemberService(ArcvoraDbContext db, ProjectAccessService acce
             throw new ConflictException("email_taken", "Bu e-posta adresiyle zaten bir hesap var.");
         }
         m.User = user;
+        if (req.SendInvite == true && notifier.Enabled)
+        {
+            await notifier.InviteAsync(workspaceId, user.Id, ct);
+            await db.SaveChangesAsync(ct);
+        }
         return ToDto(m);
     }
 
@@ -177,12 +183,18 @@ public sealed class MemberService(ArcvoraDbContext db, ProjectAccessService acce
                 var candidates = admins.Where(a => a != request.RequesterId).ToList();
                 if (candidates.Count == 0) candidates = [.. admins];            // yalnızca talep eden admin kaldıysa o onaylayabilir
                 replacements = task.Mode == ApprovalMode.All ? candidates.Take(1).ToList() : candidates;
+                var created = new List<(Guid TaskId, Guid UserId)>();
                 foreach (var a in replacements)
-                    db.ApprovalTasks.Add(new ApprovalTask
+                {
+                    var nt = new ApprovalTask
                     {
                         Id = Guid.NewGuid(), RequestId = request.Id, WorkspaceId = workspaceId, StepIndex = task.StepIndex, StepId = task.StepId,
                         StepName = task.StepName, Mode = task.Mode, AssigneeId = a, Fallback = "assignee_removed", CreatedAt = now,
-                    });
+                    };
+                    db.ApprovalTasks.Add(nt);
+                    created.Add((nt.Id, a));
+                }
+                await notifier.TaskAssignedAsync(request, await db.Apps.AsNoTracking().FirstAsync(x => x.Id == request.AppId, ct), task.StepName, created, ct: ct);
             }
             db.RequestEvents.Add(new RequestEvent
             {

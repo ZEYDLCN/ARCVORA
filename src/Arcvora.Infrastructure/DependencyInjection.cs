@@ -66,6 +66,9 @@ public static class DependencyInjection
         services.AddScoped<DocumentService>();
         services.AddScoped<DelegationService>();
         services.AddScoped<DemoDataService>();
+        services.AddScoped<EmailNotifier>();
+        services.AddScoped<EmailAdminService>();
+        services.AddScoped<ReminderService>();
         services.AddScoped<RequestVisibility>();
         services.AddScoped<RequestService>();
         services.AddScoped<IRequestHooks, AccountingHooks>();

@@ -107,6 +107,22 @@ public static class AppsEndpoints
             return Results.File(data, "text/csv; charset=utf-8", name);
         });
 
+        // ----------------------------------------------------------------------- e-posta
+        secured.MapGet("/workspaces/{id:guid}/email", async (Guid id, ClaimsPrincipal u, EmailAdminService s, CancellationToken ct) =>
+            Results.Ok(await s.StatusAsync(Endpoints.UserId(u), id, ct)));
+        secured.MapPut("/workspaces/{id:guid}/email", async (Guid id, UpdateEmailSettingsRequest r, ClaimsPrincipal u, EmailAdminService s, CancellationToken ct) =>
+            Results.Ok(await s.UpdateAsync(Endpoints.UserId(u), id, r, ct)));
+        secured.MapPost("/workspaces/{id:guid}/email/test", async (Guid id, ClaimsPrincipal u, EmailAdminService s, CancellationToken ct) =>
+            Results.Ok(await s.SendTestAsync(Endpoints.UserId(u), id, ct)));
+        secured.MapGet("/workspaces/{id:guid}/email/outbox", async (Guid id, string? status, ClaimsPrincipal u, EmailAdminService s, CancellationToken ct) =>
+            Results.Ok(await s.OutboxAsync(Endpoints.UserId(u), id, status, ct)));
+        secured.MapPost("/workspaces/{id:guid}/email/outbox/{mailId:guid}/retry", async (Guid id, Guid mailId, ClaimsPrincipal u, EmailAdminService s, CancellationToken ct) =>
+            Results.Ok(await s.RetryAsync(Endpoints.UserId(u), id, mailId, ct)));
+        secured.MapGet("/me/notifications", async (ClaimsPrincipal u, EmailAdminService s, CancellationToken ct) =>
+            Results.Ok(await s.GetPrefsAsync(Endpoints.UserId(u), ct)));
+        secured.MapPut("/me/notifications", async (UpdateNotificationPrefsRequest r, ClaimsPrincipal u, EmailAdminService s, CancellationToken ct) =>
+            Results.Ok(await s.SetPrefsAsync(Endpoints.UserId(u), r, ct)));
+
         // ----------------------------------------------------------------------- vekâlet
         secured.MapGet("/workspaces/{id:guid}/delegations", async (Guid id, string? scope, ClaimsPrincipal u, DelegationService s, CancellationToken ct) =>
             Results.Ok(await s.ListAsync(Endpoints.UserId(u), id, scope, ct)));

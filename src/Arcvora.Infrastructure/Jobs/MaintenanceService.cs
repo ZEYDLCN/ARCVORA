@@ -16,8 +16,10 @@ public sealed class MaintenanceService(IServiceScopeFactory scopes, ILogger<Main
     {
         await using var scope = scopes.CreateAsyncScope();
         var purged = 0;
+        var reminders = 0;
         await Safe("hazırlanmış ek temizliği", async () => purged = await scope.ServiceProvider.GetRequiredService<AttachmentService>().PurgeStagedAsync(ct));
-        return new MaintenanceResult(purged);
+        await Safe("onay hatırlatmaları", async () => reminders = await scope.ServiceProvider.GetRequiredService<ReminderService>().RunAsync(ct));
+        return new MaintenanceResult(purged, reminders);
 
         async Task Safe(string what, Func<Task> work)
         {

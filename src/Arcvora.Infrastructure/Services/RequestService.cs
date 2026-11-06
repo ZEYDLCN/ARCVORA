@@ -2,6 +2,7 @@ using System.Text.Json;
 using Arcvora.Core.Flows;
 using Arcvora.Core.Model;
 using Arcvora.Infrastructure.Common;
+using Arcvora.Infrastructure.Mail;
 using Arcvora.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -10,7 +11,7 @@ using Npgsql;
 namespace Arcvora.Infrastructure.Services;
 
 /// <summary>Akış uygulamalarının çalışma zamanı: talep açma, onay/ret, iptal, listeleme. Kurallar çekirdekte (<see cref="FlowEngine"/>).</summary>
-public sealed class RequestService(ArcvoraDbContext db, AppAccessService access, IRequestHooks hooks, RequestVisibility visibility, DelegationService delegations, TimeProvider clock)
+public sealed class RequestService(ArcvoraDbContext db, AppAccessService access, IRequestHooks hooks, RequestVisibility visibility, DelegationService delegations, EmailNotifier notifier, TimeProvider clock)
 {
     public const int MaxCommentLength = 1000;
     private const int ListLimit = 200;
@@ -212,6 +213,7 @@ public sealed class RequestService(ArcvoraDbContext db, AppAccessService access,
             r.CompletedAt = now;
             r.UpdatedAt = now;
             AddEvent(r, userId, RequestEventKinds.Cancelled, null, now);
+            await notifier.ResultAsync(r, await db.Apps.AsNoTracking().FirstAsync(a => a.Id == r.AppId, ct), "cancelled", userId, null, null, ct);
             try
             {
                 await db.SaveChangesAsync(ct);
@@ -298,6 +300,7 @@ public sealed class RequestService(ArcvoraDbContext db, AppAccessService access,
             {
                 request.Status = RequestStatus.Rejected;
                 request.CompletedAt = now;
+                await notifier.ResultAsync(request, app, "rejected", userId, task.StepName, text, ct);
             }
             else if (result.Outcome == StepOutcome.Approved)
             {
@@ -341,6 +344,7 @@ public sealed class RequestService(ArcvoraDbContext db, AppAccessService access,
             .ExecuteUpdateAsync(set => set.SetProperty(t => t.AssigneeId, to), ct);
         if (changed == 0) throw new ConflictException("concurrent_update", "Görev aynı anda değiştirildi. Tekrar deneyin.");
         AddEvent(request, actorId, RequestEventKinds.Reassigned, new { taskId, stepId = task.StepId, stepName = task.StepName, from = task.AssigneeId, to }, clock.GetUtcNow());
+        await notifier.TaskAssignedAsync(request, await db.Apps.AsNoTracking().FirstAsync(a => a.Id == request.AppId, ct), task.StepName, [(taskId, to)], reassigned: true, ct: ct);
         await db.SaveChangesAsync(ct);
         return await GetAsync(actorId, request.Id, ct);
     }
@@ -368,12 +372,18 @@ public sealed class RequestService(ArcvoraDbContext db, AppAccessService access,
             if (plan.Assignees.Count == 0)
                 throw new ConflictException("no_approver", "Bu adım için onaylayıcı bulunamadı. Çalışma alanında bir master admin bulunmalı.");
             request.CurrentStepIndex = plan.Index;
+            var created = new List<(Guid TaskId, Guid UserId)>();
             foreach (var a in plan.Assignees)
-                db.ApprovalTasks.Add(new ApprovalTask
+            {
+                var task = new ApprovalTask
                 {
                     Id = Guid.NewGuid(), RequestId = request.Id, WorkspaceId = request.WorkspaceId, StepIndex = plan.Index, StepId = plan.StepId,
                     StepName = plan.Name, Mode = plan.Mode, AssigneeId = a, Fallback = plan.FallbackReason, CreatedAt = now,
-                });
+                };
+                db.ApprovalTasks.Add(task);
+                created.Add((task.Id, a));
+            }
+            await notifier.TaskAssignedAsync(request, app, plan.Name, created, ct: ct);
             AddEvent(request, null, RequestEventKinds.StepStarted,
                 new { stepId = plan.StepId, stepName = plan.Name, mode = plan.Mode.ToString().ToLowerInvariant(), assignees = plan.Assignees, fallback = plan.FallbackReason }, now);
             return;
@@ -383,6 +393,7 @@ public sealed class RequestService(ArcvoraDbContext db, AppAccessService access,
         request.CompletedAt = now;
         AddEvent(request, null, RequestEventKinds.Completed, new { status = "approved" }, now);
         await hooks.OnApprovedAsync(request, app, def, values, ct);
+        await notifier.ResultAsync(request, app, "approved", null, null, null, ct);
     }
 
     private void AddEvent(FlowRequest request, Guid? actorId, string kind, object? detail, DateTimeOffset at) =>

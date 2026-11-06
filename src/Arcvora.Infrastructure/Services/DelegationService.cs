@@ -1,6 +1,7 @@
 using Arcvora.Core.Flows;
 using Arcvora.Infrastructure.Auth;
 using Arcvora.Infrastructure.Common;
+using Arcvora.Infrastructure.Mail;
 using Arcvora.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -15,7 +16,7 @@ public sealed record CreateDelegationRequest(Guid? FromUserId, Guid? ToUserId, s
 public sealed record ReassignRequest(Guid? ToUserId);
 
 /// <summary>Vekâlet (yetki devri): kişi kendi adına, master admin başkası adına oluşturur; kurallar çekirdekte (<see cref="DelegationRules"/>).</summary>
-public sealed class DelegationService(ArcvoraDbContext db, AppAccessService access, AuditLog audit, IOptions<LocaleOptions> locale, TimeProvider clock)
+public sealed class DelegationService(ArcvoraDbContext db, AppAccessService access, AuditLog audit, IOptions<LocaleOptions> locale, EmailNotifier notifier, TimeProvider clock)
 {
     private const int ListLimit = 200;
 
@@ -56,6 +57,7 @@ public sealed class DelegationService(ArcvoraDbContext db, AppAccessService acce
             throw new ConflictException("delegation_overlap", "Bu kişinin aynı günlerde başka bir vekâleti var. Önce onu iptal edin veya günleri değiştirin.");
         db.Delegations.Add(d);
         audit.Add(workspaceId, null, actorId, "delegation.created", "user", from.ToString(), new { to, start, end });
+        await notifier.DelegationGrantedAsync(d, ct);
         await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
         return (await ToDtosAsync([d], ct))[0];
@@ -95,6 +97,8 @@ public sealed class DelegationService(ArcvoraDbContext db, AppAccessService acce
         d.RevokedAt = clock.GetUtcNow();
         d.RevokedBy = actorId;
         audit.Add(workspaceId, null, actorId, "delegation.revoked", "user", d.FromUserId.ToString(), new { to = d.ToUserId });
+        if (actorId == d.FromUserId || actorId == d.ToUserId) await notifier.DelegationRevokedAsync(d, actorId, ct);
+        else { await notifier.DelegationRevokedAsync(d, d.FromUserId, ct); await notifier.DelegationRevokedAsync(d, d.ToUserId, ct); }       // admin iptal etti: iki taraf da haberdar olur
         await db.SaveChangesAsync(ct);
         return (await ToDtosAsync([d], ct))[0];
     }
