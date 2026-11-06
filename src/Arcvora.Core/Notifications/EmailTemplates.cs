@@ -20,13 +20,23 @@ public static class EmailTemplates
 
     // ------------------------------------------------------------ görev / talep
 
+    /// <param name="onBehalfOf">Doluysa alıcı bu kişinin vekilidir: konu ve metin "vekâleten" olur.</param>
     public static MailContent TaskAssigned(MailContext c, string step, string? onBehalfOf = null) =>
-        Build(c.RecipientName, $"[ARCVORA] Onayınız bekleniyor: {c.Number} · {c.AppName}",
-            [$"{c.RequesterName} tarafından açılan aşağıdaki talep onayınızı bekliyor."], Details(c, step), c.Link, "Talebi aç");
+        onBehalfOf is null
+            ? Build(c.RecipientName, $"[ARCVORA] Onayınız bekleniyor: {c.Number} · {c.AppName}",
+                [$"{c.RequesterName} tarafından açılan aşağıdaki talep onayınızı bekliyor."], Details(c, step), c.Link, "Talebi aç")
+            : Build(c.RecipientName, $"[ARCVORA] Vekâleten onayınız bekleniyor: {c.Number} · {c.AppName}",
+                [$"{c.RequesterName} tarafından açılan aşağıdaki talep, {onBehalfOf} adına vekâleten sizin kararınızı bekliyor."], Details(c, step), c.Link, "Talebi aç");
 
-    public static MailContent TaskReminder(MailContext c, string step, int daysWaiting, string? onBehalfOf = null) =>
-        Build(c.RecipientName, $"[ARCVORA] Hatırlatma: {c.Number} · {c.AppName} onayınızı bekliyor",
-            [daysWaiting <= 0 ? "Bugün size atanan bir talep henüz karara bağlanmadı." : $"Aşağıdaki talep {daysWaiting} gündür onayınızı bekliyor."], Details(c, step), c.Link, "Talebi aç");
+    public static MailContent TaskReminder(MailContext c, string step, int daysWaiting, string? onBehalfOf = null)
+    {
+        var waiting = daysWaiting <= 0 ? "Bugün size atanan bir talep henüz karara bağlanmadı." : $"Aşağıdaki talep {daysWaiting} gündür onayınızı bekliyor.";
+        return onBehalfOf is null
+            ? Build(c.RecipientName, $"[ARCVORA] Hatırlatma: {c.Number} · {c.AppName} onayınızı bekliyor", [waiting], Details(c, step), c.Link, "Talebi aç")
+            : Build(c.RecipientName, $"[ARCVORA] Vekâleten hatırlatma: {c.Number} · {c.AppName} onayınızı bekliyor",
+                [daysWaiting <= 0 ? $"{onBehalfOf} adına vekâleten karar vermeniz gereken bir talep bugün atandı ve henüz karara bağlanmadı."
+                    : $"Aşağıdaki talep {daysWaiting} gündür {onBehalfOf} adına vekâleten sizin kararınızı bekliyor."], Details(c, step), c.Link, "Talebi aç");
+    }
 
     public static MailContent RequestApproved(MailContext c) =>
         Build(c.RecipientName, $"[ARCVORA] Talebiniz onaylandı: {c.Number} · {c.AppName}",
