@@ -64,6 +64,8 @@ export function setSessionToken(token: string | null): void { memoryToken = toke
 export const api = {
   register: (email: string, password: string, displayName: string) =>
     request<AuthResult>('POST', '/auth/register', { email, password, displayName }),
+  providers: () => request<{ oidc: boolean; oidcLabel?: string }>('GET', '/auth/providers'),
+  ssoTicket: (ticket: string) => request<AuthResult>('POST', '/auth/oidc/ticket', { ticket }),
   login: (email: string, password: string) => request<AuthResult>('POST', '/auth/login', { email, password }),
   me: () => request<{ user: AuthResult['user']; workspaces: WorkspaceInfo[]; mustChangePassword?: boolean }>('GET', '/me'),
   changePassword: (currentPassword: string, newPassword: string) => request<void>('POST', '/me/password', { currentPassword, newPassword }),
