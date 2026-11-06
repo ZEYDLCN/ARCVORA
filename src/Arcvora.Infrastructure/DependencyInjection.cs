@@ -35,6 +35,21 @@ public static class DependencyInjection
             if (email.Security.ToLowerInvariant() is not ("starttls" or "ssl" or "none"))
                 throw new InvalidOperationException("Email:Security 'starttls', 'ssl' veya 'none' olmalı.");
         }
+        services.Configure<OidcOptions>(config.GetSection("Oidc"));
+        var oidc = config.GetSection("Oidc").Get<OidcOptions>() ?? new OidcOptions();
+        if (oidc.Enabled)
+        {
+            if (string.IsNullOrWhiteSpace(oidc.Authority) || string.IsNullOrWhiteSpace(oidc.ClientId) || string.IsNullOrWhiteSpace(oidc.ClientSecret) || string.IsNullOrWhiteSpace(oidc.PublicUrl))
+                throw new InvalidOperationException("Oidc:Enabled=true için Oidc:Authority, Oidc:ClientId, Oidc:ClientSecret ve Oidc:PublicUrl gerekli.");
+            if (!oidc.AllowInsecureHttp && !oidc.Authority.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Oidc:Authority https olmalı (yalnızca geliştirmede Oidc:AllowInsecureHttp=true).");
+            if (oidc.AutoProvision && !Guid.TryParse(oidc.DefaultWorkspaceId, out _))
+                throw new InvalidOperationException("Oidc:AutoProvision=true için Oidc:DefaultWorkspaceId (çalışma alanı kimliği) gerekli.");
+        }
+        services.AddMemoryCache();
+        services.AddSingleton<OidcMetadata>();
+        services.AddHttpClient(OidcService.ClientName, c => c.Timeout = TimeSpan.FromSeconds(15));
+        services.AddScoped<OidcService>();
         services.AddScoped<IEmailSender, SmtpEmailSender>();
         services.AddSingleton<EmailDispatcher>();
         services.AddSingleton<MaintenanceService>();

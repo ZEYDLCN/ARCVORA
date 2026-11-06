@@ -2,21 +2,26 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Arcvora.Core.Profiles;
 using Arcvora.Infrastructure.Auth;
+using Arcvora.Infrastructure.Common;
 using Arcvora.Infrastructure.Jobs;
 using Arcvora.Infrastructure.Persistence;
 using Arcvora.Infrastructure.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace Arcvora.Api;
 
 public sealed record RegisterRequest(string? Email, string? Password, string? DisplayName);
 public sealed record LoginRequest(string? Email, string? Password);
+public sealed record TicketRequest(string? Ticket);
 public sealed record ChangeRequestBody(string? RequestText);
 public sealed record SampleBody(Guid WorkspaceId);
 public sealed record RevertBody(int? BaseVersion);
 
 public static class Endpoints
 {
+    private static string SsoReturn(OidcOptions o, string query) => $"{o.PublicUrl.TrimEnd('/')}/#/sso?{query}";
+
     internal static Guid UserId(ClaimsPrincipal u) =>
         Guid.Parse(u.FindFirstValue(JwtRegisteredClaimNames.Sub) ?? throw new UnauthorizedAccessException());
 
@@ -30,6 +35,41 @@ public static class Endpoints
             Results.Created("/api/me", await s.RegisterAsync(r.Email, r.Password, r.DisplayName, ct)));
         auth.MapPost("/login", async (LoginRequest r, AuthService s, CancellationToken ct) =>
             Results.Ok(await s.LoginAsync(r.Email, r.Password, ct)));
+
+        // ---- Tek oturum açma (OIDC): kapalıysa tüm uç noktalar 404. Başarısızlıkta tarayıcı JSON değil #/sso?error=… sayfasına döner.
+        auth.MapGet("/providers", (IOptions<OidcOptions> o) =>
+            Results.Ok(new { oidc = o.Value.Enabled, oidcLabel = o.Value.Enabled ? o.Value.ButtonText : null }));
+        auth.MapGet("/oidc/login", async (HttpContext http, IOptions<OidcOptions> o, OidcService s, CancellationToken ct) =>
+        {
+            if (!o.Value.Enabled) return Results.NotFound(new { status = 404, code = "sso_disabled", title = "Tek oturum açma kapalı." });
+            OidcStart start;
+            try { start = await s.StartAsync(ct); }
+            catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or IOException)
+            {
+                http.RequestServices.GetRequiredService<ILogger<OidcService>>().LogError(ex, "OIDC keşif belgesi alınamadı.");
+                return Results.Redirect(SsoReturn(o.Value, "error=sso_failed"));
+            }
+            http.Response.Cookies.Append("arcvora_oidc", start.StateCookie, new CookieOptions
+            {
+                HttpOnly = true, SameSite = SameSiteMode.Lax, Secure = http.Request.IsHttps, Path = "/api/auth/oidc", MaxAge = TimeSpan.FromMinutes(o.Value.StateMinutes),
+            });
+            return Results.Redirect(start.Url);
+        });
+        auth.MapGet("/oidc/callback", async (HttpContext http, string? code, string? state, string? error, IOptions<OidcOptions> o, OidcService s, CancellationToken ct) =>
+        {
+            if (!o.Value.Enabled) return Results.NotFound(new { status = 404, code = "sso_disabled", title = "Tek oturum açma kapalı." });
+            var cookie = http.Request.Cookies["arcvora_oidc"];
+            http.Response.Cookies.Delete("arcvora_oidc", new CookieOptions { Path = "/api/auth/oidc" });           // durum çerezi tek kullanımlık
+            if (!string.IsNullOrEmpty(error)) return Results.Redirect(SsoReturn(o.Value, "error=sso_denied"));
+            try { return Results.Redirect(SsoReturn(o.Value, "ticket=" + Uri.EscapeDataString(await s.CompleteAsync(code, state, cookie, ct)))); }
+            catch (OidcFailure f)
+            {
+                http.RequestServices.GetRequiredService<ILogger<OidcService>>().LogWarning("SSO reddedildi ({Code}): {Detail}", f.Code, f.Message);
+                return Results.Redirect(SsoReturn(o.Value, "error=" + f.Code));
+            }
+        });
+        auth.MapPost("/oidc/ticket", async (TicketRequest r, IOptions<OidcOptions> o, OidcService s, CancellationToken ct) =>
+            o.Value.Enabled ? Results.Ok(await s.ExchangeTicketAsync(r.Ticket, ct)) : Results.NotFound(new { status = 404, code = "sso_disabled", title = "Tek oturum açma kapalı." }));
 
         api.MapGet("/profiles", () => Results.Ok(ProfileCatalog.All.Select(p => new
         {
