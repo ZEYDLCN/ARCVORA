@@ -23,6 +23,22 @@ if (script) {
   const map = await get(`${script}.map`);
   check('kaynak haritası (.map) üretimde sunulmaz', map.status === 404 || !/json/.test(map.headers.get('content-type') ?? ''), [map.status, map.headers.get('content-type')]);
 }
+if (script) {
+  const js = await get(script);
+  check('özetli betik değişmez ve uzun süre önbelleğe alınır (Cache-Control)', (js.headers.get('cache-control') ?? '') === 'public, max-age=31536000, immutable', js.headers.get('cache-control'));
+}
+check('kabuk (index.html) her seferinde doğrulanır (no-cache)', (index.headers.get('cache-control') ?? '') === 'no-cache', index.headers.get('cache-control'));
+check('SPA yedeği de no-cache', (deep.headers.get('cache-control') ?? '') === 'no-cache', deep.headers.get('cache-control'));
+
+section('PWA dosyaları');
+const mf = await get('/manifest.webmanifest');
+check('/manifest.webmanifest → 200, application/manifest+json', mf.status === 200 && (mf.headers.get('content-type') ?? '').includes('manifest+json'), [mf.status, mf.headers.get('content-type')]);
+const swr = await get('/sw.js');
+check('/sw.js → 200 JavaScript ve no-cache (güncelleme gecikmesin)', swr.status === 200 && /javascript/.test(swr.headers.get('content-type') ?? '') && swr.headers.get('cache-control') === 'no-cache', [swr.status, swr.headers.get('cache-control')]);
+const icon = await get('/icons/icon-192.png');
+check('/icons/icon-192.png → 200 image/png', icon.status === 200 && (icon.headers.get('content-type') ?? '').includes('image/png'), icon.status);
+
+section('Eksik varlık');
 const missing = await get('/assets/yok-olan-dosya-abc123.js');
 const missingBody = await missing.text();
 check('olmayan varlık dosyası → 404 (index.html DEĞİL; dağıtım sonrası eski önbellekli sayfalar "Unexpected token <" almasın)',
