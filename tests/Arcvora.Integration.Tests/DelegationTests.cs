@@ -324,8 +324,9 @@ public class DelegationTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var req = await Submit(k);
         var taskId = (await TaskFor(k.Boss, req)).GetProperty("id").GetGuid();
         var results = await Task.WhenAll(k.Boss.PostAsync($"/api/tasks/{taskId}/approve"), k.Deputy.PostAsync($"/api/tasks/{taskId}/approve"));
-        Assert.Equal(1, results.Count(r => r.Is(HttpStatusCode.OK)));
-        Assert.Equal(1, results.Count(r => r.Is(HttpStatusCode.Conflict)));
+        var summary = string.Join(" | ", results.Select(r => $"{(int)r.Status} {r.Body.ToString()[..Math.Min(160, r.Body.ToString().Length)]}"));
+        Assert.True(results.Count(r => r.Is(HttpStatusCode.OK)) == 1, summary);
+        Assert.True(results.Count(r => r.Is(HttpStatusCode.Conflict)) == 1, summary);
         var detail = await k.Emp.GetAsync($"/api/requests/{req}");
         Assert.Equal(1, detail["events"].EnumerateArray().Count(e => e.GetProperty("kind").GetString() == "approved"));
     }

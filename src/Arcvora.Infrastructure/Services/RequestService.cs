@@ -219,8 +219,8 @@ public sealed class RequestService(ArcvoraDbContext db, AppAccessService access,
                 await db.SaveChangesAsync(ct);
                 return await GetAsync(userId, requestId, ct);
             }
-            catch (DbUpdateConcurrencyException) when (attempt < MaxDecisionAttempts) { db.ChangeTracker.Clear(); }
-            catch (DbUpdateConcurrencyException) { throw new ConflictException("concurrent_update", "Talep aynı anda değiştirildi. Tekrar deneyin."); }
+            catch (Exception ex) when (IsRace(ex) && attempt < MaxDecisionAttempts) { db.ChangeTracker.Clear(); }
+            catch (Exception ex) when (IsRace(ex)) { throw new ConflictException("concurrent_update", "Talep aynı anda değiştirildi. Tekrar deneyin."); }
         }
     }
 
@@ -353,9 +353,16 @@ public sealed class RequestService(ArcvoraDbContext db, AppAccessService access,
     private async Task<bool> TrySaveAsync(int attempt, CancellationToken ct)
     {
         try { await db.SaveChangesAsync(ct); return true; }
-        catch (DbUpdateConcurrencyException) when (attempt < MaxDecisionAttempts) { db.ChangeTracker.Clear(); return false; }
-        catch (DbUpdateConcurrencyException) { throw new ConflictException("concurrent_update", "Talep aynı anda değiştirildi. Tekrar deneyin."); }
+        catch (Exception ex) when (IsRace(ex) && attempt < MaxDecisionAttempts) { db.ChangeTracker.Clear(); return false; }
+        catch (Exception ex) when (IsRace(ex)) { throw new ConflictException("concurrent_update", "Talep aynı anda değiştirildi. Tekrar deneyin."); }
     }
+
+    /// <summary>
+    /// Eşzamanlı işlem çakışması: satır sürümü (xmin) uyuşmazlığı veya aynı olay için ikinci bildirim e-postası (benzersiz tekrar-önleme anahtarı).
+    /// İkincisi, kazanan işlem kaydedilince görünür: baştan değerlendirilince "zaten karar verilmiş" olarak 409 döner.
+    /// </summary>
+    private static bool IsRace(Exception ex) =>
+        ex is DbUpdateConcurrencyException || ex is DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } };
 
     // ============================================================== iç yardımcılar
 
